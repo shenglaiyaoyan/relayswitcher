@@ -1,10 +1,36 @@
 import React, { useState } from 'react';
-import { Icon, Spinner, Toggle, fmtK } from '../components/ui.jsx';
+import { Icon, Spinner, Toggle } from '../components/ui.jsx';
 
 export default function Settings({ state, refresh, toast }) {
-  const { settings, catalogBundled, status } = state;
+  const { settings } = state;
   const [form, setForm] = useState({ ...settings });
   const [saving, setSaving] = useState(false);
+  const [updateBusy, setUpdBusy] = useState(false);
+  const [updateResult, setUpdResult] = useState(null); // {found:true/false, version?, error?}
+  const [appVersion, setAppVer] = useState('');
+
+  useEffect(() => {
+    if (window.rs.getVersion) window.rs.getVersion().then(v => setAppVer(v)).catch(() => {});
+  }, []);
+
+  const checkUpdateManually = async () => {
+    setUpdBusy(true);
+    try {
+      const r = await window.rs.checkUpdate();
+      setUpdResult(r);
+      if (r.found) toast(`发现新版本 v${r.version}`, 'ok');
+      else toast(r.error || '已是最新版', 'warn');
+    } catch (e) {
+      setUpdResult({ found: false, error: e.message });
+      toast('检查失败: ' + e.message, 'bad');
+    } finally {
+      setUpdBusy(false);
+    }
+  };
+
+  const downloadAndInstall = () => {
+    window.open(updateResult.url, '_blank');
+  };
 
   const save = async () => {
     setSaving(true);
@@ -101,22 +127,34 @@ export default function Settings({ state, refresh, toast }) {
 
       {/* 关于与更新 */}
       <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
-        <div className="klabel"><Icon name="plus" size={12} style={{ color: 'var(--gold)' }} /> 关于与自动更新 <small>v{settings.version || 'local'}</small></div>
+        <div className="klabel"><Icon name="plus" size={12} style={{ color: 'var(--gold)' }} /> 关于与手动更新 <small>v{appVersion}</small></div>
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
           <div className="field-inline">
             <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>当前版本:</span>
-            <b className="mono">{settings.version || (window.rs.getVersion ? window.rs.getVersion() : '?')}</b>
+            <b className="mono">{appVersion || 'loading...'}</b>
           </div>
-          <button className="btn btn-sm" onClick={() => { window.rs.checkUpdate(); toast('已发送检测请求', 'ok'); }} disabled={typeof settings.version !== 'undefined'}>
-            <Icon name="refresh" size={11} /> 立即检查
+          <button className="btn btn-sm" onClick={checkUpdateManually} disabled={updateBusy}>
+            <Icon name="refresh" size={11} /> 检查更新
           </button>
         </div>
-        <div className="muted" style={{ marginTop: 10, lineHeight: 1.75 }}>
-          新版本会提示下载和重启安装。免安装版(win-unpacked)不启用自动更新,<b>请先用安装包安装一次</b>(桌面快捷方式若指向 unpacked,卸载后重装即可)。
-          <div className="field-inline" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5, color: 'var(--txt-2)' }}>
-            检测到有更新时,退出应用即<span className="badge gold">自动安装</span>
+        {updateBusy && <Spinner size={12} style={{ marginTop: 8 }} />}
+        {updateResult && updateResult.found && (
+          <div style={{ marginTop: 12, padding: 10, background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.3)', borderRadius: '12px', fontSize: '12px' }}>
+            <b style={{ color: 'var(--ok)' }}>发现新版本 v{updateResult.version}!</b>
+            <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-sm btn-gold" onClick={downloadAndInstall}>
+                <Icon name="download" size={11} /> 立即下载安装
+              </button>
+              <span className="muted">或</span>
+              <a href={updateResult.url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-hover)', textDecoration: 'none', fontSize: '11px' }}>直接下载 exe</a>
+            </div>
           </div>
-        </div>
+        )}
+        {updateResult && !updateResult.found && (
+          <div className="muted" style={{ marginTop: 8 }}>
+            当前已是最新版本 ({updateResult.error || '无更新'})
+          </div>
+        )}
       </div>
     </div>
   );

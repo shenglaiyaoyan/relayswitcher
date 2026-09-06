@@ -87,39 +87,29 @@ async function doSwitch(opts, event) {
   });
 }
 
-/* ---------------- 自动更新(electron-updater + GitHub Releases) ---------------- */
-let autoUpdater = null;
-function initAutoUpdater() {
-  try {
-    autoUpdater = require('electron-updater').autoUpdater;
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true; // 退出时自动装,兜底
-    const fwd = (ev) => (info) => {
-      if (win && !win.isDestroyed()) win.webContents.send('rs:update-event', { ev, info });
-    };
-    autoUpdater.on('checking-for-update', fwd('checking'));
-    autoUpdater.on('update-available', fwd('available'));
-    autoUpdater.on('update-not-available', fwd('uptodate'));
-    autoUpdater.on('download-progress', fwd('progress'));
-    autoUpdater.on('update-downloaded', fwd('downloaded'));
-    autoUpdater.on('error', fwd('error'));
-  } catch { autoUpdater = null; } // 非打包环境(win-unpacked/开发)无更新器
-}
+/* ---------------- 自动更新 (纯前端 API 检测,无 npm 依赖) ---------------- */
+const autoUpdate = require('./lib/auto-update');
+autoUpdate.setMainWindow(win);
 
-function checkForUpdates(manual) {
-  if (!autoUpdater) {
-    if (win && !win.isDestroyed()) win.webContents.send('rs:update-event', { ev: 'error', info: { message: '当前为免安装版(unpacked),自动更新仅对安装版生效。请下载安装包安装一次。' } });
-    return;
+async function checkForUpdates(manual) {
+  try {
+    const result = await autoUpdate.checkUpdate(manual);
+    if (result.found) {
+      win.webContents.send('rs:update-event', { ev: 'downloadable', info: result });
+      // 下载按钮逻辑留给 UI 处理
+    } else {
+      win.webContents.send('rs:update-event', { ev: 'error', info: { message: result.error || '未发现新版本' } });
+    }
+  } catch (e) {
+    win.webContents.send('rs:update-event', { ev: 'error', info: { message: e.message } });
   }
-  autoUpdater.checkForUpdates(manual).catch(() => { /* 错误已通过 error 事件转发 */ });
 }
 
 function quitAndInstall() {
-  if (autoUpdater) { try { autoUpdater.quitAndInstall(); return; } catch { /* fallthrough */ } }
-  app.quit();
+  app.quit(); // 简化版：退出即可让用户用安装包覆盖安装
 }
 
-/* Codex 客户端进程检测:切换时它若在运行,退出时可能用内存态覆盖我们的写入 */
+/* Codex 客户端进程检测 */
 async function detectCodexRunning() {
   return new Promise((resolve) => {
     const { execFile } = require('child_process');
@@ -150,10 +140,15 @@ function registerIpc() {
   ipcMain.handle('rs:deleteRelay', (_e, id) => { store.deleteRelay(id); return getState(); });
   ipcMain.handle('rs:testRelay', (_e, id) => testRelay(id));
   ipcMain.handle('rs:switch', (_e, opts) => doSwitch(opts));
+  // Codex 检测
   ipcMain.handle('rs:detectCodex', () => detectCodexRunning());
+  // 自动更新相关
   ipcMain.handle('rs:checkUpdate', () => checkForUpdates(true));
   ipcMain.handle('rs:quitAndInstall', () => quitAndInstall());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
+  // 注册 autoUpdate 监听器
+  autoUpdate.registerListeners();
+}
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
@@ -294,10 +289,9 @@ app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
   registerIpc();
-  initAutoUpdater(); // 仅打包环境生效;启动后延迟 5s 静默检查一次
-  if (autoUpdater) setTimeout(() => checkForUpdates(false), 5000);
-
-  if (SMOKE) { smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); }); return; }
+  // initAutoUpdater(); // 仅在打包环境可用;取消开机静默检测,避免网络失败报错弹出
+  // if (autoUpdater) setTimeout(() => checkForUpdates(false), 5000);
+});
 
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'resources', 'icon.ico')

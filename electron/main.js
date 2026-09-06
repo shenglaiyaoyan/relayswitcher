@@ -87,26 +87,17 @@ async function doSwitch(opts, event) {
   });
 }
 
-/* ---------------- 自动更新 (纯前端 API 检测,无 npm 依赖) ---------------- */
+/* ---------------- 自动更新 (纯 API 检测,无 npm 依赖,仅手动触发) ---------------- */
 const autoUpdate = require('./lib/auto-update');
-autoUpdate.setMainWindow(win);
 
-async function checkForUpdates(manual) {
-  try {
-    const result = await autoUpdate.checkUpdate(manual);
-    if (result.found) {
-      win.webContents.send('rs:update-event', { ev: 'downloadable', info: result });
-      // 下载按钮逻辑留给 UI 处理
-    } else {
-      win.webContents.send('rs:update-event', { ev: 'error', info: { message: result.error || '未发现新版本' } });
-    }
-  } catch (e) {
-    win.webContents.send('rs:update-event', { ev: 'error', info: { message: e.message } });
+async function checkForUpdates() {
+  const result = await autoUpdate.checkUpdate(app.getVersion());
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('rs:update-event', result.found
+      ? { ev: 'available', info: { version: result.version, url: result.url } }
+      : { ev: 'uptodate', info: { version: result.version, message: result.message || result.error } });
   }
-}
-
-function quitAndInstall() {
-  app.quit(); // 简化版：退出即可让用户用安装包覆盖安装
+  return result;
 }
 
 /* Codex 客户端进程检测 */
@@ -142,13 +133,9 @@ function registerIpc() {
   ipcMain.handle('rs:switch', (_e, opts) => doSwitch(opts));
   // Codex 检测
   ipcMain.handle('rs:detectCodex', () => detectCodexRunning());
-  // 自动更新相关
-  ipcMain.handle('rs:checkUpdate', () => checkForUpdates(true));
-  ipcMain.handle('rs:quitAndInstall', () => quitAndInstall());
+  // 自动更新(仅手动触发;检测走 GitHub API,下载由 UI 用浏览器完成)
+  ipcMain.handle('rs:checkUpdate', () => checkForUpdates());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
-  // 注册 autoUpdate 监听器
-  autoUpdate.registerListeners();
-}
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
@@ -224,6 +211,7 @@ async function smoke() {
   // ---- 场景 B:正常切换(默认不清理本地 provider) ----
   const r = codex.applySwitch(switchOpts());
   check('切换流程成功', r.ok);
+  check('账号变更预警触发(account_id 变化时明示会话空间切换)', r.ok && r.log.some(l => l.name === '账号变更'));
 
   const cfg = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
   check('model = gpt-6-astra', cfg.model === 'gpt-6-astra');
@@ -289,9 +277,9 @@ app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
   registerIpc();
-  // initAutoUpdater(); // 仅在打包环境可用;取消开机静默检测,避免网络失败报错弹出
-  // if (autoUpdater) setTimeout(() => checkForUpdates(false), 5000);
-});
+  // 自动更新仅手动触发(设置页),不在启动时静默检测 — 避免无网环境报错
+
+  if (SMOKE) { smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); }); return; }
 
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'resources', 'icon.ico')

@@ -355,6 +355,18 @@ function applySwitch(opts) {
     backupId = backup(home, 'switch');
     step('备份当前配置', true, backupId ? '快照 ' + backupId : '无需备份(无现有文件)');
 
+    // 2.5 账号变更检测:account_id 变化 = Codex 会话空间切换(历史/设置按账号隔离)
+    try {
+      const oldAuth = JSON.parse(authIn || '{}');
+      const oldAcc = oldAuth.tokens && oldAuth.tokens.account_id;
+      const newAcc = opts.account.tokens.account_id;
+      if (oldAcc && newAcc && String(oldAcc) !== String(newAcc)) {
+        step('账号变更', true,
+          `登录账号将切换(${String(oldAcc).slice(0, 8)}… → ${String(newAcc).slice(0, 8)}…)。` +
+          'Codex 的会话历史按账号隔离,重启客户端后会像"新初始化" — 这是预期行为,回滚即可复原原账号的全部数据');
+      }
+    } catch { /* 无旧 auth 或格式异常则跳过 */ }
+
     // 3. 内存中生成全部新内容(LF 域)
     let text = cfgIn ? cfgIn.text : '';
     const topKV = { model: opts.model, model_provider: opts.providerId };

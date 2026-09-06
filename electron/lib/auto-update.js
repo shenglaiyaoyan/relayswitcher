@@ -1,39 +1,35 @@
-// Minimal auto-update: only manual check via URL fetch (no npm deps)
-const { ipcMain } = require('electron');
-let mainWindow = null;
+'use strict';
+/**
+ * 自动更新(轻量版):手动触发,GitHub API 检测 + 浏览器下载。
+ * 无 npm 依赖;用 Electron net 走系统代理(Clash 环境下同样可用)。
+ */
+const { net } = require('electron');
 
-function setMainWindow(w) { mainWindow = w; }
+const REPO_LATEST = 'https://api.github.com/repos/shenglaiyaoyan/relayswitcher/releases/latest';
 
-async function checkUpdate(manual, onProgress, onError) {
-  const GITHUB_API = 'https://api.github.com/repos/shenglaiyaoyan/relayswitcher/releases/latest';
+/**
+ * 对比远端 latest release 与当前版本。
+ * @param {string} currentVersion 当前 app 版本(如 "1.4.1")
+ * @returns {Promise<{found:boolean, version?:string, url?:string, message?:string, error?:string}>}
+ */
+async function checkUpdate(currentVersion) {
   try {
-    if (!man) { throw new Error('手动检查必须传入 manual=true'); }
-    const resp = await fetch(GITHUB_API);
-    if (!resp.ok) throw new Error(`GitHub API ${resp.status}`);
+    const resp = await net.fetch(REPO_LATEST, {
+      headers: { 'User-Agent': 'RelaySwitcher-Updater' },
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!resp.ok) return { found: false, error: 'GitHub API HTTP ' + resp.status };
     const data = await resp.json();
-    const tagName = data.tag_name || '';
-    const exeUrl = data.assets?.find(a => a.name.endsWith('.exe'))?.browser_download_url || null;
-    if (!exeUrl) throw new Error('未找到 .exe 发布文件');
-    
-    // 发送事件到 UI
-    mainWindow?.webContents.send('rs:update-event', { ev: 'checking', info: null });
-    return { found: true, version: tagName, url: exeUrl };
+    const remote = String(data.tag_name || '').replace(/^v/, '');
+    const exe = (data.assets || []).find(a => a.name && a.name.endsWith('.exe'));
+    if (!exe) return { found: false, error: 'Release 中没有 .exe 安装包' };
+    if (!currentVersion || remote === currentVersion) {
+      return { found: false, version: remote, url: exe.browser_download_url, message: '当前已是最新版本' };
+    }
+    return { found: true, version: remote, url: exe.browser_download_url };
   } catch (e) {
-    onError && onError(e.message);
     return { found: false, error: e.message };
   }
 }
 
-function registerListeners() {
-  ipcMain.handle('rs:checkUpdate', async (_e, manual) => {
-    const result = await checkUpdate(manual, 
-      ({ev,info}) => mainWindow?.webContents.send('rs:update-event',{ev,info}),
-      (err) => mainWindow?.webContents.send('rs:update-event',{ev:'error',info:{message:err}})
-    );
-    return result;
-  });
-  ipcMain.handle('rs:getVersion', () => require('electron').app.getVersion());
-  ipcMain.handle('rs:quitAndInstall', () => process.exit(0)); // 简化版：退出即重开，让 updater 接管（如果装了的话）或提示重装
-}
-
-module.exports = { setMainWindow, checkUpdate, registerListeners };
+module.exports = { checkUpdate };

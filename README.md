@@ -1,5 +1,7 @@
 # RelaySwitcher 中转站切换器
 
+> **GitHub**:https://github.com/shenglaiyaoyan/relayswitcher
+
 把「账号登录态」和「流量出口」解耦自由组合的桌面控制面板:用真实 OAuth 账号保住 Codex 客户端的订阅功能(快速模式、完整思考档位),同时把实际 API 流量指向自建中转站。一键切换、自动备份、随时回滚。
 
 ## 功能

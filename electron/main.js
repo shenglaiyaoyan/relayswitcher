@@ -352,6 +352,15 @@ async function smoke() {
   const st = codex.getStatus(home);
   check('状态读取正常', st.tomlOk && st.baseUrl === 'http://127.0.0.1:3000/v1');
 
+  // ---- 场景 E:坏目录(缺 base_instructions)被预检拒绝,绝不写入(2026-09-06 实锤事故的防回归) ----
+  const badCat = P('bad-catalog.json');
+  fs.writeFileSync(badCat, JSON.stringify({ models: [{ slug: 'broken_model', base_instructions: '' }] }));
+  const rBad = codex.applySwitch(switchOpts({ catalogSourcePath: badCat }));
+  check('坏目录被预检拒绝(切换失败并报出缺字段模型)', rBad.ok === false && /预检/.test(rBad.error || '') && (rBad.error || '').includes('broken_model'));
+  const cfgAfterBad = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
+  check('坏目录切换未污染现有配置(仍为回滚后的 gpt-5.5)', cfgAfterBad.model === 'gpt-5.5');
+  const catStill = JSON.parse(fs.readFileSync(P('relayswitcher-model-catalog.json'), 'utf8'));
+  check('已部署目录未被坏文件覆盖(全部模型仍含 base_instructions)', catStill.models.every(m => typeof m.base_instructions === 'string' && m.base_instructions));
   fs.rmSync(home, { recursive: true, force: true });
   console.log(`\nSMOKE RESULT: ${pass} passed, ${fail} failed`);
   app.exit(fail ? 1 : 0);

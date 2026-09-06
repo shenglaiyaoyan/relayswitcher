@@ -402,6 +402,17 @@ function applySwitch(opts) {
     let catalogContent = null;
     if (opts.catalogEnabled) {
       catalogContent = fs.readFileSync(opts.catalogSourcePath);
+      // 部署前自检:坏目录(缺必填字段)会让 Codex 启动解析失败打不开(2026-09-06 实锤),
+      // 宁可切换失败,绝不写进 CODEX_HOME
+      const catObj = JSON.parse(catalogContent.toString('utf8'));
+      if (!Array.isArray(catObj.models) || catObj.models.length === 0) {
+        throw new Error('模型目录预检失败: models 为空或缺 models 数组');
+      }
+      const badModels = catObj.models.filter(m => typeof m.base_instructions !== 'string' || !m.base_instructions);
+      if (badModels.length) {
+        throw new Error('模型目录预检失败: 以下模型缺 base_instructions(Codex 26.901.5003+ 必填,写入会导致启动报错): '
+          + badModels.map(m => m.slug || '(无slug)').join(', '));
+      }
       text = patchTopLevelKeys(text, { model_catalog_json: opts.catalogFileName });
     } else {
       text = patchTopLevelKeys(text, { model_catalog_json: null });

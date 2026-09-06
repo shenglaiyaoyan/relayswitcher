@@ -499,19 +499,24 @@ app.whenReady().then(() => {
   const notifyStateChanged = () => {
     if (win && !win.isDestroyed()) win.webContents.send('rs:state-changed');
   };
-  // token 自动保养:启动 30s 后首刷,之后每 30 分钟;尊重 OpenAI earliest_refresh_at 频控,失败静默
+  // token 自动保养(修正策略:只救快死的)— 启动 30s 首查 + 每 6 小时巡检,
+  // 仅刷新 access_token 剩余 <24h 的账号。不做高频全量刷:每次成功刷新都会轮换
+  // refresh_token(旧的作废),共享池账号会互相踢出且加速触发渠道风控;
+  // 正在使用中的登录态由 Codex 客户端自行续期(OAuth 标准行为)。
   const autoTokenTick = async () => {
     let changed = false;
+    const deadline = Date.now() + 24 * 3600 * 1000;
     for (const a of store.listAccounts()) {
       if (!a.hasRefreshToken) continue;
-      if (a.earliestRefreshAt && Date.now() < new Date(a.earliestRefreshAt).getTime()) continue; // 频控未到
+      if (!a.tokenExp || new Date(a.tokenExp).getTime() > deadline) continue; // 仍新鲜,不折腾
+      if (a.earliestRefreshAt && Date.now() < new Date(a.earliestRefreshAt).getTime()) continue;
       const r = await refreshAccount(a.id).catch(() => null);
       if (r && r.ok) changed = true;
     }
     if (changed) notifyStateChanged();
   };
   setTimeout(autoTokenTick, 30 * 1000).unref?.();
-  setInterval(autoTokenTick, 30 * 60 * 1000).unref?.();
+  setInterval(autoTokenTick, 6 * 3600 * 1000).unref?.();
   // 启动 8s 静默检查更新(失败零打扰;发现新版时侧边栏已有提示)
   setTimeout(() => checkForUpdates().catch(() => {}), 8000).unref?.();
 

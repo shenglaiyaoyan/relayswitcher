@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const { createStore } = require('./lib/store');
 const codex = require('./lib/codex');
+const { extractToFile } = require('./lib/catalog-extract');
+const { mergeCustomModels } = require('./lib/catalog-merge');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
@@ -85,23 +87,69 @@ async function testRelay(id) {
 }
 
 /* ---------------- 一键切换 ---------------- */
+/** 目录源解析(US-01):内置快照 或 最新提取产物,再合并自定义模型(US-02) */
+function resolveCatalogContent() {
+  const s = store.getSettings();
+  let srcPath = path.join(resourcesDir(), 'model-catalog.json');
+  if (s.catalogMode === 'extracted') {
+    const dir = path.join(app.getPath('userData'), 'catalogs');
+    let best = null;
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (/^extracted-[\w-]+\.json$/.test(f)) {
+          const p = path.join(dir, f);
+          const mt = fs.statSync(p).mtimeMs;
+          if (!best || mt > best.mt) best = { p, mt };
+        }
+      }
+    } catch { /* 目录不存在,回落内置 */ }
+    if (best) srcPath = best.p; // 无提取产物时静默回落内置快照
+  }
+  const catalog = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
+  return Buffer.from(JSON.stringify(mergeCustomModels(catalog, store.listCustomModels())));
+}
+
+/** 中转站预检(US-04):轻量 /v1/models 探测,失败不阻塞切换 */
+async function probeRelay(relay) {
+  const t0 = Date.now();
+  try {
+    const headers = {};
+    if (relay.apiKey) headers['Authorization'] = 'Bearer ' + relay.apiKey;
+    const resp = await net.fetch(relay.baseUrl.replace(/\/+$/, '') + '/models',
+      { headers, signal: AbortSignal.timeout(3000) });
+    return { ok: resp.ok, ms: Date.now() - t0, status: resp.status };
+  } catch (e) {
+    return { ok: false, ms: Date.now() - t0, error: e.message };
+  }
+}
+
 async function doSwitch(opts, event) {
   const s = store.getSettings();
   let account = store.getAccount(opts.accountId);
   const relay = store.getRelay(opts.relayId);
+  const sendStep = (name, ok, detail) => {
+    if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
+  };
 
-  // 预刷新:id_token 寿命仅 1 小时,写入"陈旧 token"会在启动 Codex 前就过期 → 登录态不被认可。
-  // 切换瞬间先换一份刚出炉的 token;失败不阻塞(继续用现有 token),并在日志中说明。
-  if (account.tokens.refresh_token) {
-    const r = await refreshAccount(opts.accountId);
-    const send = (ok, detail) => {
-      if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name: 'token 预刷新', ok, detail });
-    };
-    if (r.ok) {
-      send(true, `已换新:access_token 约 ${r.expiresInDays} 天,id_token 重获 1 小时新鲜期`);
+  // 预检与 token 预刷新并行(bench 实测本地计算均 <2ms,切换耗时全在网络:
+  // 两步互不依赖,串行最坏 3s+20s 白等,并行后总耗时 = max(两步))
+  const [probe, refreshed] = await Promise.all([
+    probeRelay(relay),
+    account.tokens.refresh_token
+      ? refreshAccount(opts.accountId).catch(() => null)
+      : Promise.resolve(null)
+  ]);
+  if (probe.ok) {
+    sendStep('中转站预检', true, `连通正常(${probe.ms}ms,HTTP ${probe.status})`);
+  } else {
+    sendStep('中转站预检', false, (probe.error || 'HTTP ' + probe.status) + ' — 流量将无法到达,请检查中转站状态(已继续切换,可回滚)');
+  }
+  if (refreshed) {
+    if (refreshed.ok) {
+      sendStep('token 预刷新', true, `已换新:access_token 约 ${refreshed.expiresInDays} 天,id_token 重获 1 小时新鲜期`);
       account = store.getAccount(opts.accountId); // 取刷新后的新 tokens
     } else {
-      send(false, (r.error || '未知原因') + ' — 继续使用现有 token(若 id_token 已超 1 小时,Codex 可能要求重新登录)');
+      sendStep('token 预刷新', false, (refreshed.error || '未知原因') + ' — 继续使用现有 token(若 id_token 已超 1 小时,Codex 可能要求重新登录)');
     }
   }
 
@@ -113,12 +161,10 @@ async function doSwitch(opts, event) {
     fastMode: opts.fastMode != null ? opts.fastMode : s.fastMode,
     providerId: s.providerId,
     catalogEnabled: s.catalogEnabled,
-    catalogSourcePath: path.join(resourcesDir(), 'model-catalog.json'),
+    catalogContent: resolveCatalogContent(), // 目录源(内置/提取)+ 自定义模型,在主进程统一生成
     catalogFileName: s.catalogFileName,
     pruneLocalProviders: !!s.pruneLocalProviders,
-    onStep: (name, ok, detail) => {
-      if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
-    }
+    onStep: (name, ok, detail) => sendStep(name, ok, detail)
   });
 }
 
@@ -217,6 +263,51 @@ function registerIpc() {
   // 自动更新(仅手动触发;检测走 GitHub API,下载由 UI 用浏览器完成)
   ipcMain.handle('rs:checkUpdate', () => checkForUpdates());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
+  // ---- 目录管理(US-01/02)与批量导入(US-03) ----
+  ipcMain.handle('rs:extractCatalog', async () => {
+    try {
+      const builtin = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8'));
+      const fb = (builtin.models.find(m => m.slug === 'gpt-5.5') || {}).base_instructions || '';
+      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'), { fallbackInstructions: fb });
+      store.saveSettings({ catalogMode: 'extracted' });
+      return { ok: true, report: r.report, binPath: r.binPath, outPath: r.outPath };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+  ipcMain.handle('rs:getCatalogInfo', () => {
+    const s = store.getSettings();
+    const info = { mode: s.catalogMode, customModels: store.listCustomModels(), builtinCount: 0, extracted: null };
+    try { info.builtinCount = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8')).models.length; } catch { /* */ }
+    const dir = path.join(app.getPath('userData'), 'catalogs');
+    let best = null;
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (/^extracted-[\w-]+\.json$/.test(f)) {
+          const p = path.join(dir, f);
+          const mt = fs.statSync(p).mtimeMs;
+          if (!best || mt > best.mt) best = { p, mt };
+        }
+      }
+    } catch { /* */ }
+    if (best) {
+      try {
+        const c = JSON.parse(fs.readFileSync(best.p, 'utf8'));
+        info.extracted = { file: path.basename(best.p), modelCount: c.models.length, time: new Date(best.mt).toISOString() };
+      } catch { info.extracted = { file: path.basename(best.p), error: '解析失败' }; }
+    }
+    try {
+      const src = best && s.catalogMode === 'extracted' ? best.p : path.join(resourcesDir(), 'model-catalog.json');
+      const c = JSON.parse(fs.readFileSync(src, 'utf8'));
+      info.modelSlugs = c.models.map(m => m.slug);
+    } catch { info.modelSlugs = []; }
+    return info;
+  });
+  ipcMain.handle('rs:setCatalogMode', (_e, mode) => {
+    if (mode !== 'builtin' && mode !== 'extracted') throw new Error('mode 必须是 builtin/extracted');
+    return store.saveSettings({ catalogMode: mode });
+  });
+  ipcMain.handle('rs:saveCustomModel', (_e, cm) => { store.saveCustomModel(cm); return store.listCustomModels(); });
+  ipcMain.handle('rs:deleteCustomModel', (_e, id) => { store.deleteCustomModel(id); return store.listCustomModels(); });
+  ipcMain.handle('rs:importAccountsBatch', (_e, texts) => store.importAccountsBatch(texts));
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
@@ -385,6 +476,7 @@ app.whenReady().then(() => {
     title: 'RelaySwitcher',
     autoHideMenuBar: true,
     frame: false,
+    show: false, // 等渲染完成再显示,消除启动黑屏等待感
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -393,6 +485,7 @@ app.whenReady().then(() => {
   });
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  win.once('ready-to-show', () => win.show());
 });
 
 app.on('window-all-closed', () => app.quit());

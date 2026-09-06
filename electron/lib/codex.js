@@ -401,7 +401,8 @@ function applySwitch(opts) {
 
     let catalogContent = null;
     if (opts.catalogEnabled) {
-      catalogContent = fs.readFileSync(opts.catalogSourcePath);
+      catalogContent = opts.catalogContent != null ? Buffer.from(opts.catalogContent)
+        : fs.readFileSync(opts.catalogSourcePath);
       // 部署前自检:坏目录(缺必填字段)会让 Codex 启动解析失败打不开(2026-09-06 实锤),
       // 宁可切换失败,绝不写进 CODEX_HOME
       const catObj = JSON.parse(catalogContent.toString('utf8'));

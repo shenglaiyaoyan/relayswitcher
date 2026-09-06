@@ -19,8 +19,9 @@ function createStore(userDataDir) {
     codexHome: '',
     fastMode: true,
     contextWindow: 872000,
-    pruneLocalProviders: false
-  }};
+    pruneLocalProviders: false,
+    catalogMode: 'builtin'
+  }, customModels: []};
 
   function load() {
     try {
@@ -110,6 +111,39 @@ function createStore(userDataDir) {
       data.accounts = data.accounts.filter(a => a.id !== id);
       save();
     },
+
+    /** 批量导入(US-03):逐条独立成败,单条失败不中断 */
+    importAccountsBatch(texts) {
+      return (texts || []).map((t, i) => {
+        try {
+          const a = this.addAccount(String(t), undefined);
+          return { index: i, ok: true, label: a.label, plan: a.plan };
+        } catch (e) {
+          return { index: i, ok: false, error: e.message };
+        }
+      });
+    },
+
+    /** 自定义模型(US-02,派生式) */
+    saveCustomModel(cm) {
+      if (!cm.templateSlug || !cm.slug) throw new Error('templateSlug 与 slug 必填');
+      if (cm.id) {
+        const i = data.customModels.findIndex(x => x.id === cm.id);
+        if (i < 0) throw new Error('自定义模型不存在');
+        data.customModels[i] = { ...data.customModels[i], ...cm };
+      } else {
+        if (data.customModels.some(x => x.slug === cm.slug)) throw new Error('已存在同 slug 的自定义模型: ' + cm.slug);
+        data.customModels.push({ id: crypto.randomUUID(), ...cm });
+      }
+      save();
+    },
+
+    deleteCustomModel(id) {
+      data.customModels = data.customModels.filter(m => m.id !== id);
+      save();
+    },
+
+    listCustomModels() { return data.customModels.map(m => ({ ...m })); },
 
     getAccount(id) {
       const a = data.accounts.find(x => x.id === id);

@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('rs', {
   checkUpdate: () => ipcRenderer.invoke('rs:checkUpdate'),
   quitAndInstall: () => ipcRenderer.invoke('rs:quitAndInstall'),
   getVersion: () => ipcRenderer.invoke('rs:getVersion'),
+  extractCatalog: () => ipcRenderer.invoke('rs:extractCatalog'),
+  getCatalogInfo: () => ipcRenderer.invoke('rs:getCatalogInfo'),
+  setCatalogMode: (mode) => ipcRenderer.invoke('rs:setCatalogMode', mode),
+  saveCustomModel: (cm) => ipcRenderer.invoke('rs:saveCustomModel', cm),
+  deleteCustomModel: (id) => ipcRenderer.invoke('rs:deleteCustomModel', id),
+  importAccountsBatch: (texts) => ipcRenderer.invoke('rs:importAccountsBatch', texts),
   onUpdateEvent: (cb) => {
     const h = (_e, data) => cb(data);
     ipcRenderer.on('rs:update-event', h);

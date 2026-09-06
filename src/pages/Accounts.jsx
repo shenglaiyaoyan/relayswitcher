@@ -5,8 +5,13 @@ import { Icon, Spinner, Confirm, Empty, fmtAgo, planLabel } from '../components/
 function parsePreview(text) {
   const t = text.trim();
   if (!t) return null;
+  if (t.length > 1024 * 1024) return { tooLarge: true }; // >1MB 跳过实时解析,导入时仍会校验
   try {
     const o = JSON.parse(t);
+    if (Array.isArray(o)) {
+      if (!o.length) return { err: '数组为空' };
+      return { batchCount: o.length };
+    }
     const tok = o.tokens && typeof o.tokens === 'object' ? o.tokens : o;
     const claims = (() => {
       try {
@@ -33,6 +38,7 @@ export default function Accounts({ state, refresh, toast }) {
   const [refreshingId, setRefreshingId] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [batchResults, setBatchResults] = useState(null); // [{index, ok, label?, error?}]
   const fileRef = useRef(null);
 
   const pv = useMemo(() => parsePreview(json), [json]);
@@ -41,6 +47,52 @@ export default function Accounts({ state, refresh, toast }) {
     if (!f) return;
     try { setJson(await f.text()); }
     catch (e) { toast('读取文件失败: ' + e.message, 'bad'); }
+  };
+
+  /** 批量导入(US-03):多文件 → 逐文件文本;textarea 粘贴 JSON 数组 → 逐条拆分 */
+  const runBatch = async (texts) => {
+    setBatchResults(null);
+    const results = await window.rs.importAccountsBatch(texts);
+    setBatchResults(results);
+    const ok = results.filter(r => r.ok).length;
+    toast(`批量导入完成:${ok} 成功 / ${results.length - ok} 失败`, ok ? 'ok' : 'bad');
+    setJson(''); setLabel('');
+    await refresh();
+  };
+
+  const onFiles = async (files) => {
+    const list = Array.from(files || []).filter(Boolean);
+    if (!list.length) return;
+    if (list.length === 1) return onFile(list[0]); // 单文件仍走预览编辑流
+    const texts = [];
+    for (const f of list) { try { texts.push(await f.text()); } catch { texts.push(JSON.stringify({})); } }
+    await runBatch(texts);
+  };
+
+  const onDrop = async (e) => {
+    e.preventDefault(); setDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length) return onFiles(e.dataTransfer.files);
+    return onFile(null);
+  };
+
+  const doImport = async () => {
+    const t = json.trim();
+    if (!t) return toast('请粘贴 JSON', 'bad');
+    // JSON 数组 → 批量路径
+    if (t.startsWith('[')) {
+      try {
+        const arr = JSON.parse(t);
+        if (Array.isArray(arr)) return runBatch(arr.map(x => JSON.stringify(x)));
+      } catch (e) { return toast('数组解析失败: ' + e.message, 'bad'); }
+    }
+    setBusy(true);
+    try {
+      const a = await window.rs.importAccount(t, label.trim() || undefined);
+      toast('已导入: ' + a.label + (a.plan ? ' (' + (planLabel(a.plan) || a.plan) + ')' : ''), 'ok');
+      setJson(''); setLabel('');
+      await refresh();
+    } catch (e) { toast('导入失败: ' + e.message, 'bad'); }
+    finally { setBusy(false); }
   };
 
   const doRefresh = async (a) => {
@@ -55,17 +107,6 @@ export default function Accounts({ state, refresh, toast }) {
       }
     } catch (e) { toast('刷新异常: ' + e.message, 'bad'); }
     finally { setRefreshingId(null); }
-  };
-
-  const doImport = async () => {
-    setBusy(true);
-    try {
-      const a = await window.rs.importAccount(json.trim(), label.trim() || undefined);
-      toast('已导入: ' + a.label + (a.plan ? ' (' + (planLabel(a.plan) || a.plan) + ')' : ''), 'ok');
-      setJson(''); setLabel('');
-      await refresh();
-    } catch (e) { toast('导入失败: ' + e.message, 'bad'); }
-    finally { setBusy(false); }
   };
 
   const del = async () => {
@@ -85,7 +126,7 @@ export default function Accounts({ state, refresh, toast }) {
           <button className="btn btn-sm" onClick={() => fileRef.current && fileRef.current.click()} disabled={busy}>
             <Icon name="file" size={13} /> 选择文件
           </button>
-          <input ref={fileRef} type="file" accept=".json,.txt" style={{ display: 'none' }} onChange={e => onFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept=".json,.txt" multiple style={{ display: 'none' }} onChange={e => onFiles(e.target.files)} />
         </div>
         <textarea
           placeholder={'粘贴 JSON,或把 .json 文件拖进来…\n{"tokens":{"id_token":"…","access_token":"…","refresh_token":"…","account_id":"…"}}'}
@@ -93,9 +134,21 @@ export default function Accounts({ state, refresh, toast }) {
           className={pv ? (pv.err ? 'err' : 'ok') : ''}
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={e => { e.preventDefault(); setDragOver(false); onFile(e.dataTransfer.files[0]); }} />
+          onDrop={onDrop} />
 
-        {pv && !pv.err && (
+        {pv && pv.tooLarge && (
+          <div className="parse-preview">
+            <div className="pv-title" style={{ color: 'var(--warn)' }}><Icon name="info" size={14} /> 文本超过 1MB,已跳过实时预览</div>
+            <div className="pv-line muted">点「导入账号」时会完整校验;建议粘贴 JSON 数组分批</div>
+          </div>
+        )}
+        {pv && !pv.err && pv.batchCount && (
+          <div className="parse-preview">
+            <div className="pv-title"><Icon name="check" size={14} style={{ color: 'var(--ok)' }} /> 批量模式:识别到 {pv.batchCount} 个账号</div>
+            <div className="pv-line muted">点「导入账号」逐条导入,单条失败不影响其余</div>
+          </div>
+        )}
+        {pv && !pv.err && !pv.batchCount && !pv.tooLarge && (
           <div className="parse-preview">
             <div className="pv-title"><Icon name="check" size={14} style={{ color: 'var(--ok)' }} /> 识别成功</div>
             <div className="pv-line">邮箱 <b>{pv.email}</b>
@@ -112,6 +165,23 @@ export default function Accounts({ state, refresh, toast }) {
         {pv && pv.err && (
           <div className="parse-preview err">
             <div className="pv-title" style={{ color: 'var(--bad)' }}><Icon name="alert" size={14} /> {pv.err}</div>
+          </div>
+        )}
+
+        {batchResults && (
+          <div className="parse-preview">
+            <div className="pv-title">
+              <Icon name="check" size={14} style={{ color: batchResults.every(r => r.ok) ? 'var(--ok)' : 'var(--warn)' }} />
+              批量导入结果:{batchResults.filter(r => r.ok).length} 成功 / {batchResults.filter(r => !r.ok).length} 失败
+            </div>
+            {batchResults.map(r => (
+              <div key={r.index} className="pv-line">
+                <span style={{ color: r.ok ? 'var(--ok)' : 'var(--bad)' }}>{r.ok ? '✓' : '✗'}</span>
+                <b>{r.ok ? r.label : `第 ${r.index + 1} 条`}</b>
+                {!r.ok && <span style={{ color: 'var(--bad)' }}>{r.error}</span>}
+                {r.ok && r.plan && <span className="badge gold">{planLabel(r.plan) || r.plan}</span>}
+              </div>
+            ))}
           </div>
         )}
 

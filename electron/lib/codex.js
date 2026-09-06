@@ -135,14 +135,30 @@ function findProviderSection(lines, providerId) {
 
 /**
  * 写入/替换 [model_providers.<id>] 区块。fields: {name, baseUrl, apiKey}
- * opts.pruneLocalProviders 为 true 时,才清理其它指向 localhost/127.0.0.1 的
- * provider 区块(默认 false —— 本地地址可能是用户合法的本机网关,绝不能默默删)。
+ * opts.pruneLocalProviders 为 true 时，才清理其它指向 localhost/127.0.0.1 的
+ * provider 区块 (默认 false —— 本地地址可能是用户合法的本机网关，绝不能默默删)。
  * 返回 {text, removedStale}
  */
 function patchProviderBlock(text, providerId, fields, opts = {}) {
   let lines = text.split('\n');
-  const block = [
-    '[model_providers.' + providerId + ']',
+  
+  const removedStale = [];
+  const sec = findProviderSection(lines, providerId);
+
+  // 若已存在该 provider，先提取已有的 http_headers（如果有的话）
+  let existingHeaders = null;
+  if (sec) {
+    for (let i = sec.start + 1; i < sec.end; i++) {
+      const m = lines[i].match(/^\s*http_headers\s*=\s*(.+)$/);
+      if (m) {
+        existingHeaders = m[1].trim();
+        break;
+      }
+    }
+  }
+  
+  const newBlockHeader = '[model_providers.' + providerId + ']';
+  const newBodyLines = [
     'name = ' + tomlStr(fields.name || providerId),
     'base_url = ' + tomlStr(fields.baseUrl),
     'wire_api = "responses"',
@@ -150,14 +166,19 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
     'experimental_bearer_token = ' + tomlStr(fields.apiKey),
     'supports_websockets = false'
   ];
-
-  const removedStale = [];
-  const sec = findProviderSection(lines, providerId);
+  
+  // 若有旧 headers 且不是空字符串，追加到 body
+  if (existingHeaders && existingHeaders.length > 0) {
+    newBodyLines.push('http_headers = ' + existingHeaders);
+  }
+  
+  const fullNewBlock = [newBlockHeader, ...newBodyLines];
+  
   if (sec) {
-    lines.splice(sec.start, sec.end - sec.start, ...block);
+    lines.splice(sec.start, sec.end - sec.start, ...fullNewBlock);
   } else {
     while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-    lines.push('', ...block);
+    lines.push('', ...fullNewBlock);
   }
 
   if (opts.pruneLocalProviders === true) {

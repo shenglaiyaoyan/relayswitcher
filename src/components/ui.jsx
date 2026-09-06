@@ -22,7 +22,8 @@ const ICONS = {
   info: <><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5" /><path d="M12 7.8h.01" /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
   file: <><path d="M7 3.5h7l4 4v13H7z" /><path d="M14 3.5v4h4" /></>,
-  logo: <><path d="M5 9h9.5" /><path d="M13 5.5L16.5 9 13 12.5" /><path d="M19 15H9.5" /><path d="M11 11.5L7.5 15l3.5 3.5" /></>
+  logo: <><path d="M5 9h9.5" /><path d="M13 5.5L16.5 9 13 12.5" /><path d="M19 15H9.5" /><path d="M11 11.5L7.5 15l3.5 3.5" /></>,
+  clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>
 };
 
 export function Icon({ name, size = 16, style, className }) {

@@ -5,6 +5,14 @@ const QUICK_MODELS = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-lu
 const DEFAULT_MODELS = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.2'];
 const CTX_PRESETS = [272000, 372000, 872000];
 
+const lifeStr = (ms) => {
+  if (ms == null) return '—';
+  const d = ms - Date.now();
+  if (d <= 0) return '已过期';
+  const mins = Math.round(d / 60000);
+  return mins < 90 ? `剩 ${mins} 分` : `剩 ${(mins / 1440).toFixed(1)} 天`;
+};
+
 export default function Dashboard({ state, refresh, toast, goto }) {
   const { accounts, relays, settings, status } = state;
   const [accountId, setAccountId] = useState('');
@@ -123,6 +131,17 @@ export default function Dashboard({ state, refresh, toast, goto }) {
           <div className="stat-sub">
             {plan && <span className="badge gold">{plan}</span>}
             <span className="muted">{status.hasTokens ? 'OAuth 登录态 ✓' : '无 tokens'}</span>
+            {status.tokenLife && status.tokenLife.idTokenMs != null && (
+              <span className={'badge tip ' + (status.tokenLife.idTokenMs > Date.now() ? 'ok' : 'bad')}>
+                <Icon name="clock" size={11} /> id_token {lifeStr(status.tokenLife.idTokenMs)}
+                <span className="tip-box">id_token 寿命仅约 1 小时,过期后 Codex 会要求重新登录 — 在「账号」页点「刷新」续命</span>
+              </span>
+            )}
+            {status.tokenLife && status.tokenLife.accessTokenMs != null && (
+              <span className="badge" title="access_token 有效期">
+                access {lifeStr(status.tokenLife.accessTokenMs)}
+              </span>
+            )}
           </div>
         </div>
         <div className="card clickable" onClick={() => goto('relays')} title="管理中转站">

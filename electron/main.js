@@ -30,6 +30,25 @@ function getState() {
   const activeRelay = relays.find(r => r.baseUrl === status.baseUrl) || null;
   const accounts = store.listAccounts();
   const activeAccount = accounts.find(a => a.accountId && a.accountId === status.accountId) || null;
+  // token 剩余寿命(从 auth.json 的 JWT exp 解出)
+  try {
+    const authText = codex.readText(require('path').join(codexHome(), 'auth.json'));
+    if (authText) {
+      const auth = JSON.parse(authText);
+      const expOf = (jwt) => {
+        try {
+          const p = String(jwt || '').split('.')[1];
+          if (!p) return null;
+          const claims = JSON.parse(Buffer.from(p.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+          return claims.exp ? claims.exp * 1000 : null;
+        } catch { return null; }
+      };
+      status.tokenLife = {
+        idTokenMs: expOf(auth.tokens && auth.tokens.id_token) ,
+        accessTokenMs: expOf(auth.tokens && auth.tokens.access_token)
+      };
+    }
+  } catch { /* 解不出就不显示 */ }
   return {
     accounts, relays,
     settings: store.getSettings(),
@@ -68,8 +87,24 @@ async function testRelay(id) {
 /* ---------------- 一键切换 ---------------- */
 async function doSwitch(opts, event) {
   const s = store.getSettings();
-  const account = store.getAccount(opts.accountId);
+  let account = store.getAccount(opts.accountId);
   const relay = store.getRelay(opts.relayId);
+
+  // 预刷新:id_token 寿命仅 1 小时,写入"陈旧 token"会在启动 Codex 前就过期 → 登录态不被认可。
+  // 切换瞬间先换一份刚出炉的 token;失败不阻塞(继续用现有 token),并在日志中说明。
+  if (account.tokens.refresh_token) {
+    const r = await refreshAccount(opts.accountId);
+    const send = (ok, detail) => {
+      if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name: 'token 预刷新', ok, detail });
+    };
+    if (r.ok) {
+      send(true, `已换新:access_token 约 ${r.expiresInDays} 天,id_token 重获 1 小时新鲜期`);
+      account = store.getAccount(opts.accountId); // 取刷新后的新 tokens
+    } else {
+      send(false, (r.error || '未知原因') + ' — 继续使用现有 token(若 id_token 已超 1 小时,Codex 可能要求重新登录)');
+    }
+  }
+
   return codex.applySwitch({
     home: codexHome(),
     account, relay,

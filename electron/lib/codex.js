@@ -216,8 +216,10 @@ function buildAuthJson(existingText, tokens) {
     if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) obj = {};
   }
   // OPENAI_API_KEY 与 OAuth tokens 语义冲突(分别对应 API 模式/订阅模式),
-  // 切换为订阅态时移除;其余字段(用户或新版客户端写入的)一律保留
+  // 切换为订阅态时移除;auth_mode 是 API-key 模式的伴生标记,同样必须移除,
+  // 否则 codex 看到 auth_mode="apikey" 走 API key 路径却找不到 key → 判定未登录
   delete obj.OPENAI_API_KEY;
+  delete obj.auth_mode;
   obj.tokens = {
     id_token: tokens.id_token || '',
     access_token: tokens.access_token || '',

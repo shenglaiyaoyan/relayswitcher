@@ -2,6 +2,10 @@ appId: com.relayswitcher.app
 productName: RelaySwitcher
 directories:
   output: release
+publish:
+  - provider: github
+    owner: shenglaiyaoyan
+    repo: relayswitcher
 files:
   - electron/**/*
   - dist/**/*

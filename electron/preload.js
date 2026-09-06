@@ -13,6 +13,14 @@ contextBridge.exposeInMainWorld('rs', {
   testRelay: (id) => ipcRenderer.invoke('rs:testRelay', id),
   doSwitch: (opts) => ipcRenderer.invoke('rs:switch', opts),
   detectCodex: () => ipcRenderer.invoke('rs:detectCodex'),
+  checkUpdate: () => ipcRenderer.invoke('rs:checkUpdate'),
+  quitAndInstall: () => ipcRenderer.invoke('rs:quitAndInstall'),
+  getVersion: () => ipcRenderer.invoke('rs:getVersion'),
+  onUpdateEvent: (cb) => {
+    const h = (_e, data) => cb(data);
+    ipcRenderer.on('rs:update-event', h);
+    return () => ipcRenderer.removeListener('rs:update-event', h);
+  },
   listBackups: () => ipcRenderer.invoke('rs:listBackups'),
   restoreBackup: (id) => ipcRenderer.invoke('rs:restoreBackup', id),
   saveSettings: (s) => ipcRenderer.invoke('rs:saveSettings', s),

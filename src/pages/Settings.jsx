@@ -94,8 +94,28 @@ export default function Settings({ state, refresh, toast }) {
         <div className="muted" style={{ lineHeight: 2.1 }}>
           切换 = 备份 <span className="mono">auth.json + config.toml</span> → 账号 OAuth tokens 写入 auth.json(保持客户端订阅功能)→
           provider 区块指向中转站(<span className="mono">requires_openai_auth=true + experimental_bearer_token</span>,登录态与流量出口解耦)→
-          部署模型目录并设置 <span className="mono">model_catalog_json</span> → TOML/JSON 校验。
-          <br />config.toml 其余内容(MCP、插件、项目信任等)逐行保留,绝不整体重写;顺带清理指向 localhost 的残留 sidecar 区块。
+          部署模型目录并设置 <span className="mono">model_catalog_json</span> → TOML/JSON 校验。<br />
+          config.toml 其余内容(MCP、插件、项目信任等)逐行保留,绝不整体重写;顺带清理指向 localhost 的残留 sidecar 区块。
+        </div>
+      </div>
+
+      {/* 关于与更新 */}
+      <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
+        <div className="klabel"><Icon name="plus" size={12} style={{ color: 'var(--gold)' }} /> 关于与自动更新 <small>v{settings.version || 'local'}</small></div>
+        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="field-inline">
+            <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>当前版本:</span>
+            <b className="mono">{settings.version || (window.rs.getVersion ? window.rs.getVersion() : '?')}</b>
+          </div>
+          <button className="btn btn-sm" onClick={() => { window.rs.checkUpdate(); toast('已发送检测请求', 'ok'); }} disabled={typeof settings.version !== 'undefined'}>
+            <Icon name="refresh" size={11} /> 立即检查
+          </button>
+        </div>
+        <div className="muted" style={{ marginTop: 10, lineHeight: 1.75 }}>
+          新版本会提示下载和重启安装。免安装版(win-unpacked)不启用自动更新,<b>请先用安装包安装一次</b>(桌面快捷方式若指向 unpacked,卸载后重装即可)。
+          <div className="field-inline" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5, color: 'var(--txt-2)' }}>
+            检测到有更新时,退出应用即<span className="badge gold">自动安装</span>
+          </div>
         </div>
       </div>
     </div>

@@ -21,6 +21,26 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [booted, setBooted] = useState(false);
   const [fatal, setFatal] = useState(null);
+  const [upd, setUpd] = useState({ status: 'idle', version: null, progress: 0, message: null });
+  const [appVer, setAppVer] = useState('');
+
+  useEffect(() => {
+    if (window.rs.getVersion) window.rs.getVersion().then(v => setAppVer(v)).catch(() => {});
+    const off = window.rs.onUpdateEvent ? window.rs.onUpdateEvent(({ ev, info }) => {
+      setUpd(u => {
+        switch (ev) {
+          case 'checking': return { ...u, status: 'checking', message: null };
+          case 'available': return { ...u, status: 'downloading', version: info && info.version, message: null };
+          case 'uptodate': return { ...u, status: 'uptodate', message: null };
+          case 'progress': return { ...u, status: 'downloading', progress: Math.round(info && info.percent || 0) };
+          case 'downloaded': return { ...u, status: 'ready', version: info && info.version };
+          case 'error': return { ...u, status: 'error', message: (info && info.message) || '检查更新失败' };
+          default: return u;
+        }
+      });
+    }) : null;
+    return off || undefined;
+  }, []);
 
   const refresh = useCallback(async () => {
     try { setState(await window.rs.getState()); }
@@ -89,6 +109,18 @@ export default function App() {
               <span className="pill-sub">{wired ? (s.activeAccount?.label || '账号') + ' → ' + (s.activeRelay?.name || s.baseUrl) : '去仪表盘完成切换'}</span>
             </span>
           </div>
+          {upd.status !== 'idle' && (
+            <div className="toast" style={{ position: 'relative', left: 'auto', bottom: 'auto', margin: '12px 0 0' }}>
+              {upd.status === 'checking' && <><Spinner size={12} /> 检查更新中…</>}
+              {upd.status === 'downloading' && <><Spinner size={12} /> 下载中{upd.progress ? ` ${upd.progress}%` : ''}</>}
+              {upd.status === 'ready' && <b style={{ color: 'var(--gold)' }}>发现新版本 v{upd.version},点击设置页“关于”更新</b>}
+              {upd.status === 'error' && <b style={{ color: 'var(--bad)' }}>{upd.message}</b>}
+              {upd.status === 'uptodate' && <b style={{ color: 'var(--txt-3)' }}>"当前已是最新版本"</b>}
+            </div>
+          )}
+          <button className="btn btn-sm btn-gold" style={{ marginTop: 6, width: '100%' }} onClick={() => setPage('settings')}>
+            <Icon name="info" size={11} /> 关于与更新
+          </button>
         </div>
       </aside>
       <main className="main">

@@ -87,6 +87,38 @@ async function doSwitch(opts, event) {
   });
 }
 
+/* ---------------- 自动更新(electron-updater + GitHub Releases) ---------------- */
+let autoUpdater = null;
+function initAutoUpdater() {
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true; // 退出时自动装,兜底
+    const fwd = (ev) => (info) => {
+      if (win && !win.isDestroyed()) win.webContents.send('rs:update-event', { ev, info });
+    };
+    autoUpdater.on('checking-for-update', fwd('checking'));
+    autoUpdater.on('update-available', fwd('available'));
+    autoUpdater.on('update-not-available', fwd('uptodate'));
+    autoUpdater.on('download-progress', fwd('progress'));
+    autoUpdater.on('update-downloaded', fwd('downloaded'));
+    autoUpdater.on('error', fwd('error'));
+  } catch { autoUpdater = null; } // 非打包环境(win-unpacked/开发)无更新器
+}
+
+function checkForUpdates(manual) {
+  if (!autoUpdater) {
+    if (win && !win.isDestroyed()) win.webContents.send('rs:update-event', { ev: 'error', info: { message: '当前为免安装版(unpacked),自动更新仅对安装版生效。请下载安装包安装一次。' } });
+    return;
+  }
+  autoUpdater.checkForUpdates(manual).catch(() => { /* 错误已通过 error 事件转发 */ });
+}
+
+function quitAndInstall() {
+  if (autoUpdater) { try { autoUpdater.quitAndInstall(); return; } catch { /* fallthrough */ } }
+  app.quit();
+}
+
 /* Codex 客户端进程检测:切换时它若在运行,退出时可能用内存态覆盖我们的写入 */
 async function detectCodexRunning() {
   return new Promise((resolve) => {
@@ -119,6 +151,9 @@ function registerIpc() {
   ipcMain.handle('rs:testRelay', (_e, id) => testRelay(id));
   ipcMain.handle('rs:switch', (_e, opts) => doSwitch(opts));
   ipcMain.handle('rs:detectCodex', () => detectCodexRunning());
+  ipcMain.handle('rs:checkUpdate', () => checkForUpdates(true));
+  ipcMain.handle('rs:quitAndInstall', () => quitAndInstall());
+  ipcMain.handle('rs:getVersion', () => app.getVersion());
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
@@ -259,6 +294,8 @@ app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
   registerIpc();
+  initAutoUpdater(); // 仅打包环境生效;启动后延迟 5s 静默检查一次
+  if (autoUpdater) setTimeout(() => checkForUpdates(false), 5000);
 
   if (SMOKE) { smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); }); return; }
 

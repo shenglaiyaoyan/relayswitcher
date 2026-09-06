@@ -109,6 +109,17 @@ export default function Accounts({ state, refresh, toast }) {
     finally { setRefreshingId(null); }
   };
 
+  const importFromCodexAccount = async () => {
+    try {
+      const r = await window.rs.importAccountFromCodex();
+      if (r.skipped) { toast(r.message, 'warn'); return; }
+      if (r.ok) {
+        toast(`已从本机导入:${r.account.label}${r.account.plan ? ' (' + (planLabel(r.account.plan) || r.account.plan) + ')' : ''}`, 'ok');
+        await refresh();
+      } else toast(r.error, 'bad');
+    } catch (e) { toast('导入失败: ' + e.message, 'bad'); }
+  };
+
   const del = async () => {
     try { await window.rs.deleteAccount(confirmDel.id); toast('已删除 ' + confirmDel.label, 'ok'); await refresh(); }
     catch (e) { toast(e.message, 'bad'); }
@@ -194,7 +205,12 @@ export default function Accounts({ state, refresh, toast }) {
       </div>
 
       {accounts.length === 0
-        ? <Empty icon="account" title="账号库为空" hint="导入第一个账号后,即可在仪表盘参与一键切换" />
+        ? <Empty icon="account" title="账号库为空" hint="导入第一个账号后,即可在仪表盘参与一键切换"
+            action={<div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 6 }}>
+              <button className="btn btn-gold btn-sm" onClick={importFromCodexAccount}>
+                <Icon name="download" size={12} /> 从本机 Codex 导入登录账号
+              </button>
+            </div>} />
         : <div className="grid2">
             {accounts.map(a => (
               <div key={a.id} className="card">

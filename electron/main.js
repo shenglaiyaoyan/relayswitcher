@@ -308,6 +308,36 @@ function registerIpc() {
   ipcMain.handle('rs:saveCustomModel', (_e, cm) => { store.saveCustomModel(cm); return store.listCustomModels(); });
   ipcMain.handle('rs:deleteCustomModel', (_e, id) => { store.deleteCustomModel(id); return store.listCustomModels(); });
   ipcMain.handle('rs:importAccountsBatch', (_e, texts) => store.importAccountsBatch(texts));
+  // ---- 从本机 Codex 一键导入(US-06 冷启动:库里空,但 ~/.codex 已配好) ----
+  ipcMain.handle('rs:importRelaysFromCodex', () => {
+    const text = codex.readText(path.join(codexHome(), 'config.toml'));
+    const r = codex.extractRelayCandidates(text);
+    if (!r.ok) return r;
+    const existing = new Set(store.listRelays().map(x => x.baseUrl));
+    let imported = 0;
+    const names = [];
+    for (const c of r.relays) {
+      if (existing.has(c.baseUrl)) continue;
+      store.saveRelay({ name: c.name, baseUrl: c.baseUrl, apiKey: c.apiKey }); // key 入库走 safeStorage 加密
+      existing.add(c.baseUrl);
+      imported++;
+      names.push(c.name + (c.isCurrent ? '(当前)' : ''));
+    }
+    return { ok: true, imported, skipped: r.relays.length - imported, names };
+  });
+  ipcMain.handle('rs:importAccountFromCodex', () => {
+    const authText = codex.readText(path.join(codexHome(), 'auth.json'));
+    if (!authText) return { ok: false, error: '本机 auth.json 不存在' };
+    let auth;
+    try { auth = JSON.parse(authText); } catch { return { ok: false, error: 'auth.json 解析失败' }; }
+    const t = auth.tokens;
+    if (!t || !t.access_token) return { ok: false, error: '本机登录态不是 OAuth tokens 模式(可能是 API-key 模式),无法导入为账号' };
+    if (t.account_id && store.listAccounts().some(a => a.accountId === t.account_id)) {
+      return { ok: true, skipped: true, message: '本机登录账号已在库中' };
+    }
+    const a = store.addAccount(JSON.stringify({ tokens: t }));
+    return { ok: true, account: a };
+  });
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });

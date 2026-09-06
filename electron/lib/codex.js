@@ -503,8 +503,34 @@ function getStatus(home) {
   return status;
 }
 
+/** 从 config.toml 文本提取中转站候选(US-06 从本机导入):剥 BOM、容忍解析失败,返回 provider 列表 */
+function extractRelayCandidates(text) {
+  if (!text) return { ok: false, error: 'config.toml 内容为空', relays: [] };
+  const stripped = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+  let cfg;
+  try {
+    cfg = TOML.parse(stripped.replace(/\r\n/g, '\n'));
+  } catch (e) {
+    return { ok: false, error: 'config.toml 解析失败: ' + e.message, relays: [] };
+  }
+  const current = cfg.model_provider || null;
+  const relays = [];
+  for (const [id, p] of Object.entries(cfg.model_providers || {})) {
+    if (!p || typeof p !== 'object' || !p.base_url) continue;
+    relays.push({
+      id,
+      name: p.name || id,
+      baseUrl: String(p.base_url),
+      apiKey: p.experimental_bearer_token || '',
+      isCurrent: id === current
+    });
+  }
+  return { ok: true, relays, current };
+}
+
 module.exports = {
   defaultCodexHome, readText, tomlStr, isValidProviderId,
   patchTopLevelKeys, readTopLevelKey, patchProviderBlock, buildAuthJson,
-  backup, listBackups, restoreBackup, applySwitch, getStatus
+  backup, listBackups, restoreBackup, applySwitch, getStatus,
+  extractRelayCandidates
 };

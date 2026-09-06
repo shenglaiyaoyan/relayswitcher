@@ -29,6 +29,16 @@ export default function Relays({ state, refresh, toast }) {
     finally { setConfirmDel(null); }
   };
 
+  const importFromCodex = async () => {
+    try {
+      const r = await window.rs.importRelaysFromCodex();
+      if (!r.ok) return toast(r.error, 'bad');
+      if (r.imported === 0) return toast(`没有新中转站可导入(${r.skipped} 个已在库中)`, 'warn');
+      toast(`已导入 ${r.imported} 个中转站:${r.names.join('、')}`, 'ok');
+      await refresh();
+    } catch (e) { toast('导入失败: ' + e.message, 'bad'); }
+  };
+
   const test = async (id) => {
     setTesting(id); setExpanded(null);
     try {
@@ -53,7 +63,12 @@ export default function Relays({ state, refresh, toast }) {
       {relays.length === 0
         ? <Empty icon="relay" title="还没有中转站"
             hint="添加你的自建中转站(base_url + API Key),一键切换时流量将指向它"
-            action={<button className="btn btn-gold btn-sm" onClick={openAdd} style={{ marginTop: 6 }}><Icon name="plus" size={12} /> 立即添加</button>} />
+            action={<div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 6 }}>
+              <button className="btn btn-gold btn-sm" onClick={openAdd} style={{ marginTop: 0 }}><Icon name="plus" size={12} /> 立即添加</button>
+              <button className="btn btn-sm" onClick={importFromCodex}>
+                <Icon name="download" size={12} /> 从本机 config.toml 导入
+              </button>
+            </div>} />
         : <div className="grid2">
             {relays.map(r => {
               const t = r.lastTest;

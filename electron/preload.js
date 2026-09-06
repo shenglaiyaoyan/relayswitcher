@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('rs', {
   saveCustomModel: (cm) => ipcRenderer.invoke('rs:saveCustomModel', cm),
   deleteCustomModel: (id) => ipcRenderer.invoke('rs:deleteCustomModel', id),
   importAccountsBatch: (texts) => ipcRenderer.invoke('rs:importAccountsBatch', texts),
+  importRelaysFromCodex: () => ipcRenderer.invoke('rs:importRelaysFromCodex'),
+  importAccountFromCodex: () => ipcRenderer.invoke('rs:importAccountFromCodex'),
   onUpdateEvent: (cb) => {
     const h = (_e, data) => cb(data);
     ipcRenderer.on('rs:update-event', h);

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RelaySwitcher V2.0 - 设置</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="design-system">
+    :root {
+      --nn-background: #0a0a0a;
+      --nn-on-background: #f5f5f4;
+      --nn-surface: rgba(255, 255, 255, 0.03); /* Glassmorphism surface */
+      --nn-surface-container: #161513;
+      --nn-surface-container-high: #1c1b19;
+      --nn-on-surface: #f5f5f4;
+      --nn-on-surface-variant: #a8a29e;
+      --nn-outline: rgba(255, 255, 255, 0.1); /* Glassmorphism outline */
+      --nn-outline-variant: #464240;
+      --nn-primary: #a78b71;
+      --nn-on-primary: #0a0a0a;
+      --nn-primary-container: #2b241d;
+      --nn-on-primary-container: #e8d5b7;
+      --nn-secondary: #c9b8a0;
+      --nn-tertiary: #e8d5b7;
+      --nn-error: #f87171;
+      --nn-success: #4ade80;
+      --nn-warning: #fbbf24;
+      --nn-warning-bg: rgba(251, 191, 36, 0.05); /* Subtle warning tint */
+      --nn-warning-border: rgba(251, 191, 36, 0.2);
+    }
+  </style>
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            background: 'var(--nn-background)',
+            'on-background': 'var(--nn-on-background)',
+            surface: 'var(--nn-surface)',
+            'surface-container': 'var(--nn-surface-container)',
+            'surface-container-high': 'var(--nn-surface-container-high)',
+            'on-surface': 'var(--nn-on-surface)',
+            'on-surface-variant': 'var(--nn-on-surface-variant)',
+            outline: 'var(--nn-outline)',
+            'outline-variant': 'var(--nn-outline-variant)',
+            primary: 'var(--nn-primary)',
+            'on-primary': 'var(--nn-on-primary)',
+            'primary-container': 'var(--nn-primary-container)',
+            'on-primary-container': 'var(--nn-on-primary-container)',
+            secondary: 'var(--nn-secondary)',
+            tertiary: 'var(--nn-tertiary)',
+            error: 'var(--nn-error)',
+            success: 'var(--nn-success)',
+            warning: 'var(--nn-warning)',
+            'warning-bg': 'var(--nn-warning-bg)',
+            'warning-border': 'var(--nn-warning-border)',
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+            playfair: ['Playfair Display', 'serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          backgroundImage: {
+            'dot-pattern': 'radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)',
+          },
+          backgroundSize: {
+            'dot-pattern': '32px 32px',
+          },
+          letterSpacing: {
+            'widest': '0.15em',
+          }
+        }
+      }
+    }
+  </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Playfair+Display:ital,wght@1,600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-styles">
+    body {
+      background-color: var(--nn-background);
+      color: var(--nn-on-background);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .glass-card {
+      background-color: var(--nn-surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--nn-outline);
+    }
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    /* Scoped dot pattern for main content area */
+    .bg-dots {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 32px 32px;
+      background-position: 0 0;
+    }
+    /* Input fields within glass cards */
+    .glass-input {
+      background-color: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--nn-outline);
+    }
+    .glass-input:focus {
+      outline: none;
+      border-color: var(--nn-primary);
+      box-shadow: 0 0 0 1px var(--nn-primary);
+    }
+    /* Toggle switch */
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: var(--nn-primary);
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: var(--nn-primary);
+    }
+    .toggle-checkbox:checked + .toggle-label:after {
+      transform: translateX(100%);
+      border-color: white;
+    }
+    /* Small caps labels */
+    .label-caps {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col font-inter text-[13.5px]">
+<!-- BEGIN: TopNavigationBar -->
+<nav class="h-12 border-b border-outline flex items-center justify-between px-4 shrink-0 bg-background z-20 relative">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>
+<span class="font-playfair italic font-semibold text-[19px] text-on-background tracking-wide">RelaySwitcher</span>
+<span class="text-[10px] text-on-surface-variant ml-2 font-mono mt-1">V2.0</span>
+</div>
+<div class="flex items-center space-x-4 text-on-surface-variant">
+<button class="hover:text-on-background transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M5 12h14"></path></svg></button>
+<button class="hover:text-on-background transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" ry="2" width="18" x="3" y="3"></rect></svg></button>
+<button class="hover:text-on-background transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+</div>
+</nav>
+<!-- END: TopNavigationBar -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- Background Base Layer -->
+<div class="absolute inset-0 bg-background z-0"></div>
+<!-- BEGIN: Sidebar -->
+<aside class="w-[220px] border-r border-outline flex flex-col shrink-0 bg-background/50 backdrop-blur-sm z-10 relative">
+<!-- User / Context Header -->
+<div class="p-4 pt-6 pb-2">
+<div class="flex items-center space-x-3 mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface border border-outline flex items-center justify-center text-primary">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
+</div>
+<div>
+<h1 class="font-playfair italic font-semibold text-[22px] leading-none text-on-background tracking-wide">RelaySwitcher</h1>
+</div>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center space-x-1 opacity-70">
+<span>账号</span>
+<span>×</span>
+<span>中转站</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface hover:text-on-background transition-colors" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+<span>仪表盘</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface hover:text-on-background transition-colors" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+<span>账号</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface hover:text-on-background transition-colors" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" x2="12" y1="22.08" y2="12"></line></svg>
+<span>中转站</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface hover:text-on-background transition-colors" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+<span>备份</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md bg-surface text-primary border-l-2 border-primary relative" href="#">
+<!-- Active State Indicator -->
+<div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent pointer-events-none"></div>
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+<span class="relative z-10">设置</span>
+</a>
+</nav>
+<!-- Bottom Status -->
+<div class="p-4 mt-auto">
+<div class="glass-card rounded-[1.125rem] p-3 flex items-center space-x-3 mb-3">
+<div class="w-2 h-2 rounded-full bg-success animate-pulse shrink-0"></div>
+<div class="min-w-0">
+<div class="text-[12px] font-medium text-on-background truncate">已绑定中转站</div>
+<div class="text-[10px] text-on-surface-variant truncate">beckymalotte35@outlook.c...</div>
+</div>
+</div>
+<button class="w-full py-2 px-3 rounded-md border border-outline text-on-surface-variant hover:text-on-background hover:bg-surface transition-colors flex items-center justify-center space-x-2 text-[12px]">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="16" y2="12"></line><line x1="12" x2="12.01" y1="8" y2="8"></line></svg>
+<span>关于与更新</span>
+</button>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: Main Content Area -->
+<main class="flex-1 overflow-y-auto relative bg-dots z-10">
+<!-- Content Container -->
+<div class="max-w-4xl mx-auto px-10 py-12">
+<!-- Page Header -->
+<header class="mb-8 flex items-baseline space-x-3">
+<h2 class="text-[26px] font-playfair italic font-semibold text-on-background">设置</h2>
+<span class="label-caps text-on-surface-variant tracking-widest">SETTINGS</span>
+</header>
+<!-- Settings Sections Container -->
+<div class="space-y-4"> <!-- Unified vertical rhythm -->
+<!-- Setting Card: CODEX DIR -->
+<section class="glass-card rounded-[0.75rem] p-5">
+<header class="flex items-center space-x-2 mb-4">
+<svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+<h3 class="text-[14px] font-semibold text-on-background">CODEX 主目录</h3>
+<span class="label-caps text-on-surface-variant ml-2">CODEX_HOME</span>
+</header>
+<div class="space-y-2">
+<input class="w-full glass-input text-on-background text-[13.5px] rounded-md px-3 py-2.5 font-mono placeholder:text-on-surface-variant/50" placeholder="留空 = 默认 ~/.codex" type="text"/>
+<p class="text-[12px] text-on-surface-variant font-mono">当前生效: C:\Users\ASUS\.codex</p>
+</div>
+</section>
+<!-- Setting Card: PROVIDER ID -->
+<section class="glass-card rounded-[0.75rem] p-5">
+<header class="flex items-center space-x-2 mb-4">
+<svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
+<h3 class="text-[14px] font-semibold text-on-background">PROVIDER 标识</h3>
+<span class="text-[12px] text-on-surface-variant ml-2 font-normal">写入 config.toml 的 [model_providers.&lt;id&gt;]</span>
+</header>
+<input class="w-full glass-input text-on-background text-[13.5px] rounded-md px-3 py-2.5 font-mono" type="text" value="codex_local_access"/>
+</section>
+<!-- Setting Card: CLEAR LOCAL PROVIDER (Warning) -->
+<section class="glass-card rounded-[0.75rem] p-5 border-warning-border bg-warning-bg">
+<header class="flex items-center justify-between mb-4">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg>
+<h3 class="text-[14px] font-semibold text-warning">清理本机 PROVIDER 区块</h3>
+<span class="text-[12px] text-on-surface-variant ml-2 font-normal">高级 · 默认关闭</span>
+</div>
+</header>
+<div class="flex items-center justify-between mb-3">
+<span class="text-[13.5px] text-on-background">切换时删除其它指向 localhost / 127.0.0.1 的 provider 区块</span>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-surface border-4 border-outline appearance-none cursor-pointer z-10 top-0 left-0 transition-transform duration-200 ease-in-out" id="toggle-clear-provider" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-surface-container-high cursor-pointer border border-outline transition-colors duration-200 ease-in-out" for="toggle-clear-provider"></label>
+</div>
+</div>
+<p class="text-[12px] text-on-surface-variant/80 leading-relaxed">
+              ⚠ 仅当你确定本机没有正在使用的本地网关(sub2api / new-api / CLIProxyAPI 等以 127.0.0.1 形式配置在 config.toml 里)时才开启。 指向本地服务是完全合法的配置——开启此选项会把它们当作残留删除,可能导致 Codex 报 provider 不存在。
+            </p>
+</section>
+<!-- Setting Card: MODEL DIR -->
+<section class="glass-card rounded-[0.75rem] p-5">
+<header class="flex items-center justify-between mb-6">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M2 15h10"></path><path d="M9 18l3-3-3-3"></path></svg>
+<h3 class="text-[14px] font-semibold text-on-background">模型目录</h3>
+<span class="text-[12px] text-on-surface-variant ml-2 font-normal">撑起完整思考档位 / 快速模式 / 窗口元数据</span>
+</div>
+</header>
+<div class="space-y-6">
+<!-- Toggle Row -->
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<span class="text-[13.5px] text-on-background">切换时部署目录</span>
+<!-- Toggle Switch (Active) -->
+<div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 border-primary appearance-none cursor-pointer z-10 top-0 left-0 transition-transform duration-200 ease-in-out transform translate-x-5" id="toggle-deploy-dir" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-primary cursor-pointer border border-primary transition-colors duration-200 ease-in-out" for="toggle-deploy-dir"></label>
+</div>
+</div>
+<!-- Badge -->
+<span class="px-2.5 py-0.5 rounded-full border border-success/35 text-success text-[10.5px] bg-success/5">内置目录已打包</span>
+</div>
+<!-- Directory Source Tabs/Pills -->
+<div class="flex items-center space-x-4">
+<span class="text-[13.5px] text-on-surface-variant">目录源</span>
+<div class="flex space-x-2">
+<button class="px-3 py-1.5 rounded-md border border-outline text-[12px] text-on-surface-variant hover:text-on-background hover:bg-surface transition-colors">
+                    内置快照 · 11 模型
+                  </button>
+<button class="px-3 py-1.5 rounded-md border border-outline text-[12px] text-on-surface-variant hover:text-on-background hover:bg-surface transition-colors">
+                    本机提取 · 未提取
+                  </button>
+<button class="px-3 py-1.5 rounded-md border border-primary bg-primary/8 text-[12px] text-on-background flex items-center space-x-1.5">
+<svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+<span>从本机 Codex 提取</span>
+</button>
+</div>
+</div>
+<!-- Custom Model Divider -->
+<div class="pt-2">
+<div class="flex items-center justify-between mb-3">
+<span class="text-[13.5px] text-on-surface-variant">自定义模型(基于现有条目派生,配合中转站映射用任意上游)</span>
+<button class="px-3 py-1.5 rounded-md border border-outline text-[12px] text-on-background hover:bg-surface transition-colors flex items-center space-x-1.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
+<span>新建</span>
+</button>
+</div>
+<p class="text-[12px] text-on-surface-variant mb-2">暂无 — 新建一个,下次切换会合并进部署目录</p>
+<input class="w-full glass-input text-on-background text-[13.5px] rounded-md px-3 py-2.5 font-mono mb-2" readonly="" type="text" value="relayswitcher-model-catalog.json"/>
+<p class="text-[12px] text-on-surface-variant font-mono">部署到 CODEX_HOME 下的文件名,config.toml 的 model_catalog_json 将指向它</p>
+</div>
+</div>
+</section>
+<!-- Setting Card: SWITCH DEFAULT VALS (Partial view at bottom) -->
+<section class="glass-card rounded-[0.75rem] p-5">
+<header class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+<h3 class="text-[14px] font-semibold text-on-background">切换默认值</h3>
+<span class="text-[12px] text-on-surface-variant ml-2 font-normal">仪表盘的初始选项</span>
+</header>
+</section>
+</div>
+<!-- End Settings Sections Container -->
+<!-- Bottom Padding -->
+<div class="h-12"></div>
+</div>
+</main>
+<!-- END: Main Content Area -->
+</div>
+</body></html>

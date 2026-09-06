@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icon, Spinner, Toggle, Modal, Field, fmtK } from '../components/ui.jsx';
 
 export default function Settings({ state, refresh, toast }) {
-  const { settings } = state;
+  const { settings, catalogBundled, status } = state;
   const [form, setForm] = useState({ ...settings });
   const [saving, setSaving] = useState(false);
   const [updateBusy, setUpdBusy] = useState(false);
@@ -97,19 +97,19 @@ export default function Settings({ state, refresh, toast }) {
     <div>
       <div className="page-title"><h1>设置</h1><span className="sub">Settings</span></div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="settings" size={12} /> Codex 主目录 <small>CODEX_HOME</small></div>
         <input type="text" placeholder="留空 = 默认 ~/.codex"
                value={form.codexHome} onChange={e => setForm({ ...form, codexHome: e.target.value })} />
         <div className="muted" style={{ marginTop: 7 }}>当前生效: <span className="mono">{status.home}</span></div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="relay" size={12} /> Provider 标识 <small>{'写入 config.toml 的 [model_providers.<id>]'}</small></div>
         <input type="text" value={form.providerId} onChange={e => setForm({ ...form, providerId: e.target.value })} />
       </div>
 
-      <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+      <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
         <div className="klabel"><Icon name="alert" size={12} style={{ color: 'var(--warn)' }} /> 清理本机 provider 区块 <small>高级 · 默认关闭</small></div>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)', flex: 1 }}>
@@ -123,7 +123,7 @@ export default function Settings({ state, refresh, toast }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="file" size={12} /> 模型目录 <small>撑起完整思考档位 / 快速模式 / 窗口元数据</small></div>
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)' }}>
@@ -215,7 +215,7 @@ export default function Settings({ state, refresh, toast }) {
         </>}
       </Modal>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>仪表盘的初始选项</small></div>
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)' }}>

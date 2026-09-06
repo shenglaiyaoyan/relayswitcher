@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RelaySwitcher Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "on-tertiary-fixed": "#241a07",
+              "surface-bright": "#3a3939",
+              "secondary": "#d5c4ac",
+              "surface-tint": "#e0c1a4",
+              "on-tertiary": "#3a2f1a",
+              "error": "#ffb4ab",
+              "outline-variant": "#4e453d",
+              "error-container": "#93000a",
+              "tertiary-container": "#9f8f74",
+              "tertiary-fixed": "#f3e0c2",
+              "on-error-container": "#ffdad6",
+              "background": "#131313",
+              "tertiary": "#d6c4a7",
+              "tertiary-fixed-dim": "#d6c4a7",
+              "surface-glass": "rgba(255, 255, 255, 0.03)",
+              "primary-fixed": "#feddbf",
+              "border-glass": "rgba(255, 255, 255, 0.10)",
+              "on-tertiary-fixed-variant": "#51452f",
+              "on-primary": "#402c18",
+              "surface-container": "#201f1f",
+              "on-secondary-fixed-variant": "#514532",
+              "dot-grid": "rgba(255, 255, 255, 0.08)",
+              "inverse-surface": "#e5e2e1",
+              "inverse-primary": "#725a43",
+              "on-error": "#690005",
+              "primary-fixed-dim": "#e0c1a4",
+              "on-secondary-container": "#c4b39b",
+              "secondary-fixed": "#f2e0c6",
+              "secondary-container": "#514532",
+              "success-green": "#4ade80",
+              "warning-amber": "#fbbf24",
+              "surface": "#131313",
+              "on-secondary": "#392f1e",
+              "surface-container-high": "#2a2a2a",
+              "error-red": "#f87171",
+              "surface-variant": "#353534",
+              "secondary-fixed-dim": "#d5c4ac",
+              "surface-dim": "#131313",
+              "on-primary-container": "#382612",
+              "primary-container": "#a88c72",
+              "on-surface-variant": "#d2c4ba",
+              "on-primary-fixed-variant": "#58422d",
+              "on-tertiary-container": "#332814",
+              "on-surface": "#e5e2e1",
+              "on-secondary-fixed": "#231a0b",
+              "on-primary-fixed": "#291806",
+              "surface-container-low": "#1c1b1b",
+              "outline": "#9a8f85",
+              "primary": "#e0c1a4",
+              "on-background": "#e5e2e1",
+              "surface-container-highest": "#353534",
+              "inverse-on-surface": "#313030",
+              "surface-container-lowest": "#0e0e0e"
+            },
+            "borderRadius": {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "gap-md": "16px",
+              "margin-container": "32px",
+              "gap-xs": "4px",
+              "gap-sm": "12px",
+              "gap-lg": "24px",
+              "base-unit": "8px",
+              "sidebar-width": "220px"
+            },
+            "fontFamily": {
+              "mono-log": [
+                "JetBrains Mono"
+              ],
+              "headline-h2": [
+                "Inter"
+              ],
+              "brand-display": [
+                "Playfair Display"
+              ],
+              "label-caps": [
+                "Inter"
+              ],
+              "headline-h1": [
+                "Inter"
+              ],
+              "body-md": [
+                "Inter"
+              ]
+            },
+            "fontSize": {
+              "mono-log": [
+                "12px",
+                {
+                  "lineHeight": "1.8",
+                  "fontWeight": "400"
+                }
+              ],
+              "headline-h2": [
+                "15px",
+                {
+                  "lineHeight": "1.4",
+                  "fontWeight": "600"
+                }
+              ],
+              "brand-display": [
+                "26px",
+                {
+                  "lineHeight": "1.2",
+                  "fontWeight": "600"
+                }
+              ],
+              "label-caps": [
+                "10.5px",
+                {
+                  "lineHeight": "1.2",
+                  "letterSpacing": "0.15em",
+                  "fontWeight": "600"
+                }
+              ],
+              "headline-h1": [
+                "19px",
+                {
+                  "lineHeight": "1.3",
+                  "fontWeight": "600"
+                }
+              ],
+              "body-md": [
+                "13.5px",
+                {
+                  "lineHeight": "1.7",
+                  "fontWeight": "400"
+                }
+              ]
+            }
+          }
+        }
+      }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@400&amp;family=Playfair+Display:ital,wght@1,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: var(--tw-colors-background);
+            color: var(--tw-colors-on-background);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        .dot-grid-bg {
+            background-image: radial-gradient(var(--tw-colors-dot-grid) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .glass-panel {
+            background: var(--tw-colors-surface-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--tw-colors-border-glass);
+        }
+
+        .glow-button {
+            transition: all 0.3s ease;
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 20px rgba(224, 193, 164, 0.15);
+        }
+
+        .primary-button-solid {
+            background-color: #f5f5f4;
+            color: var(--tw-colors-background);
+            transition: all 0.3s ease;
+        }
+        .primary-button-solid:hover {
+            box-shadow: 0 0 30px rgba(224, 193, 164, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .breathing-dot {
+            animation: breathe 2s infinite ease-in-out;
+        }
+        @keyframes breathe {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 8px var(--tw-colors-success-green); }
+        }
+
+        .blinking-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--tw-colors-surface-variant);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--tw-colors-outline-variant);
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex">
+<!-- Background Dot Grid -->
+<div class="fixed inset-0 pointer-events-none dot-grid-bg z-[-1]"></div>
+<!-- JSON Component: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[220px] bg-surface-glass backdrop-blur-xl border-r border-border-glass flex flex-col py-base-unit z-40">
+<div class="px-6 py-8">
+<h1 class="font-brand-display text-brand-display text-primary italic tracking-tight">RelaySwitcher</h1>
+<p class="font-mono-log text-mono-log text-on-surface-variant mt-1 opacity-70">v2.4.0-pro</p>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full py-2 px-4 rounded border border-border-glass text-primary font-label-caps flex items-center justify-center gap-2 hover:bg-surface-glass/10 transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                New Workflow
+            </button>
+</div>
+<ul class="flex-1 flex flex-col gap-1 px-3"><li><a class="flex items-center gap-3 px-3 py-2 rounded border-l-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-glass/10 font-body-md text-body-md" href="#"><span class="material-symbols-outlined">dashboard</span>仪表盘</a></li><li><a class="flex items-center gap-3 px-3 py-2 rounded border-l-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-glass/10 font-body-md text-body-md" href="#"><span class="material-symbols-outlined">account_tree</span>账号</a></li><li><a class="flex items-center gap-3 px-3 py-2 rounded border-l-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-glass/10 font-body-md text-body-md" href="#"><span class="material-symbols-outlined">reorder</span>中转站</a></li><li><a class="flex items-center gap-3 px-3 py-2 rounded text-primary font-bold border-l-2 border-primary bg-surface-glass hover:bg-surface-glass/10 transition-colors font-body-md text-body-md scale-95 transition-transform duration-150" href="#"><span class="material-symbols-outlined">history</span>备份</a></li><li><a class="flex items-center gap-3 px-3 py-2 rounded border-l-2 border-transparent text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-glass/10 font-body-md text-body-md" href="#"><span class="material-symbols-outlined">settings</span>设置</a></li></ul>
+<div class="mt-auto px-4 py-4">
+<!-- User requested footer pill style in sidebar -->
+<div class="glass-panel rounded-full py-1.5 px-3 flex items-center gap-2 mb-4">
+<div class="w-2 h-2 rounded-full bg-success-green breathing-dot"></div>
+<span class="font-label-caps text-on-surface-variant">已绑定中转站</span>
+<span class="font-label-caps text-on-surface ml-auto">账号 → Sub2APIU</span>
+</div>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-on-surface transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">trip_origin</span>
+                System Status
+            </a>
+<div class="flex items-center gap-3 px-3 py-2 mt-2">
+<div class="w-8 h-8 rounded-full bg-surface-container border border-border-glass overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">person</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-screen ml-[220px]">
+<!-- JSON Component: TopAppBar -->
+<header class="flex items-center justify-between px-margin-container h-16 bg-transparent w-full z-30 sticky top-0">
+<div class="flex items-center gap-4">
+<!-- Empty left space to balance, as sidebar takes brand identity -->
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-headline-h2 text-headline-h2 text-on-surface-variant hover:text-primary transition-colors hover:opacity-80" href="#">Docs</a>
+<a class="font-headline-h2 text-headline-h2 text-on-surface-variant hover:text-primary transition-colors hover:opacity-80" href="#">Support</a>
+</nav>
+<div class="h-4 w-[1px] bg-border-glass"></div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:opacity-80">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:opacity-80">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<button class="px-4 py-1.5 rounded border-2 border-primary text-primary font-label-caps hover:bg-primary/10 transition-all glow-button flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">arrow_back</span>返回仪表盘</button>
+</div>
+</div>
+</header>
+<!-- Main Stage Content -->
+<main class="flex-1 px-margin-container pb-24 pt-4 flex flex-col gap-margin-container max-w-7xl mx-auto w-full"><div class="flex items-end justify-between border-b border-border-glass pb-4"><div class="flex items-baseline gap-4"><h2 class="font-brand-display text-[28px] text-on-surface italic">备份</h2><div class="font-label-caps text-primary/60 uppercase tracking-widest">Backups &amp; Rollback</div></div><button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">refresh</span></button></div><div class="glass-panel rounded-lg p-4 border-dashed border-border-glass/50 flex items-start gap-4"><span class="material-symbols-outlined text-primary/50 text-[20px] mt-0.5">info</span><p class="text-body-md text-on-surface-variant">每次切换 / 回滚前自动快照 auth.json + config.toml (连带模型目录文件), 最多保留最近 20 份。<br/>回滚本身也会先快照当前状态 — 双向可退。</p></div><div class="glass-panel rounded-xl flex-1 min-h-[400px] flex flex-col items-center justify-center text-center gap-4 border-dashed border-border-glass/30"><div class="w-12 h-12 rounded-full bg-surface-container-low border border-border-glass flex items-center justify-center mb-2"><span class="material-symbols-outlined text-primary/30 text-[32px]">history</span></div><div><div class="text-on-surface font-headline-h2 mb-1">暂无备份</div><div class="text-on-surface-variant text-body-md">去仪表盘执行一次切换, 这里就会出现第一份快照</div></div></div></main>
+<!-- JSON Component: Footer -->
+<footer class="fixed bottom-0 right-0 left-[220px] h-8 bg-surface-glass backdrop-blur-md border-t border-border-glass flex items-center justify-between px-margin-container w-[calc(100%-220px)] z-40 transition-all duration-300">
+<div class="font-mono-log text-mono-log text-success-green flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-success-green breathing-dot"></span>
+                System Backup: Synchronized 2m ago
+            </div>
+<div class="flex items-center gap-6">
+<a class="font-mono-log text-mono-log text-on-surface-variant hover:text-on-surface transition-colors" href="#">Cloud Sync</a>
+<a class="font-mono-log text-mono-log text-on-surface-variant hover:text-on-surface transition-colors" href="#">Local Raid</a>
+<a class="font-mono-log text-mono-log text-on-surface-variant hover:text-on-surface transition-colors" href="#">Restore</a>
+<div class="ml-4 font-label-caps text-label-caps text-primary-fixed-dim border-l border-border-glass pl-4">
+                    RELAYSWITCHER
+                </div>
+</div>
+</footer>
+</div>
+</body></html>

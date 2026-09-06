@@ -1,0 +1,18 @@
+npm warn Unknown project config "electron_mirror". This will stop working in the next major version of npm.
+npm warn Unknown project config "electron_builder_binaries_mirror". This will stop working in the next major version of npm.
+{
+  "deviceType": "DESKTOP",
+  "height": "2048",
+  "htmlCode": {
+    "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sX2I5ODIyYTFkNmY4MzRiZTdiZGQ5NWFjMjEyYjQ1Y2UwEgsSBxCIwIKByREYAZIBJAoKcHJvamVjdF9pZBIWQhQxNTcxMjYwNzQyNjc5MTA4MDEzNQ&filename=&opi=96797242",
+    "mimeType": "text/html",
+    "name": "projects/15712607426791080135/files/0545ce50062a4a1ebeb9086463d6fc5f"
+  },
+  "name": "projects/15712607426791080135/screens/65414f7dfac8490090f2fb7e43860a3b",
+  "screenshot": {
+    "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XcQjvJiZ1PJshg4S5vsTrLi2eOak3cCjfHFvzJl4Jo673Z5RqD0cp3nGcTWqEcEpYFyGltAwX7-wye8ZfFNVxcxas7XxyAnhqDGm0NwrMFJLiwBkE9dz8y37UqIf09W4-T51bshl414HV62zIIC_uMZvBCDWuqdLvHN3zEl672JtZtRghAzqXo4sibD2dY5mKo8KJmWEFETNlsgUoXUKVL4hnvHzcqpzbKaINh-iYs9mRrzk9zWiKR7gdL",
+    "name": "projects/15712607426791080135/files/31f7345ded18463fb56cebea23204b48"
+  },
+  "title": "Relay Stations Refined",
+  "width": "2560"
+}

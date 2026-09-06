@@ -544,6 +544,24 @@ app.whenReady().then(() => {
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.once('ready-to-show', () => win.show());
+  // --capture 模式:完整 IPC 环境下自动截各页(设计管线用,如 #relays/#backups/#settings)
+  if (process.argv.includes('--capture')) {
+    win.webContents.once('did-finish-load', async () => {
+      try {
+        await new Promise(r => setTimeout(r, 1500));
+        const outDir = path.join(app.getAppPath(), 'designs', 'captures');
+        fs.mkdirSync(outDir, { recursive: true });
+        for (const p of ['relays', 'backups', 'settings']) {
+          await win.webContents.executeJavaScript(`location.hash = '${p}'`);
+          await new Promise(r => setTimeout(r, 900));
+          const img = await win.webContents.capturePage();
+          fs.writeFileSync(path.join(outDir, `page-${p}.png`), img.toPNG());
+          console.log('captured:', p);
+        }
+      } catch (e) { console.error('capture failed:', e.message); }
+      app.exit(0);
+    });
+  }
   // 渲染进程异常诊断:黑屏/崩溃时日志里留下原因,不再靠猜
   win.webContents.on('render-process-gone', (_e, details) => {
     console.error('[renderer-gone]', details.reason, details.exitCode);

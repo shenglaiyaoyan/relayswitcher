@@ -16,7 +16,20 @@ const NAV = [
 ];
 
 export default function App() {
-  const [page, setPage] = useState('dash');
+  // 支持 #<page> 直达初始页面(调试/截图用):#relays / #backups / #settings ...
+  const VALID_PAGES = ['dash', 'accounts', 'relays', 'backups', 'settings'];
+  const [page, setPage] = useState(() => {
+    const h = (window.location.hash || '').replace(/^#/, '');
+    return VALID_PAGES.includes(h) ? h : 'dash';
+  });
+  useEffect(() => {
+    const onHash = () => {
+      const h = (window.location.hash || '').replace(/^#/, '');
+      if (VALID_PAGES.includes(h)) setPage(h);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [state, setState] = useState(null);
   const [toast, setToast] = useState(null);
   const [booted, setBooted] = useState(false);

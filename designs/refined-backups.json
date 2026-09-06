@@ -1,0 +1,26 @@
+npm warn Unknown project config "electron_mirror". This will stop working in the next major version of npm.
+npm warn Unknown project config "electron_builder_binaries_mirror". This will stop working in the next major version of npm.
+Stitch Transport Error: DOMException [AbortError]: This operation was aborted
+    at node:internal/deps/undici/undici:16416:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async StreamableHTTPClientTransport._startOrAuthSse (file:///C:/Users/ASUS/AppData/Local/npm-cache/_npx/829c6278c197c365/node_modules/@_davideast/stitch-mcp/dist/chunk-nppv9mwg.js:30123:24)
+Stitch Transport Error: DOMException [AbortError]: This operation was aborted
+    at node:internal/deps/undici/undici:16416:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async StreamableHTTPClientTransport._startOrAuthSse (file:///C:/Users/ASUS/AppData/Local/npm-cache/_npx/829c6278c197c365/node_modules/@_davideast/stitch-mcp/dist/chunk-nppv9mwg.js:30123:24)
+{
+  "deviceType": "DESKTOP",
+  "height": "2048",
+  "htmlCode": {
+    "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzU2YjZhMDY1MDc0ODQyNjJiNWM1ZDMxM2Q0NzY5YjMyEgsSBxCIwIKByREYAZIBJAoKcHJvamVjdF9pZBIWQhQxNTcxMjYwNzQyNjc5MTA4MDEzNQ&filename=&opi=96797242",
+    "mimeType": "text/html",
+    "name": "projects/15712607426791080135/files/3e47a4dfd46e40439a84dcc9b48b1ee5"
+  },
+  "name": "projects/15712607426791080135/screens/63c085e571144dceb3d06aaeb2540ecc",
+  "screenshot": {
+    "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WRB3FxsqOdbfleid-Tq_Mjr-9gjOHizNmv5sz5DN5noIZsfMOpChbiJOS9WN9iejAsD_q2hxiDCkk7khG4Vd6uv1uZBrhdaX1UJCTb5FdBr4SZKj4_YxWgTfHF3zKLwehUoFOisEjsVV4-hrlQWUj_VbewKxpiH2n89XJ37PaU00SrW9NLwb_1QaVo-P1cMySZIog8DtHjHBxjD74OJBeR26qSe4MfCFRBcquozyno9Tj6Yb9LmyFnRUe_",
+    "name": "projects/15712607426791080135/files/e52f306098b34bc5bc2c2b7a4d6e12c8"
+  },
+  "title": "Backups Refined - Neural Noir",
+  "width": "2560"
+}

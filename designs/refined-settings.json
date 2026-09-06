@@ -1,0 +1,18 @@
+npm warn Unknown project config "electron_mirror". This will stop working in the next major version of npm.
+npm warn Unknown project config "electron_builder_binaries_mirror". This will stop working in the next major version of npm.
+{
+  "deviceType": "DESKTOP",
+  "height": "2048",
+  "htmlCode": {
+    "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzBkNDNjNmE0NmI2MTRlMjk4OTkxZmVhNDMxYWFkN2UzEgsSBxCIwIKByREYAZIBJAoKcHJvamVjdF9pZBIWQhQxNTcxMjYwNzQyNjc5MTA4MDEzNQ&filename=&opi=96797242",
+    "mimeType": "text/html",
+    "name": "projects/15712607426791080135/files/736db918d80d41d2a43e22080f4f5f3c"
+  },
+  "name": "projects/15712607426791080135/screens/c1bd3e7565264396a37977b7bccd055a",
+  "screenshot": {
+    "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XkuBFzZo9KuRYlTnYcCGeZ7ZfDsFvdT2rmVkt5AL_w8nKcQ9nD54NOIFs6qmMJI5A4gHgwKopRYfXyQ7Avt5EJLjAp82kevuf0R4630tEaralbLX3OBnun717wj0ietCrTR-NOxw1YGbfqkdFXVTReWSg9a8DV-HRzQ6WQjc0ET0MjNYXQsdv9q3DdEekU0fwPkCgJa287ZDKMki-3hqb03DuwtLi9Z6h2vyZ0RRRgcKif_hWcyzhv5L4S",
+    "name": "projects/15712607426791080135/files/f9c77a6698e64eed903825c374ca0df8"
+  },
+  "title": "Settings Refined - Neural Noir",
+  "width": "2560"
+}

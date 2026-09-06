@@ -1,8 +1,10 @@
 # RelaySwitcher 中转站切换器
 
 > **GitHub**:https://github.com/shenglaiyaoyan/relayswitcher
+> 
+> **下载**: [最新安装包(Setup-1.3.0.exe)](https://github.com/shenglaiyaoyan/relayswitcher/releases/latest/download/RelaySwitcher-Setup-1.3.0.exe)(79MB) | [Rlease](https://github.com/shenglaiyaoyan/relayswitcher/releases/tag/v1.3.0)
 
-把「账号登录态」和「流量出口」解耦自由组合的桌面控制面板:用真实 OAuth 账号保住 Codex 客户端的订阅功能(快速模式、完整思考档位),同时把实际 API 流量指向自建中转站。一键切换、自动备份、随时回滚。
+把「账号登录态」和「流量出口」解耦自由组合的桌面控制面板:用真实 OAuth 账号保住 Codex 客户端的订阅功能(快速模式、完整思考档位),同时把实际 API 流量指向自建中转站。一键切换、自动备份、随时回滚。**支持自动更新**(安装版会自动检测新版本)。
 
 ## 功能
 

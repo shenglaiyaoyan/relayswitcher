@@ -221,7 +221,7 @@ async function refreshAccount(id) {
     refresh_token: j.refresh_token || t.refresh_token, // 轮换后必须存新的
     account_id: t.account_id
   };
-  const account = store.updateTokens(id, newTokens);
+  const account = store.updateTokens(id, newTokens, { earliestRefreshAt: j.earliest_refresh_at || null });
   return { ok: true, expiresInDays: Math.round(((j.expires_in || 0) / 86400) * 10) / 10, account,
     rotated: !!j.refresh_token && j.refresh_token !== t.refresh_token };
 }
@@ -492,9 +492,28 @@ app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
   registerIpc();
-  // 自动更新仅手动触发(设置页),不在启动时静默检测 — 避免无网环境报错
 
   if (SMOKE) { smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); }); return; }
+
+  // ---- 自动化(US-06):一切用户不该手点的都后台静默做 ----
+  const notifyStateChanged = () => {
+    if (win && !win.isDestroyed()) win.webContents.send('rs:state-changed');
+  };
+  // token 自动保养:启动 30s 后首刷,之后每 30 分钟;尊重 OpenAI earliest_refresh_at 频控,失败静默
+  const autoTokenTick = async () => {
+    let changed = false;
+    for (const a of store.listAccounts()) {
+      if (!a.hasRefreshToken) continue;
+      if (a.earliestRefreshAt && Date.now() < new Date(a.earliestRefreshAt).getTime()) continue; // 频控未到
+      const r = await refreshAccount(a.id).catch(() => null);
+      if (r && r.ok) changed = true;
+    }
+    if (changed) notifyStateChanged();
+  };
+  setTimeout(autoTokenTick, 30 * 1000).unref?.();
+  setInterval(autoTokenTick, 30 * 60 * 1000).unref?.();
+  // 启动 8s 静默检查更新(失败零打扰;发现新版时侧边栏已有提示)
+  setTimeout(() => checkForUpdates().catch(() => {}), 8000).unref?.();
 
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'resources', 'icon.ico')

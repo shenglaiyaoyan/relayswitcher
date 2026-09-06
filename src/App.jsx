@@ -55,6 +55,12 @@ export default function App() {
 
   useEffect(() => { refresh().finally(() => setBooted(true)); }, [refresh]);
 
+  // 后端状态变化(token 自动保养成功等)自动同步 UI — 用户永远不需要手点刷新
+  useEffect(() => {
+    const off = window.rs.onStateChanged ? window.rs.onStateChanged(() => refresh()) : null;
+    return off || undefined;
+  }, [refresh]);
+
   if (!window.rs) {
     return <div className="app" style={{ alignItems: 'center', justifyContent: 'center', color: '#78716c', flexDirection: 'column', gap: 12 }}>
       <Icon name="alert" size={28} style={{ color: '#f87171' }} />

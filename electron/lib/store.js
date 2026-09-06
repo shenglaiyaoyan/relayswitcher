@@ -151,8 +151,8 @@ function createStore(userDataDir) {
       return { ...a, tokens: JSON.parse(dec(a.tokensEnc)) };
     },
 
-    /** 刷新成功后更新存储的 tokens(refresh_token 轮换时以服务端返回为准) */
-    updateTokens(id, tokens) {
+    /** 刷新成功后更新存储的 tokens(refresh_token 轮换时以服务端返回为准;earliestRefreshAt 为 OpenAI 刷新频控时间) */
+    updateTokens(id, tokens, extra = {}) {
       const a = data.accounts.find(x => x.id === id);
       if (!a) throw new Error('账号不存在');
       const info = describeTokens(tokens);
@@ -161,6 +161,8 @@ function createStore(userDataDir) {
       if (info.plan) a.plan = info.plan;
       if (info.exp) a.tokenExp = info.exp;
       if (tokens.account_id) a.accountId = tokens.account_id;
+      if (extra.earliestRefreshAt) a.earliestRefreshAt = extra.earliestRefreshAt;
+      a.lastRefreshAt = new Date().toISOString();
       save();
       return publicAccount(a);
     },

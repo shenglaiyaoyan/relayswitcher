@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('rs', {
     ipcRenderer.on('rs:update-event', h);
     return () => ipcRenderer.removeListener('rs:update-event', h);
   },
+  onStateChanged: (cb) => {
+    const h = () => cb();
+    ipcRenderer.on('rs:state-changed', h);
+    return () => ipcRenderer.removeListener('rs:state-changed', h);
+  },
   listBackups: () => ipcRenderer.invoke('rs:listBackups'),
   restoreBackup: (id) => ipcRenderer.invoke('rs:restoreBackup', id),
   saveSettings: (s) => ipcRenderer.invoke('rs:saveSettings', s),

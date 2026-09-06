@@ -367,6 +367,29 @@ function applySwitch(opts) {
       }
     } catch { /* 无旧 auth 或格式异常则跳过 */ }
 
+    // 2.6 失效路径体检:MCP server 指向不存在的可执行文件(Codex 自动更新后常见)
+    //     这不是切换造成的,但切换后重启 Codex 会因 config_load 失败卡在初始化界面 — 提前亮出来
+    try {
+      if (cfgIn) {
+        const cfgObj = TOML.parse(cfgIn.text);
+        const dead = [];
+        for (const [name, srv] of Object.entries(cfgObj.mcp_servers || {})) {
+          const cmd = srv && srv.command;
+          if (!cmd) continue;
+          // '...node_modules\.bin\x.cmd' 这类相对/内嵌参数命令无法直接判断,只查绝对路径可执行文件
+          if (/^[A-Za-z]:[\\/]/.test(cmd) && !fs.existsSync(cmd)) {
+            dead.push(`${name} → ${cmd}`);
+          }
+        }
+        if (dead.length) {
+          step('失效路径警告', true,
+            `config.toml 里有 ${dead.length} 个 MCP server 指向不存在的文件(多为 Codex 自动更新换了运行时目录):` +
+            dead.join(' | ') +
+            ' — 这与本切换无关,但重启 Codex 可能卡初始化界面;若出现,用备份回滚或手动修正这些路径');
+        }
+      }
+    } catch { /* 体检失败不阻塞切换 */ }
+
     // 3. 内存中生成全部新内容(LF 域)
     let text = cfgIn ? cfgIn.text : '';
     const topKV = { model: opts.model, model_provider: opts.providerId };

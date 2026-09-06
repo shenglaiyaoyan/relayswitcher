@@ -165,6 +165,9 @@ async function smoke() {
       '[mcp_servers.memory]',
       'command = "npx"',
       '',
+      '[mcp_servers.dead_runtime]',
+      'command = \'C:\\nonexistent_runtime_dir\\node_repl.exe\'',
+      '',
       '[model_providers.my_local_gateway]',
       'name = "Local sub2api"',
       'base_url = "http://127.0.0.1:3000/v1"',
@@ -212,6 +215,7 @@ async function smoke() {
   const r = codex.applySwitch(switchOpts());
   check('切换流程成功', r.ok);
   check('账号变更预警触发(account_id 变化时明示会话空间切换)', r.ok && r.log.some(l => l.name === '账号变更'));
+  check('失效路径体检警告触发(死路径 MCP 提前亮出)', r.ok && r.log.some(l => l.name === '失效路径警告' && String(l.detail).includes('dead_runtime')));
 
   const cfg = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
   check('model = gpt-6-astra', cfg.model === 'gpt-6-astra');

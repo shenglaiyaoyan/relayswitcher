@@ -100,6 +100,51 @@ async function checkForUpdates() {
   return result;
 }
 
+/* ---------------- 账号 token 刷新(OAuth2 refresh grant,走系统代理) ---------------- */
+async function refreshAccount(id) {
+  const acct = store.getAccount(id);
+  const t = acct.tokens;
+  if (!t.refresh_token) return { ok: false, error: '该账号没有 refresh_token,无法刷新(渠道只发了 access_token 的话,到期即失效)' };
+  // client_id 从 id_token 的 aud 取(与 Codex 客户端一致)
+  let clientId = 'app_EMoamEEZ73f0CkXaXp7hrann';
+  try {
+    const p = String(t.id_token || '').split('.')[1];
+    if (p) {
+      const claims = JSON.parse(Buffer.from(p.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+      if (Array.isArray(claims.aud) && claims.aud[0]) clientId = claims.aud[0];
+      else if (typeof claims.aud === 'string') clientId = claims.aud;
+    }
+  } catch { /* 解不出来就用默认 */ }
+  let resp, text, j = {};
+  try {
+    resp = await net.fetch('https://auth.openai.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId, grant_type: 'refresh_token', refresh_token: t.refresh_token }),
+      signal: AbortSignal.timeout(20000)
+    });
+    text = await resp.text();
+    try { j = JSON.parse(text); } catch { /* 保留空 */ }
+  } catch (e) {
+    return { ok: false, error: '网络错误: ' + e.message + ' — 刷新需要能访问 auth.openai.com(挂代理即可,应用走系统代理)' };
+  }
+  if (!resp.ok) {
+    const err = j.error || ('HTTP ' + resp.status);
+    const hint = err === 'invalid_grant' ? 'refresh_token 已失效(多为渠道共享池被他人刷新轮换),需重新获取账号'
+      : resp.status >= 500 ? 'OpenAI 服务端错误,稍后再试' : '请检查网络(需能访问 auth.openai.com)';
+    return { ok: false, error: err + ' — ' + hint };
+  }
+  const newTokens = {
+    id_token: j.id_token || t.id_token,
+    access_token: j.access_token || t.access_token,
+    refresh_token: j.refresh_token || t.refresh_token, // 轮换后必须存新的
+    account_id: t.account_id
+  };
+  const account = store.updateTokens(id, newTokens);
+  return { ok: true, expiresInDays: Math.round(((j.expires_in || 0) / 86400) * 10) / 10, account,
+    rotated: !!j.refresh_token && j.refresh_token !== t.refresh_token };
+}
+
 /* Codex 客户端进程检测 */
 async function detectCodexRunning() {
   return new Promise((resolve) => {
@@ -127,6 +172,7 @@ function registerIpc() {
   ipcMain.handle('rs:getState', () => getState());
   ipcMain.handle('rs:importAccount', (_e, json, label) => store.addAccount(json, label));
   ipcMain.handle('rs:deleteAccount', (_e, id) => { store.deleteAccount(id); return getState(); });
+  ipcMain.handle('rs:refreshAccount', (_e, id) => refreshAccount(id));
   ipcMain.handle('rs:saveRelay', (_e, relay) => { store.saveRelay(relay); return getState(); });
   ipcMain.handle('rs:deleteRelay', (_e, id) => { store.deleteRelay(id); return getState(); });
   ipcMain.handle('rs:testRelay', (_e, id) => testRelay(id));

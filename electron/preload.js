@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('rs', {
   getState: () => ipcRenderer.invoke('rs:getState'),
   importAccount: (json, label) => ipcRenderer.invoke('rs:importAccount', json, label),
   deleteAccount: (id) => ipcRenderer.invoke('rs:deleteAccount', id),
+  refreshAccount: (id) => ipcRenderer.invoke('rs:refreshAccount', id),
   saveRelay: (relay) => ipcRenderer.invoke('rs:saveRelay', relay),
   deleteRelay: (id) => ipcRenderer.invoke('rs:deleteRelay', id),
   testRelay: (id) => ipcRenderer.invoke('rs:testRelay', id),

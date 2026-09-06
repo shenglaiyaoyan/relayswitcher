@@ -30,6 +30,7 @@ export default function Accounts({ state, refresh, toast }) {
   const [json, setJson] = useState('');
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
+  const [refreshingId, setRefreshingId] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const fileRef = useRef(null);
@@ -40,6 +41,20 @@ export default function Accounts({ state, refresh, toast }) {
     if (!f) return;
     try { setJson(await f.text()); }
     catch (e) { toast('读取文件失败: ' + e.message, 'bad'); }
+  };
+
+  const doRefresh = async (a) => {
+    setRefreshingId(a.id);
+    try {
+      const r = await window.rs.refreshAccount(a.id);
+      if (r.ok) {
+        toast(`刷新成功:新 access_token 约 ${r.expiresInDays} 天${r.rotated ? ',refresh_token 已轮换并保存' : ''}`, 'ok');
+        await refresh();
+      } else {
+        toast('刷新失败: ' + r.error, 'bad');
+      }
+    } catch (e) { toast('刷新异常: ' + e.message, 'bad'); }
+    finally { setRefreshingId(null); }
   };
 
   const doImport = async () => {
@@ -87,6 +102,11 @@ export default function Accounts({ state, refresh, toast }) {
               {pv.plan && <span className="badge gold">{planLabel(pv.plan) || pv.plan}</span>}</div>
             <div className="pv-line">account_id <b className="mono">{pv.accountId}</b></div>
             <div className="pv-line muted">字段: {pv.hasId ? 'id_token ✓' : 'id_token ✗'} · {pv.hasRefresh ? 'refresh_token ✓' : 'refresh_token ✗'}</div>
+            {!pv.hasRefresh && (
+              <div className="pv-line" style={{ color: 'var(--bad)', marginTop: 6, fontWeight: 600 }}>
+                ⚠ 没有 refresh_token:access_token 过期(通常数小时~一天)后即失效,无法续期
+              </div>
+            )}
           </div>
         )}
         {pv && pv.err && (
@@ -116,11 +136,19 @@ export default function Accounts({ state, refresh, toast }) {
                     </div>
                     <div className="stat-sub">
                       {a.plan && <span className="badge gold">{planLabel(a.plan) || a.plan}</span>}
+                      {a.hasRefreshToken
+                        ? <span className="badge ok" title="带 refresh_token,可一键刷新续期">可续期</span>
+                        : <span className="badge bad" title="没有 refresh_token,access_token 到期即失效">一次性</span>}
                       <span className="muted mono">{a.accountId ? a.accountId.slice(0, 8) + '…' : '—'}</span>
                       <span className="muted">{fmtAgo(a.addedAt)}导入</span>
                     </div>
                   </div>
                   <span className="muted" title="tokens 加密存储"><Icon name="lock" size={14} /></span>
+                  {a.hasRefreshToken && (
+                    <button className="btn btn-sm" disabled={refreshingId === a.id} onClick={() => doRefresh(a)} title="用 refresh_token 换新 access_token(走系统代理)">
+                      {refreshingId === a.id ? <><Spinner size={11} /> 刷新中…</> : <><Icon name="refresh" size={12} /> 刷新</>}
+                    </button>
+                  )}
                   <button className="icon-btn" title="删除账号" onClick={() => setConfirmDel(a)}><Icon name="trash" size={15} /></button>
                 </div>
                 {a.tokenExp && (

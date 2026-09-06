@@ -117,7 +117,30 @@ function createStore(userDataDir) {
       return { ...a, tokens: JSON.parse(dec(a.tokensEnc)) };
     },
 
-    listAccounts() { return data.accounts.map(publicAccount); },
+    /** 刷新成功后更新存储的 tokens(refresh_token 轮换时以服务端返回为准) */
+    updateTokens(id, tokens) {
+      const a = data.accounts.find(x => x.id === id);
+      if (!a) throw new Error('账号不存在');
+      const info = describeTokens(tokens);
+      a.tokensEnc = enc(JSON.stringify(tokens));
+      if (info.email) a.email = info.email;
+      if (info.plan) a.plan = info.plan;
+      if (info.exp) a.tokenExp = info.exp;
+      if (tokens.account_id) a.accountId = tokens.account_id;
+      save();
+      return publicAccount(a);
+    },
+
+    listAccounts() {
+      return data.accounts.map(a => {
+        const p = publicAccount(a);
+        try {
+          const tokens = JSON.parse(dec(a.tokensEnc));
+          p.hasRefreshToken = !!tokens.refresh_token;
+        } catch { p.hasRefreshToken = false; }
+        return p;
+      });
+    },
 
     saveRelay(relay) {
       if (!relay.name || !relay.baseUrl) throw new Error('名称和 base_url 必填');

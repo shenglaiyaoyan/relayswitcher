@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RelaySwitcher Desktop Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Playfair+Display:ital,wght@1,600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#d6c4a7",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#514532",
+                        "on-surface-variant": "#d2c4ba",
+                        "surface": "#131313",
+                        "surface-container-highest": "#353534",
+                        "primary-container": "#a88c72",
+                        "outline-variant": "#4e453d",
+                        "on-primary-container": "#382612",
+                        "inverse-on-surface": "#313030",
+                        "secondary-fixed": "#f2e0c6",
+                        "primary": "#e0c1a4",
+                        "secondary-fixed-dim": "#d5c4ac",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-bright": "#3a3939",
+                        "surface-container-lowest": "#0e0e0e",
+                        "warning-amber": "#fbbf24",
+                        "surface-glass": "rgba(255, 255, 255, 0.03)",
+                        "surface-tint": "#e0c1a4",
+                        "on-background": "#e5e2e1",
+                        "error": "#ffb4ab",
+                        "surface-dim": "#131313",
+                        "on-surface": "#e5e2e1",
+                        "error-red": "#f87171",
+                        "surface-variant": "#353534",
+                        "tertiary-fixed": "#f3e0c2",
+                        "error-container": "#93000a",
+                        "background": "#131313",
+                        "secondary-container": "#514532",
+                        "on-primary-fixed": "#291806",
+                        "inverse-surface": "#e5e2e1",
+                        "on-tertiary-container": "#332814",
+                        "on-primary-fixed-variant": "#58422d",
+                        "surface-container-high": "#2a2a2a",
+                        "on-tertiary-fixed-variant": "#51452f",
+                        "on-primary": "#402c18",
+                        "tertiary-fixed-dim": "#d6c4a7",
+                        "primary-fixed": "#feddbf",
+                        "on-tertiary": "#3a2f1a",
+                        "inverse-primary": "#725a43",
+                        "dot-grid": "rgba(255, 255, 255, 0.08)",
+                        "on-secondary": "#392f1e",
+                        "secondary": "#d5c4ac",
+                        "primary-fixed-dim": "#e0c1a4",
+                        "outline": "#9a8f85",
+                        "tertiary-container": "#9f8f74",
+                        "on-tertiary-fixed": "#241a07",
+                        "on-error": "#690005",
+                        "surface-container": "#201f1f",
+                        "border-glass": "rgba(255, 255, 255, 0.10)",
+                        "success-green": "#4ade80",
+                        "on-secondary-container": "#c4b39b",
+                        "on-secondary-fixed": "#231a0b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-sm": "12px",
+                        "margin-container": "32px",
+                        "sidebar-width": "220px",
+                        "gap-xs": "4px",
+                        "gap-lg": "24px",
+                        "gap-md": "16px",
+                        "base-unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-h1": ["Inter"],
+                        "brand-display": ["Playfair Display"],
+                        "mono-log": ["JetBrains Mono"],
+                        "headline-h2": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["10.5px", { "lineHeight": "1.2", "letterSpacing": "0.15em", "fontWeight": "600" }],
+                        "body-md": ["13.5px", { "lineHeight": "1.7", "fontWeight": "400" }],
+                        "headline-h1": ["19px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "brand-display": ["26px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "mono-log": ["12px", { "lineHeight": "1.8", "fontWeight": "400" }],
+                        "headline-h2": ["15px", { "lineHeight": "1.4", "fontWeight": "600" }]
+                    },
+                    backgroundImage: {
+                        'dot-pattern': 'radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px)'
+                    },
+                    backgroundSize: {
+                        'dot-size': '32px 32px'
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0a0a0a; }
+        .bg-grid { background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px); background-size: 32px 32px; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glow-hover:hover { box-shadow: 0 0 40px rgba(167, 139, 113, 0.15); }
+        .btn-glow-hover:hover { box-shadow: 0 0 60px rgba(167, 139, 113, 0.25); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+    </style>
+</head>
+<body class="text-on-surface bg-[#0a0a0a] min-h-screen flex overflow-hidden">
+<!-- Background Grid Overlay -->
+<div class="fixed inset-0 bg-grid pointer-events-none z-0"></div>
+<!-- SideNavBar (Shared Component Blueprint) -->
+<nav class="fixed left-0 top-0 h-full w-sidebar-width bg-surface-glass backdrop-blur-xl border-r border-border-glass flex flex-col py-margin-container z-20">
+<div class="px-gap-lg mb-margin-container">
+<h1 class="font-brand-display text-brand-display text-[#a78b71] italic tracking-tight">RelaySwitcher</h1>
+<p class="font-mono-log text-mono-log text-on-surface-variant mt-1 opacity-70">v2.1.0-stable</p>
+</div>
+<ul class="flex-1 flex flex-col gap-2">
+<li>
+<a class="flex items-center gap-gap-sm px-gap-lg py-3 text-primary border-l-[3px] border-[#a78b71] bg-secondary-container/20 transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    仪表盘
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-gap-sm px-gap-lg py-3 text-on-surface-variant hover:text-primary hover:bg-surface-glass transition-colors cursor-pointer active:scale-95 border-l-[3px] border-transparent font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">person</span>
+                    账号
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-gap-sm px-gap-lg py-3 text-on-surface-variant hover:text-primary hover:bg-surface-glass transition-colors cursor-pointer active:scale-95 border-l-[3px] border-transparent font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">hub</span>
+                    中转站
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-gap-sm px-gap-lg py-3 text-on-surface-variant hover:text-primary hover:bg-surface-glass transition-colors cursor-pointer active:scale-95 border-l-[3px] border-transparent font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">backup</span>
+                    备份
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-gap-sm px-gap-lg py-3 text-on-surface-variant hover:text-primary hover:bg-surface-glass transition-colors cursor-pointer active:scale-95 border-l-[3px] border-transparent font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">settings</span>
+                    设置
+                </a>
+</li>
+</ul>
+<div class="px-gap-lg mt-auto">
+<div class="glass-panel rounded-full px-4 py-2 flex items-center justify-between text-xs">
+<span class="text-on-surface-variant font-mono-log opacity-80">System Status</span>
+<div class="flex items-center gap-2">
+<span class="text-on-surface font-body-md text-[11px]">已绑定中转站</span>
+<div class="w-2 h-2 rounded-full bg-success-green pulse-dot"></div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width flex-1 flex flex-col h-screen overflow-y-auto relative z-10">
+<!-- TopAppBar (Shared Component Logic) -->
+<header class="flex justify-between items-center px-margin-container h-20 pt-8 pb-4 shrink-0">
+<div>
+<span class="font-label-caps text-label-caps text-[#a78b71] block mb-1">DASHBOARD</span>
+<h2 class="font-headline-h1 text-headline-h1 text-on-surface tracking-wide">仪表盘</h2>
+</div>
+<div class="flex items-center gap-gap-md">
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+</header>
+<div class="px-margin-container pb-margin-container flex-1 flex flex-col gap-margin-container">
+<!-- Stat Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gap-lg">
+<!-- Card 1 -->
+<div class="glass-panel p-5 rounded-lg flex flex-col gap-3 glow-hover transition-all duration-300 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-[#a78b71]">ACCOUNT</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm opacity-50">person</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-mono-log text-[15px] font-semibold text-on-surface mb-2">bec***@mail.com</h3>
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-[#a78b71]/30 text-[#a78b71] font-label-caps text-[9px] uppercase tracking-wider">Free</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-panel p-5 rounded-lg flex flex-col gap-3 glow-hover transition-all duration-300 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-[#a78b71]">RELAY</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm opacity-50">hub</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-mono-log text-[15px] font-semibold text-on-surface mb-2">api.zeniths.codes</h3>
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-success-green/30 text-success-green font-label-caps text-[9px] uppercase tracking-wider">42ms</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-panel p-5 rounded-lg flex flex-col gap-3 glow-hover transition-all duration-300 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-[#a78b71]">MODEL</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm opacity-50">memory</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-mono-log text-[15px] font-semibold text-on-surface mb-2">gpt-6-astra</h3>
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-[#a78b71]/30 text-[#a78b71] font-label-caps text-[9px] uppercase tracking-wider">目录已接管</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-panel p-5 rounded-lg flex flex-col gap-3 glow-hover transition-all duration-300 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-caps text-label-caps text-[#a78b71]">STATUS</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm opacity-50">bolt</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-mono-log text-[15px] font-semibold text-on-surface mb-2">Active</h3>
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-warning-amber/30 text-warning-amber font-label-caps text-[9px] uppercase tracking-wider">快速模式 ON</span>
+</div>
+</div>
+</div>
+<!-- Main Central Panel & Log -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gap-lg flex-1 min-h-[400px]">
+<!-- Central Panel: 一键切换 -->
+<div class="lg:col-span-2 glass-panel rounded-xl p-8 flex flex-col relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-[#a78b71]/5 rounded-full blur-[80px] pointer-events-none"></div>
+<div class="mb-8 flex justify-between items-end border-b border-border-glass pb-4">
+<div>
+<h2 class="font-headline-h2 text-headline-h2 text-on-surface mb-1">一键切换</h2>
+<p class="font-body-md text-on-surface-variant text-sm">Configure routing sequence and target models.</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-caps text-label-caps text-on-surface-variant">快速模式</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#f5f5f4] after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#a78b71]"></div>
+</label>
+</div>
+</div>
+<div class="flex-1 flex flex-col gap-6 relative">
+<!-- Connecting Line -->
+<div class="absolute left-6 top-8 bottom-8 w-[1px] bg-border-glass z-0"></div>
+<div class="absolute left-6 top-8 h-1/2 w-[1px] bg-[#a78b71]/40 z-0"></div>
+<!-- Step 1 -->
+<div class="flex items-start gap-6 relative z-10">
+<div class="w-12 h-12 rounded-full glass-panel bg-surface flex items-center justify-center font-mono-log text-[#a78b71] border border-[#a78b71]/30 shrink-0">01</div>
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">选择账号</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low border border-border-glass rounded-md py-3 pl-4 pr-10 text-on-surface font-body-md focus:border-[#a78b71] focus:ring-0 transition-colors cursor-pointer">
+<option>bec***@mail.com (Personal)</option>
+<option>dev***@company.com (Work)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex items-start gap-6 relative z-10">
+<div class="w-12 h-12 rounded-full glass-panel bg-surface flex items-center justify-center font-mono-log text-[#a78b71] border border-[#a78b71]/30 shrink-0">02</div>
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">选择中转站</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low border border-border-glass rounded-md py-3 pl-4 pr-10 text-on-surface font-body-md focus:border-[#a78b71] focus:ring-0 transition-colors cursor-pointer">
+<option>api.zeniths.codes (US-East)</option>
+<option>relay.eu.node (EU-West)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex items-start gap-6 relative z-10">
+<div class="w-12 h-12 rounded-full glass-panel bg-surface flex items-center justify-center font-mono-log text-on-surface-variant border border-border-glass shrink-0">03</div>
+<div class="flex-1 flex flex-col gap-4">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">模型</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low border border-border-glass rounded-md py-3 pl-4 pr-10 text-on-surface font-body-md focus:border-[#a78b71] focus:ring-0 transition-colors cursor-pointer">
+<option>gpt-6-astra</option>
+<option>claude-opus-next</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">上下文窗口</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-1.5 rounded-full border border-border-glass text-on-surface-variant font-mono-log text-xs hover:border-[#a78b71]/50 transition-colors">372000</button>
+<button class="px-4 py-1.5 rounded-full border border-[#a78b71] bg-[#a78b71]/10 text-[#a78b71] font-mono-log text-xs transition-colors">272K</button>
+<button class="px-4 py-1.5 rounded-full border border-border-glass text-on-surface-variant font-mono-log text-xs hover:border-[#a78b71]/50 transition-colors">372K</button>
+<button class="px-4 py-1.5 rounded-full border border-border-glass text-on-surface-variant font-mono-log text-xs hover:border-[#a78b71]/50 transition-colors">872K</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-border-glass">
+<button class="w-full py-4 bg-[#f5f5f4] text-[#0a0a0a] font-label-caps text-[13px] uppercase tracking-[0.2em] rounded-md btn-glow-hover transition-all duration-300 font-bold flex items-center justify-center gap-2">
+                            立即切换
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Log Box -->
+<div class="lg:col-span-1 rounded-xl p-1 flex flex-col" style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.05);">
+<div class="px-4 py-3 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-lg">
+<span class="font-label-caps text-[10px] text-on-surface-variant tracking-widest uppercase">System Logs</span>
+<div class="flex gap-1.5">
+<div class="w-2 h-2 rounded-full bg-border-glass"></div>
+<div class="w-2 h-2 rounded-full bg-border-glass"></div>
+<div class="w-2 h-2 rounded-full bg-border-glass"></div>
+</div>
+</div>
+<div class="flex-1 p-4 font-mono-log text-[11px] text-on-surface-variant leading-relaxed overflow-y-auto">
+<div class="flex gap-2 mb-2">
+<span class="text-success-green opacity-80">✓</span>
+<span><span class="text-[#a78b71]">初始化系统状态...</span> OK</span>
+</div>
+<div class="flex gap-2 mb-2">
+<span class="text-success-green opacity-80">✓</span>
+<span>验证账号权限 (bec***@mail.com)... OK</span>
+</div>
+<div class="flex gap-2 mb-2">
+<span class="text-success-green opacity-80">✓</span>
+<span><span class="text-[#a78b71]">测试中转节点延迟 (api.zeniths.codes)...</span> 42ms</span>
+</div>
+<div class="flex gap-2 mb-2 opacity-50">
+<span class="text-warning-amber">⟳</span>
+<span>预热模型 (gpt-6-astra)... pending</span>
+</div>
+<div class="flex gap-2 mb-2 opacity-30">
+<span>-</span>
+<span>等待路由切换指令...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer (Shared Component Logic Contextual Adaptation) -->
+<footer class="mt-auto h-12 border-t border-border-glass bg-surface-container-lowest/80 backdrop-blur-md flex justify-between items-center px-margin-container shrink-0">
+<div class="flex items-center gap-3">
+<span class="w-1.5 h-1.5 rounded-full bg-[#a78b71]"></span>
+<span class="font-mono-log text-[11px] text-on-surface-variant">System Backup: Synchronized 2m ago</span>
+</div>
+<button class="font-label-caps text-[10px] text-[#a78b71] border border-[#a78b71]/40 px-3 py-1.5 rounded hover:bg-[#a78b71]/10 transition-colors flex items-center gap-1.5">
+                ⟲ 一键回滚
+            </button>
+</footer>
+</main>
+</body></html>

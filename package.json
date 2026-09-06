@@ -1,7 +1,7 @@
 {
   "name": "relayswitcher",
   "productName": "RelaySwitcher",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Codex 账号 × 中转站一键切换器 — OAuth 登录态绑定自建中转,可切换可回滚",
   "author": "RelaySwitcher",
   "license": "MIT",

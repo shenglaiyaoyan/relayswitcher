@@ -270,7 +270,11 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .rs-select:focus-visible { outline: none; }
 .rs-select.open:focus-visible .rs-select-btn { outline: 2px solid rgba(167, 139, 113, .55); outline-offset: 1px; }
 .rs-select-ph { color: var(--txt-3); }
-.rs-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-select-label { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden; }
+.rs-select-label > .rs-select-desc, .rs-select-btn .rs-select-desc {
+  font-size: 10px; color: var(--txt-3); letter-spacing: 0.02em;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .rs-select-chev { color: var(--txt-3); transition: transform .18s var(--ease); }
 .rs-select-chev.up { transform: rotate(180deg); }
 .rs-select-pop {

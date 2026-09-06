@@ -1,0 +1,18 @@
+npm warn Unknown project config "electron_mirror". This will stop working in the next major version of npm.
+npm warn Unknown project config "electron_builder_binaries_mirror". This will stop working in the next major version of npm.
+{
+  "deviceType": "DESKTOP",
+  "height": "2048",
+  "htmlCode": {
+    "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sX2UwNTQ1Y2UyNWZkMDQxOWQ5NGU3ZWI5N2IwNjYzOWM0EgsSBxCIwIKByREYAZIBJAoKcHJvamVjdF9pZBIWQhQxNTcxMjYwNzQyNjc5MTA4MDEzNQ&filename=&opi=96797242",
+    "mimeType": "text/html",
+    "name": "projects/15712607426791080135/files/c27d7489c9a04443900d807332e860f7"
+  },
+  "name": "projects/15712607426791080135/screens/8e33d33f3ccf44179d6c3cdc98642a66",
+  "screenshot": {
+    "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1UsrDc4vvGMLVn-pNOEvmwi1hyxenXCvyJw_BfAYLSLG6YqUj1QlOA5eKusQi4j1ScA4DHltVmVQp3Mfqb7qahdJnWfudxGB5VPgUx8dTKQwhUNfwu1BLd8p6j0JgBBihEXYzLWGIz-a5JEe6xk-g2iiuybpfQ6I6qaD6H-pJ7N7n2cfZDtB30Iu7R8H6ybREwbpzWu7h2kKvjCVEVPJZqVLrQBjunnGi8PAWPwvgC-zBwdVsH0GtHZxWY",
+    "name": "projects/15712607426791080135/files/773d5425c06c4a0c89297185f48805ca"
+  },
+  "title": "RelaySwitcher Dashboard",
+  "width": "2560"
+}

@@ -91,7 +91,12 @@ export function Select({ value, onChange, options, placeholder = '请选择…',
   return (
     <div className={'rs-select' + (open ? ' open' : '') + (disabled ? ' disabled' : '')} ref={ref} style={style} tabIndex={disabled ? -1 : 0} onKeyDown={onKey}>
       <button type="button" className="rs-select-btn" disabled={disabled} onClick={() => setOpen(o => !o)}>
-        {selected ? <span className="rs-select-label">{selected.label}</span> : <span className="rs-select-ph">{placeholder}</span>}
+        {selected ? (
+          <span className="rs-select-label">
+            {selected.label}
+            {selected.desc && <span className="rs-select-desc">{selected.desc}</span>}
+          </span>
+        ) : <span className="rs-select-ph">{placeholder}</span>}
         <Icon name="chevron" size={14} className={'rs-select-chev' + (open ? ' up' : '')} />
       </button>
       {open && (
@@ -100,7 +105,10 @@ export function Select({ value, onChange, options, placeholder = '请选择…',
           {options.map((o, i) => (
             <div key={o.value} className={'rs-select-opt' + (o.value === value ? ' sel' : '') + (i === hi ? ' hi' : '')}
                  onMouseEnter={() => setHi(i)} onClick={() => pick(o.value)}>
-              {o.label}
+              <span className="rs-select-label">
+                {o.label}
+                {o.desc && <span className="rs-select-desc">{o.desc}</span>}
+              </span>
               {o.value === value && <Icon name="check" size={13} />}
             </div>
           ))}

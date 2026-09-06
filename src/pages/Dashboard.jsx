@@ -171,12 +171,17 @@ export default function Dashboard({ state, refresh, toast, goto }) {
 
       {/* 一键切换 */}
       <div className="card switch-panel">
-        <div className="klabel"><Icon name="bolt" size={12} /> 一键切换 <small>登录态与流量出口,自由组合</small></div>
+        <div className="klabel"><Icon name="bolt" size={12} /> 一键切换 <small>Switch Workflow · 登录态与流量出口自由组合</small></div>
         <div className="switch-grid">
           <div className="step">
             <div className="step-head"><span className="step-num">01</span><span className="step-title">选择账号</span></div>
             <Select value={accountId} onChange={setAccountId} disabled={switching || !accounts.length}
-              options={accounts.map(a => ({ value: a.id, label: a.label + (a.plan ? ' · ' + (planLabel(a.plan) || a.plan) : '') }))}
+              options={accounts.map(a => ({
+                value: a.id,
+                label: a.label,
+                desc: [a.email, a.plan ? planLabel(a.plan) || a.plan : null,
+                       a.hasRefreshToken ? '可续期' : '一次性'].filter(Boolean).join(' · ')
+              }))}
               emptyText="还没有账号 — 去「账号」页导入" placeholder="选择账号…" />
             {!accounts.length && <div className="muted" style={{ marginTop: 8 }}>
               <span style={{ color: 'var(--gold-hover)', cursor: 'pointer' }} onClick={() => goto('accounts')}>去导入账号 →</span>
@@ -185,7 +190,11 @@ export default function Dashboard({ state, refresh, toast, goto }) {
           <div className="step">
             <div className="step-head"><span className="step-num">02</span><span className="step-title">选择中转站</span></div>
             <Select value={relayId} onChange={setRelayId} disabled={switching || !relays.length}
-              options={relays.map(r => ({ value: r.id, label: r.name + ' · ' + r.baseUrl }))}
+              options={relays.map(r => ({
+                value: r.id,
+                label: r.name,
+                desc: [r.baseUrl, r.lastTest ? (r.lastTest.ok ? r.lastTest.ms + 'ms' : '不通') : '未测试'].join(' · ')
+              }))}
               emptyText="还没有中转站 — 去「中转站」页添加" placeholder="选择中转站…" />
             {!relays.length && <div className="muted" style={{ marginTop: 8 }}>
               <span style={{ color: 'var(--gold-hover)', cursor: 'pointer' }} onClick={() => goto('relays')}>去添加中转站 →</span>
@@ -254,7 +263,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
 
         <div className="logbox" ref={logRef}>
           {log.length === 0 && !switching && (
-            <span className="gold">$ 就绪 — 备份当前配置 → 写入登录态 → 流量指向中转站 → 部署模型目录 → 校验</span>
+            <span className="gold">$ 等待路由切换指令 — 备份当前配置 → 中转站预检 → token 预刷新 → 写入登录态 → 指向中转站 → 校验</span>
           )}
           {log.map((l, i) => (
             <div key={i} className="lstep">

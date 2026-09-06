@@ -10,6 +10,10 @@ const { mergeCustomModels } = require('./lib/catalog-merge');
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
 
+// 禁用 GPU 硬件加速:本应用是纯表单 UI,零收益;而 GPU 合成进程崩溃会导致整窗黑屏
+// (实测日志出现过 GPU process exited unexpectedly),禁用后直接消灭这条黑屏路径
+app.disableHardwareAcceleration();
+
 let win = null;
 let store = null;
 
@@ -540,6 +544,11 @@ app.whenReady().then(() => {
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.once('ready-to-show', () => win.show());
+  // 渲染进程异常诊断:黑屏/崩溃时日志里留下原因,不再靠猜
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[renderer-gone]', details.reason, details.exitCode);
+  });
+  win.webContents.on('unresponsive', () => console.error('[renderer-unresponsive]'));
 });
 
 app.on('window-all-closed', () => app.quit());

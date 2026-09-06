@@ -248,34 +248,38 @@ export default function Settings({ state, refresh, toast }) {
         </div>
       </div>
 
-      {/* 关于与更新 */}
+      {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐) */}
       <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
-        <div className="klabel"><Icon name="plus" size={12} style={{ color: 'var(--gold)' }} /> 关于与手动更新 <small>v{appVersion}</small></div>
-        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-          <div className="field-inline">
-            <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>当前版本:</span>
-            <b className="mono">{appVersion || 'loading...'}</b>
+        <div className="klabel"><Icon name="logo" size={12} style={{ color: 'var(--gold)' }} /> About & Update <small>关于与更新</small></div>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div className="row" style={{ gap: 12 }}>
+            <div className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}><Icon name="logo" size={15} /></div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>RelaySwitcher <span className="badge gold mono">v{appVersion || '…'}</span></div>
+              <div className="muted" style={{ marginTop: 3 }}>Codex 账号 × 中转站 一键切换器</div>
+            </div>
           </div>
           <button className="btn btn-sm" onClick={checkUpdateManually} disabled={updateBusy}>
-            <Icon name="refresh" size={11} /> 检查更新
+            {updateBusy ? <><Spinner size={11} /> 检查中…</> : <><Icon name="refresh" size={11} /> 检查更新</>}
           </button>
         </div>
-        {updateBusy && <Spinner size={12} style={{ marginTop: 8 }} />}
         {updateResult && updateResult.found && (
-          <div style={{ marginTop: 12, padding: 10, background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.3)', borderRadius: '12px', fontSize: '12px' }}>
-            <b style={{ color: 'var(--ok)' }}>发现新版本 v{updateResult.version}!</b>
-            <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="parse-preview" style={{ marginTop: 12 }}>
+            <div className="pv-title"><Icon name="download" size={14} style={{ color: 'var(--ok)' }} /> 发现新版本 v{updateResult.version}</div>
+            <div className="row" style={{ marginTop: 6 }}>
               <button className="btn btn-sm btn-gold" onClick={downloadAndInstall}>
                 <Icon name="download" size={11} /> 立即下载安装
               </button>
-              <span className="muted">或</span>
-              <a href={updateResult.url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-hover)', textDecoration: 'none', fontSize: '11px' }}>直接下载 exe</a>
+              <a href={updateResult.url} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 11, textDecoration: 'none' }}>
+                直接下载 exe(慢可加 ghproxy.net 前缀)
+              </a>
             </div>
           </div>
         )}
         {updateResult && !updateResult.found && (
-          <div className="muted" style={{ marginTop: 8 }}>
-            当前已是最新版本 ({updateResult.error || '无更新'})
+          <div className="row" style={{ marginTop: 10 }}>
+            <Icon name="check" size={13} style={{ color: 'var(--ok)' }} />
+            <span className="muted">当前已是最新版本{updateResult.version ? ` (服务端 v${updateResult.version})` : ''}</span>
           </div>
         )}
       </div>

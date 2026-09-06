@@ -6,3 +6,4 @@ dist/
 .DS_Store
 Thumbs.db
 build/.icon-render*.html
+designs/stitch-key.txt

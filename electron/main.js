@@ -547,7 +547,20 @@ app.whenReady().then(() => {
   registerIpc();
   ensureImageGenSidecar();
 
-  if (SMOKE) { smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); }); return; }
+  if (SMOKE) {
+    // 打包前静态审计:全文件 import 检查(防 Spinner/catalogBundled 类崩溃)
+    try {
+      require('child_process').execSync('node lint-imports.js', { cwd: app.getAppPath(), stdio: 'pipe' });
+      console.log('  ✓ import 审计通过');
+    } catch (e) {
+      console.error(String(e.stderr || e.message));
+      console.error('SMOKE RESULT: import 审计失败,拒绝发布');
+      app.exit(1);
+      return;
+    }
+    smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); });
+    return;
+  }
 
   // ---- 自动化(US-06):一切用户不该手点的都后台静默做 ----
   const notifyStateChanged = () => {

@@ -4,7 +4,7 @@ import Accounts from './pages/Accounts.jsx';
 import Relays from './pages/Relays.jsx';
 import Backups from './pages/Backups.jsx';
 import Settings from './pages/Settings.jsx';
-import { Icon } from './components/ui.jsx';
+import { Icon, Spinner } from './components/ui.jsx';
 import TitleBar from './components/TitleBar.jsx';
 
 const NAV = [

@@ -10,10 +10,6 @@ const { mergeCustomModels } = require('./lib/catalog-merge');
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
 
-// 禁用 GPU 硬件加速:本应用是纯表单 UI,零收益;而 GPU 合成进程崩溃会导致整窗黑屏
-// (实测日志出现过 GPU process exited unexpectedly),禁用后直接消灭这条黑屏路径
-app.disableHardwareAcceleration();
-
 let win = null;
 let store = null;
 

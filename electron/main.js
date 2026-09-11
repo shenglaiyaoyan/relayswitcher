@@ -6,10 +6,13 @@ const { createStore } = require('./lib/store');
 const codex = require('./lib/codex');
 const { extractToFile } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
-const { startSidecar, stopSidecar } = require('./lib/imagegen-sidecar');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
+
+// 禁用 GPU 硬件加速:本应用是纯表单 UI,零收益;而 GPU 合成进程崩溃会导致整窗黑屏
+// (实测日志出现过 GPU process exited unexpectedly),禁用后直接消灭这条黑屏路径
+app.disableHardwareAcceleration();
 
 let win = null;
 let store = null;
@@ -154,16 +157,9 @@ async function doSwitch(opts, event) {
     }
   }
 
-  // 图像生成 sidecar 活跃时,base_url 走 sidecar(透明注入 tools);否则直连中转站
-  const relayForSwitch = { ...relay };
-  if (imageGenServer && imageGenServer.listening) {
-    relayForSwitch.baseUrl = `http://127.0.0.1:${s.imageGenPort || 21683}/v1`;
-    sendStep('画图 sidecar', true, `base_url → ${relayForSwitch.baseUrl} → ${relay.baseUrl}(tools 自动注入)`);
-  }
-
   return codex.applySwitch({
     home: codexHome(),
-    account, relay: relayForSwitch,
+    account, relay,
     model: opts.model || 'gpt-6-astra',
     contextWindow: opts.contextWindow != null ? opts.contextWindow : s.contextWindow,
     fastMode: opts.fastMode != null ? opts.fastMode : s.fastMode,
@@ -348,17 +344,7 @@ function registerIpc() {
   });
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
-  ipcMain.handle('rs:saveSettings', async (_e, s) => {
-    const prev = store.getSettings();
-    const out = store.saveSettings(s);
-    // sidecar 状态变化时重启/停掉
-    const changed = prev.imageGenEnabled !== s.imageGenEnabled || prev.imageGenPort !== s.imageGenPort;
-    if (changed) {
-      await shutdownImageGenSidecar();
-      await ensureImageGenSidecar();
-    }
-    return getState();
-  });
+  ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
 }
 
 /* ---------------- 冒烟自检(无窗口): 临时 CODEX_HOME 全流程演练 ---------------- */
@@ -505,47 +491,11 @@ async function smoke() {
   app.exit(fail ? 1 : 0);
 }
 
-/* ---------------- 图像生成 sidecar(US-07)---------------- */
-let imageGenServer = null;
-
-async function ensureImageGenSidecar() {
-  const s = store.getSettings();
-  if (imageGenServer) return true;
-  if (!s.imageGenEnabled) return false;
-  const relay = store.listRelays()[0];
-  if (!relay) return false;
-  try {
-    imageGenServer = await startSidecar({
-      port: s.imageGenPort || 21683,
-      targetBaseUrl: relay.baseUrl,
-      onLog: (name, ok, detail) => {
-        if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
-      }
-    });
-    console.log('[imagegen-sidecar] listening on', s.imageGenPort || 21683, '→', relay.baseUrl);
-    return true;
-  } catch (e) {
-    console.error('[imagegen-sidecar] failed:', e.message, '— 降级直连');
-    imageGenServer = null;
-    return false;
-  }
-}
-
-async function shutdownImageGenSidecar() {
-  if (imageGenServer) {
-    await stopSidecar(imageGenServer);
-    imageGenServer = null;
-  }
-}
-
-app.on('will-quit', () => shutdownImageGenSidecar());
-
 /* ---------------- App 生命周期 ---------------- */
 app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
   registerIpc();
-  ensureImageGenSidecar();
 
   if (SMOKE) {
     // 打包前静态审计:全文件 import 检查(防 Spinner/catalogBundled 类崩溃)

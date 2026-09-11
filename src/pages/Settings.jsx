@@ -83,8 +83,6 @@ export default function Settings({ state, refresh, toast }) {
         catalogFileName: form.catalogFileName.trim() || 'relayswitcher-model-catalog.json',
         catalogEnabled: form.catalogEnabled, fastMode: form.fastMode,
         pruneLocalProviders: !!form.pruneLocalProviders,
-        imageGenEnabled: !!form.imageGenEnabled,
-        imageGenPort: Number(form.imageGenPort) || 21683,
         contextWindow: Number(form.contextWindow) || 872000
       });
       toast('设置已保存', 'ok');
@@ -216,27 +214,6 @@ export default function Settings({ state, refresh, toast }) {
           </Field>
         </>}
       </Modal>
-
-      {/* 图像生成 sidecar(US-07) */}
-      <div className="card" style={{ marginBottom: 16, borderColor: 'rgba(74, 222, 128, 0.2)' }}>
-        <div className="klabel"><Icon name="dash" size={12} style={{ color: 'var(--ok)' }} /> Image Gen <small>图像生成 sidecar — 画图工具自动注入</small></div>
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)', flex: 1 }}>
-            启用画图 sidecar
-            <span className={'dot ' + (form.imageGenEnabled ? 'ok' : 'idle')} title={form.imageGenEnabled ? 'sidecar 运行中' : '未启用'} />
-            <Toggle on={!!form.imageGenEnabled} onChange={v => setForm({ ...form, imageGenEnabled: v })} />
-          </div>
-          <div className="field-inline">
-            端口 <input type="number" style={{ width: 80 }} value={form.imageGenPort || 21683}
-                        onChange={e => setForm({ ...form, imageGenPort: Number(e.target.value) || 21683 })} />
-          </div>
-        </div>
-        <div className="muted" style={{ marginTop: 8 }}>
-          切换时 base_url 指向 <span className="mono">http://127.0.0.1:{form.imageGenPort || 21683}/v1</span>(sidecar)→ 中转站;
-          sidecar 自动向 responses 请求注入 <span className="mono">image_generation</span> 工具,Pro 号即可画图。
-          关闭时直连中转站(画图不可用,对话不受影响)。图像按张计费。
-        </div>
-      </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>仪表盘的初始选项</small></div>

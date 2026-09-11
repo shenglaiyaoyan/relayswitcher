@@ -499,14 +499,17 @@ app.whenReady().then(() => {
 
   if (SMOKE) {
     // 打包前静态审计:全文件 import 检查(防 Spinner/catalogBundled 类崩溃)
-    try {
-      require('child_process').execSync('node lint-imports.js', { cwd: app.getAppPath(), stdio: 'pipe' });
-      console.log('  ✓ import 审计通过');
-    } catch (e) {
-      console.error(String(e.stderr || e.message));
-      console.error('SMOKE RESULT: import 审计失败,拒绝发布');
-      app.exit(1);
-      return;
+    // 打包版跳过(lint-imports.js 不在 files 列表里,构建时已检查过)
+    if (!app.isPackaged) {
+      try {
+        require('child_process').execSync('node lint-imports.js', { cwd: app.getAppPath(), stdio: 'pipe' });
+        console.log('  ✓ import 审计通过');
+      } catch (e) {
+        console.error(String(e.stderr || e.message));
+        console.error('SMOKE RESULT: import 审计失败,拒绝发布');
+        app.exit(1);
+        return;
+      }
     }
     smoke().catch(e => { console.error('SMOKE CRASH:', e); app.exit(1); });
     return;

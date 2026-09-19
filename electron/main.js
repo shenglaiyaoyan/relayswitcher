@@ -5,6 +5,8 @@ const fs = require('fs');
 const { createStore } = require('./lib/store');
 const codex = require('./lib/codex');
 const { extractTokenError } = require('./lib/oauth-errors');
+const { findRivalProcesses } = require('./lib/rival-guard');
+const { diffCatalogSlugs } = require('./lib/catalog-diff');
 const { extractToFile } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
 
@@ -133,13 +135,20 @@ async function doSwitch(opts, event) {
   };
 
   // 预检与 token 预刷新并行(bench 实测本地计算均 <2ms,切换耗时全在网络:
-  // 两步互不依赖,串行最坏 3s+20s 白等,并行后总耗时 = max(两步))
-  const [probe, refreshed] = await Promise.all([
+  // 三步互不依赖,串行最坏 3s+20s 白等,并行后总耗时 = max(三步))
+  const [rivals, probe, refreshed] = await Promise.all([
+    detectRivalTools(),
     probeRelay(relay),
     account.tokens.refresh_token
       ? refreshAccount(opts.accountId).catch(() => null)
       : Promise.resolve(null)
   ]);
+  if (rivals.running) {
+    sendStep('竞品工具检测', false,
+      `检测到 ${rivals.tools.map(t => t.name).join(' / ')} 正在运行 — 此类工具会在运行时回写 Codex 配置,可能覆盖切换结果,建议先退出(已继续切换,可回滚)`);
+  } else {
+    sendStep('竞品工具检测', true, '未发现 CockpitTools / cc-switch / CLIProxyAPI');
+  }
   if (probe.ok) {
     sendStep('中转站预检', true, `连通正常(${probe.ms}ms,HTTP ${probe.status})`);
   } else {
@@ -240,6 +249,26 @@ async function detectCodexRunning() {
   });
 }
 
+/* 竞品工具检测(FEAT-002): CockpitTools / cc-switch / CLIProxyAPI 会回写 Codex 配置 */
+async function detectRivalTools() {
+  return new Promise((resolve) => {
+    const { execFile } = require('child_process');
+    execFile('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true }, (err, stdout) => {
+      if (err) return resolve({ running: false, tools: [] });
+      const tools = findRivalProcesses(stdout);
+      resolve({ running: tools.length > 0, tools });
+    });
+  });
+}
+
+/* 一键止停 Codex(US-07): 强杀进程树后复查,以复查结果为准 */
+async function stopCodexRunning() {
+  const { execFile } = require('child_process');
+  await new Promise((res) => execFile('taskkill', ['/IM', 'codex.exe', '/F', '/T'], { windowsHide: true }, () => res()));
+  const d = await detectCodexRunning();
+  return { ok: !d.running, running: d.running };
+}
+
 /* ---------------- IPC ---------------- */
 function registerIpc() {
   ipcMain.on('rs:win', (_e, cmd) => {
@@ -256,8 +285,10 @@ function registerIpc() {
   ipcMain.handle('rs:deleteRelay', (_e, id) => { store.deleteRelay(id); return getState(); });
   ipcMain.handle('rs:testRelay', (_e, id) => testRelay(id));
   ipcMain.handle('rs:switch', (_e, opts) => doSwitch(opts));
-  // Codex 检测
+  // Codex 检测 + 一键止停(US-07) + 竞品工具检测(FEAT-002)
   ipcMain.handle('rs:detectCodex', () => detectCodexRunning());
+  ipcMain.handle('rs:stopCodex', () => stopCodexRunning());
+  ipcMain.handle('rs:detectRivals', () => detectRivalTools());
   // 自动更新(仅手动触发;检测走 GitHub API,下载由 UI 用浏览器完成)
   ipcMain.handle('rs:checkUpdate', () => checkForUpdates());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
@@ -289,7 +320,11 @@ function registerIpc() {
     if (best) {
       try {
         const c = JSON.parse(fs.readFileSync(best.p, 'utf8'));
-        info.extracted = { file: path.basename(best.p), modelCount: c.models.length, time: new Date(best.mt).toISOString() };
+        info.extracted = { file: path.basename(best.p), modelCount: c.models.length, time: new Date(best.mtime).toISOString() };
+        try {
+          const builtinSlugs = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8')).models.map(m => m.slug);
+          info.catalogDiff = diffCatalogSlugs(builtinSlugs, c.models.map(m => m.slug));
+        } catch { /* 对比失败不展示 */ }
       } catch { info.extracted = { file: path.basename(best.p), error: '解析失败' }; }
     }
     try {
@@ -338,7 +373,7 @@ function registerIpc() {
   });
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
-  ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); return getState(); });
+  ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); applyOpenAtLogin(); return getState(); });
 }
 
 /* ---------------- 冒烟自检(无窗口): 临时 CODEX_HOME 全流程演练 ---------------- */
@@ -485,6 +520,31 @@ async function smoke() {
   app.exit(fail ? 1 : 0);
 }
 
+/* ---------------- 托盘常驻(US-08): 关窗最小化 + 开机自启 ---------------- */
+let tray = null;
+
+function showMainWin() {
+  if (win && !win.isDestroyed()) { win.show(); win.focus(); }
+}
+
+function createTray(iconPath) {
+  const { Tray, Menu, nativeImage } = require('electron');
+  const img = nativeImage.createFromPath(iconPath);
+  tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
+  tray.setToolTip('RelaySwitcher — Codex 账号 × 中转站切换器');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '显示主窗口', click: showMainWin },
+    { type: 'separator' },
+    { label: '退出', click: () => app.quit() }
+  ]));
+  tray.on('click', showMainWin);
+}
+
+function applyOpenAtLogin() {
+  // 开机自启仅打包版实际注册(开发模式注册的是 electron.exe,会污染启动项)
+  try { app.setLoginItemSettings({ openAtLogin: !!(app.isPackaged && store && store.getSettings().openAtLogin) }); } catch { /* 系统不支持则忽略 */ }
+}
+
 /* ---------------- App 生命周期 ---------------- */
 app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
@@ -554,6 +614,12 @@ app.whenReady().then(() => {
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.once('ready-to-show', () => win.show());
+  // 托盘常驻 + 关窗最小化 + 开机自启(US-08;默认关窗进托盘,托盘右键退出)
+  applyOpenAtLogin();
+  createTray(iconPath);
+  win.on('close', (e) => {
+    if (!app.quitting && store.getSettings().closeToTray !== false) { e.preventDefault(); win.hide(); }
+  });
   // --capture 模式:完整 IPC 环境下自动截各页(设计管线用,如 #relays/#backups/#settings)
   if (process.argv.includes('--capture')) {
     win.webContents.once('did-finish-load', async () => {
@@ -561,7 +627,7 @@ app.whenReady().then(() => {
         await new Promise(r => setTimeout(r, 1500));
         const outDir = path.join(app.getAppPath(), 'designs', 'captures');
         fs.mkdirSync(outDir, { recursive: true });
-        for (const p of ['relays', 'backups', 'settings']) {
+        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings']) {
           await win.webContents.executeJavaScript(`location.hash = '${p}'`);
           await new Promise(r => setTimeout(r, 900));
           const img = await win.webContents.capturePage();
@@ -579,4 +645,5 @@ app.whenReady().then(() => {
   win.webContents.on('unresponsive', () => console.error('[renderer-unresponsive]'));
 });
 
+app.on('before-quit', () => { app.quitting = true; });
 app.on('window-all-closed', () => app.quit());

@@ -23,6 +23,8 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   const [switching, setSwitching] = useState(false);
   const [done, setDone] = useState(null); // 'ok' | 'bad'
   const [codexWarn, setCodexWarn] = useState(null);
+  const [stopping, setStopping] = useState(false);
+  const [rivalWarn, setRivalWarn] = useState(null);
   const [log, setLog] = useState([]);
   const [lastBackup, setLastBackup] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,6 +55,23 @@ export default function Dashboard({ state, refresh, toast, goto }) {
     return off;
   }, []);
 
+  // 竞品工具检测(FEAT-002): 进页面就查,发现回写类工具常驻警告条
+  useEffect(() => {
+    // 截图/设计管线专用:#dash-demo-warn / #dash-demo-modal 强制展示警告条与弹窗(正常运行不可达)
+    const applyDemo = () => {
+      const h = window.location.hash || '';
+      if (h.includes('demo-warn')) setRivalWarn([{ name: 'CockpitTools', image: 'CockpitTools.exe', pids: ['4012'] }]);
+      if (h.includes('demo-modal')) setCodexWarn({ pids: ['4012', '4013'] });
+    };
+    applyDemo();
+    window.addEventListener('hashchange', applyDemo);
+    return () => window.removeEventListener('hashchange', applyDemo);
+  }, []);
+  useEffect(() => {
+    if ((window.location.hash || '').includes('demo')) return; // demo 态不被真实检测覆盖
+    window.rs.detectRivals().then(r => setRivalWarn(r.running ? r.tools : null)).catch(() => {});
+  }, []);
+
   const manualRefresh = async () => {
     setRefreshing(true);
     await refresh(); await loadBackup();
@@ -72,6 +91,8 @@ export default function Dashboard({ state, refresh, toast, goto }) {
 
   const doSwitch = async () => {
     if (!accountId || !relayId || switching) return;
+    // 竞品工具状态顺手刷新(用户可能刚开了 CockpitTools)
+    window.rs.detectRivals().then(r => setRivalWarn(r.running ? r.tools : null)).catch(() => {});
     // Codex 客户端若在运行,退出时会用内存态覆盖写入 — 先警告
     try {
       const d = await window.rs.detectCodex();
@@ -81,6 +102,20 @@ export default function Dashboard({ state, refresh, toast, goto }) {
       }
     } catch { /* 检测失败不阻塞切换 */ }
     execSwitch();
+  };
+
+  // 一键止停(US-07): 帮用户强杀 Codex 进程树,复查通过后直接继续切换
+  const killAndSwitch = async () => {
+    setStopping(true);
+    try {
+      const r = await window.rs.stopCodex();
+      if (r.ok) {
+        setCodexWarn(null);
+        toast('Codex 已关闭,继续切换', 'ok');
+        execSwitch();
+      } else toast('未能全部关闭(可能无权限),请手动退出后再切换', 'bad');
+    } catch (e) { toast('关闭异常: ' + e.message, 'bad'); }
+    finally { setStopping(false); }
   };
 
   const execSwitch = async () => {
@@ -169,6 +204,18 @@ export default function Dashboard({ state, refresh, toast, goto }) {
         </div>
       </div>
 
+      {/* 竞品工具警告(FEAT-002): 回写类工具与切换互为覆盖 */}
+      {rivalWarn && rivalWarn.length > 0 && (
+        <div className="card rival-banner">
+          <div className="rival-icon-box"><Icon name="alert" size={17} /></div>
+          <div className="grow rival-text">
+            检测到 {rivalWarn.map(t => <span key={t.name} className="rival-tool">{t.name}</span>)} 正在运行 —
+            此类工具会回写 Codex 配置,可能让切换"失效",建议先退出再切换
+          </div>
+          <button className="icon-btn rival-dismiss" title="知道了" onClick={() => setRivalWarn(null)}><Icon name="x" size={14} /></button>
+        </div>
+      )}
+
       {/* 一键切换 */}
       <div className="card switch-panel">
         <div className="klabel"><Icon name="bolt" size={12} /> 一键切换 <small>登录态与流量出口,自由组合</small></div>
@@ -247,8 +294,11 @@ export default function Dashboard({ state, refresh, toast, goto }) {
             </div>
           </div>
           <div className="modal-foot">
-            <button className="btn" onClick={() => setCodexWarn(null)}>我去退出 Codex</button>
-            <button className="btn btn-primary" onClick={() => { setCodexWarn(null); execSwitch(); }}>仍要切换</button>
+            <button className="btn" onClick={() => setCodexWarn(null)} disabled={stopping}>我去手动退出</button>
+            <button className="btn btn-ghost" onClick={() => { setCodexWarn(null); execSwitch(); }} disabled={stopping}>仍要切换</button>
+            <button className="btn btn-primary" onClick={killAndSwitch} disabled={stopping}>
+              {stopping ? <><Spinner size={12} /> 关闭中…</> : '帮我关闭并切换'}
+            </button>
           </div>
         </Modal>
 

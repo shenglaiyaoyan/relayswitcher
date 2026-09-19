@@ -20,7 +20,9 @@ function createStore(userDataDir) {
     fastMode: true,
     contextWindow: 872000,
     pruneLocalProviders: false,
-    catalogMode: 'builtin'
+    catalogMode: 'builtin',
+    closeToTray: true,
+    openAtLogin: false
   }, customModels: []};
 
   function load() {

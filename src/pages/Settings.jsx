@@ -83,6 +83,7 @@ export default function Settings({ state, refresh, toast }) {
         catalogFileName: form.catalogFileName.trim() || 'relayswitcher-model-catalog.json',
         catalogEnabled: form.catalogEnabled, fastMode: form.fastMode,
         pruneLocalProviders: !!form.pruneLocalProviders,
+        closeToTray: form.closeToTray !== false, openAtLogin: !!form.openAtLogin,
         contextWindow: Number(form.contextWindow) || 872000
       });
       toast('设置已保存', 'ok');
@@ -107,6 +108,26 @@ export default function Settings({ state, refresh, toast }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="relay" size={12} /> Provider 标识 <small>{'写入 config.toml 的 [model_providers.<id>]'}</small></div>
         <input type="text" value={form.providerId} onChange={e => setForm({ ...form, providerId: e.target.value })} />
+      </div>
+
+      {/* 桌面集成(US-08): 托盘常驻 + 开机自启(v1.7 设计稿:选项列表形态) */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="klabel"><Icon name="settings" size={12} /> 桌面集成 <small>托盘 · 开机自启</small></div>
+        <div className="opt-list-row">
+          <div className="opt-label">
+            关闭窗口时最小化到托盘
+            <span className="opt-note">后台保持 token 自动保养</span>
+          </div>
+          <Toggle on={form.closeToTray !== false} onChange={v => setForm({ ...form, closeToTray: v })} />
+        </div>
+        <div className="opt-list-row">
+          <div className="opt-label">
+            开机自动启动
+            <span className="opt-note">开机即驻留托盘</span>
+          </div>
+          <Toggle on={!!form.openAtLogin} onChange={v => setForm({ ...form, openAtLogin: v })} />
+        </div>
+        <div className="muted" style={{ marginTop: 8, fontSize: 11 }}>托盘图标右键可显示主窗口或退出;开机自启仅打包版实际注册</div>
       </div>
 
       <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
@@ -150,6 +171,26 @@ export default function Settings({ state, refresh, toast }) {
             <button className="btn btn-sm btn-gold" disabled={extracting} onClick={doExtract} title="从本机 codex.exe 二进制提取最新目录,官方出新模型后点这里即可同步">
               {extracting ? <><Spinner size={11} /> 提取中…</> : <><Icon name="download" size={12} /> 从本机 Codex 提取</>}
             </button>
+          </div>
+        )}
+
+        {/* 目录版本对比(US-09): 本机提取 vs 内置快照(v1.7 设计稿排版) */}
+        {catInfo && catInfo.extracted && !catInfo.extracted.error && catInfo.catalogDiff
+          && (catInfo.catalogDiff.added.length > 0 || catInfo.catalogDiff.removed.length > 0) && (
+          <div className="parse-preview cat-diff" style={{ marginBottom: 10 }}>
+            <div className="pv-title"><Icon name="file" size={14} /> 本机提取 vs 内置快照</div>
+            {catInfo.catalogDiff.added.length > 0 && (
+              <div className="pv-line">
+                <span className="badge ok">+{catInfo.catalogDiff.added.length} 新增</span>
+                <span>提取目录多出的模型(官方新出): <b className="m-added">{catInfo.catalogDiff.added.join('、')}</b></span>
+              </div>
+            )}
+            {catInfo.catalogDiff.removed.length > 0 && (
+              <div className="pv-line">
+                <span className="badge missing">-{catInfo.catalogDiff.removed.length} 缺失</span>
+                <span>仅内置快照有: <b className="m-missing">{catInfo.catalogDiff.removed.join('、')}</b></span>
+              </div>
+            )}
           </div>
         )}
         {extractReport && (

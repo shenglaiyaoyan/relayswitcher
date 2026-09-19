@@ -334,6 +334,33 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .parse-preview .pv-line { color: var(--txt-2); display: flex; gap: 8px; align-items: center; }
 .parse-preview .pv-line b { color: var(--txt-1); font-weight: 500; }
 
+/* 竞品工具警告条(FEAT-002,v1.7 Superdesign 设计稿:琥珀警告形态 + 工具名 chip 化) */
+.rival-banner { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; padding: 12px 20px; border-color: rgba(251, 191, 36, .3); background: rgba(251, 191, 36, .03); }
+.rival-icon-box { width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .2); color: var(--warn); }
+.rival-text { font-size: 13px; color: var(--txt-2); line-height: 1.65; }
+.rival-tool { display: inline-block; padding: 1px 6px; margin: 0 2px; border-radius: 6px; background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .2); color: var(--warn); font-weight: 600; font-size: 12px; }
+.icon-btn.rival-dismiss:hover { color: var(--bad); background: rgba(248, 113, 113, .1); border-color: transparent; }
+
+/* 幽灵按钮(逃生口降级:无边框无底,hover 提字)与模态主按钮静止辉光(设计稿三按钮层级) */
+.btn-ghost { border-color: transparent; background: transparent; color: var(--txt-3); font-weight: 500; }
+.btn-ghost:hover:not(:disabled) { border-color: transparent; background: transparent; color: var(--txt-2); }
+.modal-foot .btn-primary { box-shadow: 0 8px 24px rgba(245, 245, 244, 0.15); }
+.modal-foot .btn-primary:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(232, 213, 183, 0.25); }
+
+/* 设置页选项列表(v1.7 设计稿:标签+注释在左,开关在右,行间细分隔线) */
+.opt-list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+.opt-list-row + .opt-list-row { border-top: 1px solid rgba(255, 255, 255, 0.04); }
+.opt-label { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--txt-2); }
+.opt-note { font-size: 11px; color: var(--txt-3); }
+
+/* 目录对比区块(v1.7 设计稿:徽章+描述同基线,模型名 mono 按语义着色) */
+.cat-diff .pv-title { color: var(--gold-light); }
+.cat-diff .pv-line { padding: 2px 0; }
+.cat-diff .badge { padding: 1px 8px; }
+.cat-diff .badge.missing { color: var(--bad); border-color: rgba(248, 113, 113, .25); background: rgba(248, 113, 113, .04); }
+.cat-diff .m-added { color: var(--ok); font-family: 'JetBrains Mono', monospace; font-weight: 400; letter-spacing: -0.01em; }
+.cat-diff .m-missing { color: var(--bad); opacity: .8; font-family: 'JetBrains Mono', monospace; font-weight: 400; letter-spacing: -0.01em; }
+
 /* 警告模态(Superdesign 设计稿:图标框 + 副标题 + info 内嵌卡) */
 .warn-modal-head { display: flex; align-items: center; gap: 16px; }
 .warn-icon-box {

@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('rs', {
   testRelay: (id) => ipcRenderer.invoke('rs:testRelay', id),
   doSwitch: (opts) => ipcRenderer.invoke('rs:switch', opts),
   detectCodex: () => ipcRenderer.invoke('rs:detectCodex'),
+  stopCodex: () => ipcRenderer.invoke('rs:stopCodex'),
+  detectRivals: () => ipcRenderer.invoke('rs:detectRivals'),
   checkUpdate: () => ipcRenderer.invoke('rs:checkUpdate'),
   quitAndInstall: () => ipcRenderer.invoke('rs:quitAndInstall'),
   getVersion: () => ipcRenderer.invoke('rs:getVersion'),

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.7.0 (2026-09-19) — P1 路线图:一键止停 · 托盘常驻 · 目录对比 · 竞品防护
+
+- **一键止停 Codex(US-07)**:切换前检测到 Codex 运行的警告弹窗,新增「帮我关闭并切换」— 主进程 `taskkill /T` 强杀进程树并复查,通过后直接继续切换,不用再手动退托盘
+- **托盘常驻 + 开机自启 + 关窗最小化(US-08)**:托盘图标(点击显示/右键退出);默认关窗进托盘后台保持 token 自动保养;设置页「桌面集成」卡片两个开关;开机自启仅打包版注册 `setLoginItemSettings`
+- **目录版本对比(US-09)**:设置页目录源下方新增「本机提取 vs 内置快照」对比块 — 官方出新模型时一眼看出提取目录多了什么(绿)+ 缺了什么(红),提示切换目录源
+- **竞品工具防护(FEAT-002)**:仪表盘检测 CockpitTools / cc-switch / CLIProxyAPI 进程,运行中常驻琥珀警告条;切换日志新增「竞品工具检测」步骤 — 配置"莫名回退"的元凶提前亮出
+- **UI**:全部新元素经 Superdesign 布局锁定 replace 迭代(设计稿 v2):警告条琥珀形态 + 工具名 chip 化;弹窗三按钮层级(主操作辉光/逃生口 ghost 降级);设置页选项列表形态;对比块 mono 语义着色
+- 新增 `electron/lib/rival-guard.js` 与 `electron/lib/catalog-diff.js` 纯函数模块,单测 7 例
+
 ## v1.6.4 (2026-09-19) — token 刷新失败报错修复
 
 - **对象形态 error 兼容**:`auth.openai.com /oauth/token` 实测会返回 `{"error":{message,type,code}}` 对象形态(如 401 `token_expired`),旧逻辑直接拼接产生 `[object Object]`,且 `token_expired` 被误判为"请检查网络"

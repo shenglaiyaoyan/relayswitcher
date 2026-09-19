@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "targets": {
+    "dash": {
+      "route": "#dash",
+      "projectId": "a805413d-9409-4c70-a497-892913fbcd39",
+      "activeDraftId": "cb72584f-757f-4285-b80c-e6d368da3275",
+      "baselineDraftId": "cb72584f-757f-4285-b80c-e6d368da3275",
+      "baselineVersion": "v2",
+      "branchDescription": "v1.7 布局锁定 replace 迭代:竞品警告条琥珀形态 + Codex 弹窗三按钮层级(ghost 逃生口)",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/pages/Dashboard.jsx",
+        "src/components/ui.jsx",
+        "src/App.jsx",
+        "src/components/TitleBar.jsx",
+        "src/styles.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "bfbcda65870127f1",
+        "src/pages/Dashboard.jsx": "fdd8ab4276810e0e",
+        "src/components/ui.jsx": "b3e9f213d24cac6b",
+        "src/App.jsx": "1dba067c58fb32aa",
+        "src/components/TitleBar.jsx": "a4cf7afeccce0bbe",
+        "src/styles.css": "39baf2f317ac3104"
+      },
+      "references": {
+        "rs-dash-baseline-v1.7": "e38fb5f5-24ea-4c3b-87b9-9dae6fbf22ea",
+        "rs-dash-rival-warn-v1.7": "4d9f1137-13c5-4d12-8572-477743357e5d",
+        "rs-dash-codex-modal-v1.7": "d932e952-b523-4c61-be13-2dd15676c8e8"
+      }
+    },
+    "settings": {
+      "route": "#settings",
+      "projectId": "a805413d-9409-4c70-a497-892913fbcd39",
+      "activeDraftId": "4a9266be-7ff1-4e28-b686-0c2688cf63f3",
+      "baselineDraftId": "4a9266be-7ff1-4e28-b686-0c2688cf63f3",
+      "baselineVersion": "v2",
+      "branchDescription": "v1.7 布局锁定 replace 迭代:桌面集成选项列表形态 + 目录对比排版(mono 语义着色)",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/pages/Settings.jsx",
+        "src/components/ui.jsx",
+        "src/App.jsx",
+        "src/components/TitleBar.jsx",
+        "src/styles.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "bfbcda65870127f1",
+        "src/pages/Settings.jsx": "75e1a0b45faaf0a6",
+        "src/components/ui.jsx": "b3e9f213d24cac6b",
+        "src/App.jsx": "1dba067c58fb32aa",
+        "src/components/TitleBar.jsx": "a4cf7afeccce0bbe",
+        "src/styles.css": "39baf2f317ac3104"
+      },
+      "references": {
+        "rs-settings-v1.7": "83deaba4-839e-46a1-8720-9ddb15c4dd45"
+      }
+    }
+  }
+}

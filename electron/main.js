@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { createStore } = require('./lib/store');
 const codex = require('./lib/codex');
+const { extractTokenError } = require('./lib/oauth-errors');
 const { extractToFile } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
 
@@ -210,10 +211,7 @@ async function refreshAccount(id) {
     return { ok: false, error: '网络错误: ' + e.message + ' — 刷新需要能访问 auth.openai.com(挂代理即可,应用走系统代理)' };
   }
   if (!resp.ok) {
-    const err = j.error || ('HTTP ' + resp.status);
-    const hint = err === 'invalid_grant' ? 'refresh_token 已失效(多为渠道共享池被他人刷新轮换),需重新获取账号'
-      : resp.status >= 500 ? 'OpenAI 服务端错误,稍后再试' : '请检查网络(需能访问 auth.openai.com)';
-    return { ok: false, error: err + ' — ' + hint };
+    return { ok: false, error: extractTokenError(j, resp.status) };
   }
   const newTokens = {
     id_token: j.id_token || t.id_token,

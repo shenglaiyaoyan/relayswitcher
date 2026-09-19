@@ -258,13 +258,7 @@ export default function Settings({ state, refresh, toast }) {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>仪表盘的初始选项</small></div>
-        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)' }}>
-            默认开启快速模式 <span className="mono muted">service_tier=priority</span>
-            <Toggle on={form.fastMode} onChange={v => setForm({ ...form, fastMode: v })} />
-          </div>
-        </div>
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="row" style={{ marginTop: 4 }}>
           <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>默认上下文窗口</span>
           <input type="number" style={{ width: 130 }} value={form.contextWindow} step={1000}
                  onChange={e => setForm({ ...form, contextWindow: e.target.value })} />

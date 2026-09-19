@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.7.2 (2026-09-20) — 移除快速模式 UI(归还 Codex 客户端)
+
+- **仪表盘**:删除切换面板的「快速模式 priority」开关与状态卡的快速模式显示;状态行重排为三卡(Account / Relay / Model),窗口值折进 Model 卡
+- **设置**:删除「切换默认值」卡片里的默认开启快速模式开关
+- 快速模式由 Codex 客户端内自己开关(目录 service_tiers 元数据已支持);RS 不再在界面层干预,切换写入行为不变
+
 ## v1.7.1 (2026-09-19) — 修复 Insider 版 Windows 打开白屏
 
 - **根因**:Electron 33 在 win32 10.0.26200(Windows 11 Insider Canary)上渲染进程原生崩溃(exit 143,GPU/network 进程同崩),最小 20 行窗口同样复现 — 与业务代码无关

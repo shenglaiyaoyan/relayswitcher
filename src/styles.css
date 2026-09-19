@@ -138,8 +138,8 @@ body {
 .card.flash-ok { animation: flashOk 1.2s var(--ease); }
 @keyframes flashOk { 0% { border-color: rgba(74, 222, 128, .8); box-shadow: 0 0 30px rgba(74, 222, 128, .15); } 100% { border-color: var(--line); } }
 
-/* 状态卡行 */
-.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 16px; }
+/* 状态卡行(三卡:Account/Relay/Model;快速模式归 Codex 客户端管,v1.7.2 移除其 UI) */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-bottom: 16px; }
 .stat-main { font-size: 14.5px; font-weight: 600; margin: 3px 0 6px; word-break: break-all; display: flex; align-items: center; gap: 7px; }
 .stat-sub { font-size: 12px; color: var(--txt-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
@@ -149,6 +149,9 @@ body {
 }
 .badge.gold { color: var(--gold-hover); border-color: rgba(167, 139, 113, .45); background: rgba(167, 139, 113, .1); }
 .badge.ok { color: var(--ok); border-color: rgba(74, 222, 128, .35); background: rgba(74, 222, 128, .08); }
+
+/* 状态卡副行静音信息 chip(设计稿 v3:窗口值折进 Model 卡) */
+.stat-chip { font-size: 10.5px; font-weight: 500; color: var(--txt-3); background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); padding: 2.5px 8px; border-radius: 999px; }
 
 /* 悬停浮层提示(设计稿 group/tip 模式) */
 .tip { position: relative; }

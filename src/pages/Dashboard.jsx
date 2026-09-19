@@ -19,7 +19,6 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   const [relayId, setRelayId] = useState('');
   const [model, setModel] = useState('gpt-6-astra');
   const [ctx, setCtx] = useState(872000);
-  const [fastMode, setFastMode] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [done, setDone] = useState(null); // 'ok' | 'bad'
   const [codexWarn, setCodexWarn] = useState(null);
@@ -34,7 +33,6 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   useEffect(() => {
     setModel(status.model || 'gpt-6-astra');
     setCtx(status.contextWindow || settings.contextWindow || 872000);
-    setFastMode(status.serviceTier ? status.serviceTier === 'priority' : !!settings.fastMode);
   }, []); // eslint-disable-line
 
   useEffect(() => {
@@ -122,7 +120,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
     if (!accountId || !relayId || switching) return;
     setSwitching(true); setDone(null); setLog([]);
     try {
-      const r = await window.rs.doSwitch({ accountId, relayId, model: model.trim(), contextWindow: Number(ctx) || null, fastMode });
+      const r = await window.rs.doSwitch({ accountId, relayId, model: model.trim(), contextWindow: Number(ctx) || null });
       setDone(r.ok ? 'ok' : 'bad');
       if (r.ok) toast('切换完成 — 重启 Codex 客户端后生效', 'ok');
       else toast('切换失败: ' + r.error, 'bad');
@@ -190,17 +188,10 @@ export default function Dashboard({ state, refresh, toast, goto }) {
         <div className="card">
           <div className="klabel"><Icon name="bolt" size={12} /> Model</div>
           <div className="stat-main ellipsis">{status.model || '—'}</div>
-          <div className="stat-sub"><span className="muted">档位由模型目录定义</span>
-            {status.catalog && <span className="badge gold">目录已接管</span>}</div>
-        </div>
-        <div className="card">
-          <div className="klabel"><Icon name="dash" size={12} /> Status</div>
-          <div className="stat-main">
-            <span className={'badge ' + (status.serviceTier === 'priority' ? 'ok' : '')} style={{ padding: '4px 11px' }}>
-              <Icon name="bolt" size={11} /> 快速模式 {status.serviceTier === 'priority' ? 'ON' : 'OFF'}
-            </span>
+          <div className="stat-sub">
+            {status.catalog && <span className="badge gold">目录已接管</span>}
+            {status.contextWindow ? <span className="stat-chip">窗口 {fmtK(status.contextWindow)}</span> : null}
           </div>
-          <div className="stat-sub"><span className="muted">窗口 {fmtK(status.contextWindow) || '默认'}</span></div>
         </div>
       </div>
 
@@ -260,10 +251,6 @@ export default function Dashboard({ state, refresh, toast, goto }) {
             {CTX_PRESETS.map(p => (
               <span key={p} className={'chip' + (Number(ctx) === p ? ' on' : '')} onClick={() => !switching && setCtx(p)}>{fmtK(p)}</span>
             ))}
-          </div>
-          <div className="field-inline">
-            快速模式 priority
-            <div className={'switch-toggle' + (fastMode ? ' on' : '') + (switching ? ' disabled' : '')} onClick={() => setFastMode(!fastMode)} />
           </div>
         </div>
 

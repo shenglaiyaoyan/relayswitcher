@@ -1,7 +1,7 @@
 {
   "name": "relayswitcher",
   "productName": "RelaySwitcher",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Codex 账号 × 中转站一键切换器 — OAuth 登录态绑定自建中转,可切换可回滚",
   "author": "RelaySwitcher",
   "license": "MIT",
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "electron": "^33.2.0",
+    "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "vite": "^5.4.11"
   }

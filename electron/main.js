@@ -528,16 +528,18 @@ function showMainWin() {
 }
 
 function createTray(iconPath) {
-  const { Tray, Menu, nativeImage } = require('electron');
-  const img = nativeImage.createFromPath(iconPath);
-  tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
-  tray.setToolTip('RelaySwitcher — Codex 账号 × 中转站切换器');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示主窗口', click: showMainWin },
-    { type: 'separator' },
-    { label: '退出', click: () => app.quit() }
-  ]));
-  tray.on('click', showMainWin);
+  try {
+    const { Tray, Menu, nativeImage } = require('electron');
+    const img = nativeImage.createFromPath(iconPath);
+    tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
+    tray.setToolTip('RelaySwitcher — Codex 账号 × 中转站切换器');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: '显示主窗口', click: showMainWin },
+      { type: 'separator' },
+      { label: '退出', click: () => app.quit() }
+    ]));
+    tray.on('click', showMainWin);
+  } catch (e) { console.error('[tray] 创建失败(不阻塞):', e.message); tray = null; }
 }
 
 function applyOpenAtLogin() {
@@ -643,6 +645,17 @@ app.whenReady().then(() => {
     console.error('[renderer-gone]', details.reason, details.exitCode);
   });
   win.webContents.on('unresponsive', () => console.error('[renderer-unresponsive]'));
+  // 渲染崩溃自愈(2026-09-20 Insider 26200 实测:GPU 子系统首启抽签式崩 143,
+  // 重载一轮落到重启后的健康 GPU 进程即稳定)。与 v1.5.4 黑屏误判无关——那次是
+  // JS 解构 bug,这次是原生层崩溃(无 JS 异常可言)。最多重试 2 次防循环。
+  let crashRetries = 0;
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason !== 'crashed' || win.isDestroyed()) return;
+    if (crashRetries >= 2) { console.error('[renderer-gone] 重试耗尽,保持日志观察'); return; }
+    crashRetries++;
+    console.error('[renderer-gone] 自动重载 ' + crashRetries + '/2');
+    try { win.webContents.reload(); } catch { /* 窗口已毁则不折腾 */ }
+  });
 });
 
 app.on('before-quit', () => { app.quitting = true; });

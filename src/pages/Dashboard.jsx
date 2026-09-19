@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Select, Spinner, Modal, fmtK, planLabel } from '../components/ui.jsx';
 
-const QUICK_MODELS = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
-const DEFAULT_MODELS = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.2'];
 const CTX_PRESETS = [272000, 372000, 872000];
 
 const lifeStr = (ms) => {
@@ -17,7 +15,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   const { accounts, relays, settings, status } = state;
   const [accountId, setAccountId] = useState('');
   const [relayId, setRelayId] = useState('');
-  const [model, setModel] = useState('gpt-6-astra');
+  const [catalogChoice, setCatalogChoice] = useState('official'); // 官方目录 / 中转目录(v1.8.0:切换即切目录)
   const [ctx, setCtx] = useState(872000);
   const [switching, setSwitching] = useState(false);
   const [done, setDone] = useState(null); // 'ok' | 'bad'
@@ -31,7 +29,6 @@ export default function Dashboard({ state, refresh, toast, goto }) {
 
   // 从当前状态同步默认值
   useEffect(() => {
-    setModel(status.model || 'gpt-6-astra');
     setCtx(status.contextWindow || settings.contextWindow || 872000);
   }, []); // eslint-disable-line
 
@@ -77,15 +74,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   };
 
   const activeRelay = relays.find(r => r.id === relayId);
-  const relayModels = (activeRelay?.lastTest?.models || []).filter(m => !DEFAULT_MODELS.includes(m));
-  const modelOptions = [
-    ...DEFAULT_MODELS.map(m => ({ value: m, label: m + ' · 官方' })),
-    ...relayModels.map(m => ({ value: m, label: m + ' · 中转站' }))
-  ];
-  // 选项变化后,当前 model 不在列表里则回落官方默认,保证 state 与显示一致
-  useEffect(() => {
-    if (!modelOptions.some(o => o.value === model)) setModel(DEFAULT_MODELS[0]);
-  }, [relayId, modelOptions.length]); // eslint-disable-line
+  const relayCount = activeRelay?.lastTest?.count ?? (activeRelay?.lastTest?.models || []).length;
 
   const doSwitch = async () => {
     if (!accountId || !relayId || switching) return;
@@ -120,7 +109,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
     if (!accountId || !relayId || switching) return;
     setSwitching(true); setDone(null); setLog([]);
     try {
-      const r = await window.rs.doSwitch({ accountId, relayId, model: model.trim(), contextWindow: Number(ctx) || null });
+      const r = await window.rs.doSwitch({ accountId, relayId, catalogChoice, contextWindow: Number(ctx) || null });
       setDone(r.ok ? 'ok' : 'bad');
       if (r.ok) toast('切换完成 — 重启 Codex 客户端后生效', 'ok');
       else toast('切换失败: ' + r.error, 'bad');
@@ -230,16 +219,13 @@ export default function Dashboard({ state, refresh, toast, goto }) {
             </div>}
           </div>
           <div className="step">
-            <div className="step-head"><span className="step-num">03</span><span className="step-title">模型</span></div>
-            <Select value={modelOptions.some(m => m.value === model) ? model : modelOptions[0]?.value}
-                    onChange={setModel} disabled={switching}
-                    options={modelOptions} placeholder="选择模型…"
-                    emptyText="暂无模型 — 先去「中转站」页测试连通" />
-            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-              {QUICK_MODELS.map(m => (
-                <span key={m} className={'chip' + (model === m ? ' on' : '')} onClick={() => !switching && setModel(m)}>{m}</span>
-              ))}
-            </div>
+            <div className="step-head"><span className="step-num">03</span><span className="step-title">模型目录</span></div>
+            <Select value={catalogChoice} onChange={setCatalogChoice} disabled={switching}
+              options={[
+                { value: 'official', label: `官方目录 · ${state.catalogCounts?.official ?? '—'} 模型`, desc: '从本机 Codex 实时提取,官方全套' },
+                { value: 'relay', label: relayCount ? `中转目录 · ${relayCount} 模型` : '中转目录 · 实时拉取', desc: '由中转站 /v1/models 实时生成' }
+              ]} />
+            <div className="muted" style={{ marginTop: 8 }}>模型在 Codex 客户端里选 — 这里只决定部署哪套目录</div>
           </div>
         </div>
 
@@ -255,7 +241,7 @@ export default function Dashboard({ state, refresh, toast, goto }) {
         </div>
 
         <button className={'btn btn-primary btn-go' + (switching ? ' switching' : '')}
-                disabled={switching || !accounts.length || !relays.length || !model.trim()} onClick={doSwitch}>
+                disabled={switching || !accounts.length || !relays.length} onClick={doSwitch}>
           {switching ? <><Spinner size={14} /> 切换中…</> : '立即切换'}
         </button>
 

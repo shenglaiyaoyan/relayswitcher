@@ -7,8 +7,9 @@ const codex = require('./lib/codex');
 const { extractTokenError } = require('./lib/oauth-errors');
 const { findRivalProcesses } = require('./lib/rival-guard');
 const { diffCatalogSlugs } = require('./lib/catalog-diff');
-const { extractToFile } = require('./lib/catalog-extract');
+const { extractToFile, locateCodexBinary } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
+const { buildRelayCatalog } = require('./lib/relay-catalog');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
@@ -58,7 +59,8 @@ function getState() {
     accounts, relays,
     settings: store.getSettings(),
     status: { ...status, activeRelay, activeAccount },
-    catalogBundled: fs.existsSync(path.join(resourcesDir(), 'model-catalog.json'))
+    catalogBundled: fs.existsSync(path.join(resourcesDir(), 'model-catalog.json')),
+    catalogCounts: { official: catalogOfficialCount() }
   };
 }
 
@@ -90,8 +92,8 @@ async function testRelay(id) {
 }
 
 /* ---------------- 一键切换 ---------------- */
-/** 目录源解析(US-01):内置快照 或 最新提取产物,再合并自定义模型(US-02) */
-function resolveCatalogContent() {
+/** 官方目录源解析:内置快照 或 最新提取产物 */
+function resolveOfficialCatalog() {
   const s = store.getSettings();
   let srcPath = path.join(resourcesDir(), 'model-catalog.json');
   if (s.catalogMode === 'extracted') {
@@ -108,8 +110,34 @@ function resolveCatalogContent() {
     } catch { /* 目录不存在,回落内置 */ }
     if (best) srcPath = best.p; // 无提取产物时静默回落内置快照
   }
-  const catalog = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
-  return Buffer.from(JSON.stringify(mergeCustomModels(catalog, store.listCustomModels())));
+  return JSON.parse(fs.readFileSync(srcPath, 'utf8'));
+}
+
+/**
+ * 目录源解析(v1.8.0:切换即切目录):
+ *   official = 内置快照/最新本机提取 + 自定义模型合并
+ *   relay    = 中转站实时模型清单自动生成目录(名字家族匹配官方模板) + 自定义模型合并
+ */
+function resolveCatalogContent(choice, relayModels) {
+  const official = resolveOfficialCatalog();
+  if (choice === 'relay') {
+    return Buffer.from(JSON.stringify(mergeCustomModels(buildRelayCatalog(official, relayModels), store.listCustomModels())));
+  }
+  return Buffer.from(JSON.stringify(mergeCustomModels(official, store.listCustomModels())));
+}
+
+function catalogOfficialCount() {
+  try { return resolveOfficialCatalog().models.length; } catch { return 0; }
+}
+
+/** 拉取中转站 /v1/models 模型清单(中转目录的原料) */
+async function fetchRelayModels(relay) {
+  const headers = {};
+  if (relay.apiKey) headers['Authorization'] = 'Bearer ' + relay.apiKey;
+  const resp = await net.fetch(relay.baseUrl.replace(/\/+$/, '') + '/models', { headers, signal: AbortSignal.timeout(10000) });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const j = await resp.json();
+  return (j.data || []).map(m => m.id).filter(Boolean);
 }
 
 /** 中转站预检(US-04):轻量 /v1/models 探测,失败不阻塞切换 */
@@ -134,13 +162,15 @@ async function doSwitch(opts, event) {
     if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
   };
 
-  // 预检与 token 预刷新并行(bench 实测本地计算均 <2ms,切换耗时全在网络:
-  // 三步互不依赖,串行最坏 3s+20s 白等,并行后总耗时 = max(三步))
-  const [rivals, probe, refreshed] = await Promise.all([
+  // 预检/预刷新/中转模型清单并行(三步互不依赖)
+  const [rivals, probe, refreshed, relayModels] = await Promise.all([
     detectRivalTools(),
     probeRelay(relay),
     account.tokens.refresh_token
       ? refreshAccount(opts.accountId).catch(() => null)
+      : Promise.resolve(null),
+    opts.catalogChoice === 'relay'
+      ? fetchRelayModels(relay).catch(() => null)
       : Promise.resolve(null)
   ]);
   if (rivals.running) {
@@ -163,15 +193,38 @@ async function doSwitch(opts, event) {
     }
   }
 
+  // 目录生成(v1.8.0:切换即切目录)— 官方实时 / 中转清单自动生成
+  let catalogChoice = opts.catalogChoice === 'relay' ? 'relay' : 'official';
+  if (catalogChoice === 'relay' && (!relayModels || relayModels.length === 0)) {
+    sendStep('目录生成', false, '中转站模型清单拉取失败或为空 — 回落官方目录(切换继续,可回滚)');
+    catalogChoice = 'official';
+  }
+  let catalogContent;
+  try {
+    catalogContent = resolveCatalogContent(catalogChoice, relayModels);
+  } catch (e) {
+    sendStep('目录生成', false, e.message);
+    return { ok: false, error: '目录生成失败: ' + e.message };
+  }
+  if (catalogChoice === 'relay') sendStep('目录生成', true, `中转目录:${relayModels.length} 个模型(名字家族匹配官方模板,继承档位/Fast)`);
+  else sendStep('目录生成', true, '官方目录(内置快照 / 最新本机提取)');
+
+  // 目录决定 model 落点:当前模型在新目录里存在则保留(不动 Codex 客户端里的选择),
+  // 不存在才落到新目录第一个条目
+  const catObj = JSON.parse(catalogContent.toString('utf8'));
+  const slugs = new Set(catObj.models.map(m => m.slug));
+  const cur = codex.getStatus(codexHome());
+  const model = cur.model && slugs.has(cur.model) ? cur.model : catObj.models[0].slug;
+
   return codex.applySwitch({
     home: codexHome(),
     account, relay,
-    model: opts.model || 'gpt-6-astra',
+    model,
     contextWindow: opts.contextWindow != null ? opts.contextWindow : s.contextWindow,
-    fastMode: opts.fastMode != null ? opts.fastMode : s.fastMode,
+    fastMode: s.fastMode,
     providerId: s.providerId,
     catalogEnabled: s.catalogEnabled,
-    catalogContent: resolveCatalogContent(), // 目录源(内置/提取)+ 自定义模型,在主进程统一生成
+    catalogContent,
     catalogFileName: s.catalogFileName,
     pruneLocalProviders: !!s.pruneLocalProviders,
     onStep: (name, ok, detail) => sendStep(name, ok, detail)
@@ -595,6 +648,28 @@ app.whenReady().then(() => {
   setInterval(autoTokenTick, 6 * 3600 * 1000).unref?.();
   // 启动 8s 静默检查更新(失败零打扰;发现新版时侧边栏已有提示)
   setTimeout(() => checkForUpdates().catch(() => {}), 8000).unref?.();
+
+  // 官方目录自动跟进(v1.8.0):启动 15s 后检测 codex.exe 指纹(路径+大小+mtime),
+  // 变了才后台重提取 — 官方出新模型/客户端升级,用户零操作,切换自动用最新目录
+  const autoExtractIfStale = async () => {
+    try {
+      const binPath = locateCodexBinary();
+      const st = fs.statSync(binPath);
+      const fp = binPath + ':' + st.size + ':' + Math.floor(st.mtimeMs);
+      const flag = path.join(app.getPath('userData'), 'catalogs', 'last-extract.json');
+      let prev = null;
+      try { prev = JSON.parse(fs.readFileSync(flag, 'utf8')).fingerprint; } catch { /* 首次 */ }
+      if (prev === fp) return;
+      const builtin = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8'));
+      const fb = (builtin.models.find(m => m.slug === 'gpt-5.5') || {}).base_instructions || '';
+      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'), { fallbackInstructions: fb });
+      fs.mkdirSync(path.dirname(flag), { recursive: true });
+      fs.writeFileSync(flag, JSON.stringify({ fingerprint: fp, at: new Date().toISOString() }));
+      console.log('[auto-extract] 官方目录已同步:', r.report.modelCount, '模型,来源', r.binPath);
+      notifyStateChanged();
+    } catch (e) { console.error('[auto-extract] 同步失败(不影响使用):', e.message); }
+  };
+  setTimeout(() => autoExtractIfStale().catch(() => {}), 15000).unref?.();
 
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'resources', 'icon.ico')

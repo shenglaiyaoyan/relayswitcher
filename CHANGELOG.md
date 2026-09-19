@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.4 (2026-09-19) — token 刷新失败报错修复
+
+- **对象形态 error 兼容**:`auth.openai.com /oauth/token` 实测会返回 `{"error":{message,type,code}}` 对象形态(如 401 `token_expired`),旧逻辑直接拼接产生 `[object Object]`,且 `token_expired` 被误判为"请检查网络"
+- 新增 `electron/lib/oauth-errors.js`:对象/字符串双形态解析,`token_expired`/`invalid_grant` 映射为"refresh_token 已失效"提示,429 频控、5xx 服务端错误各有专用提示;单测 6 例覆盖(小电脑侧修复,commit 90e29b8)
+
 ## v1.5.0 (2026-09-06) — 前瞻迭代:目录自愈 · 自定义模型 · 批量导入 · 工程化
 
 - **目录自愈(US-01)**:设置页「从本机 Codex 提取」一键从 codex.exe 二进制提取最新模型目录;缺 `base_instructions` 自动兜底(优先 gpt-5.5)并在报告标注;目录源可切换(内置快照 / 本机提取),无提取产物自动回落内置

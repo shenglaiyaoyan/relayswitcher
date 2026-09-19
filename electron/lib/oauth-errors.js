@@ -8,14 +8,19 @@
  * (token_expired 等)必须映射到"已失效"提示,否则会被伪装成"请检查网络"。
  */
 
-const DEAD_CODES = new Set(['token_expired', 'invalid_grant']);
+const DEAD_CODES = new Set(['token_expired', 'invalid_grant', 'refresh_token_reused']);
+
+function isDeadTokenCode(code) {
+  const s = String(code || '');
+  return DEAD_CODES.has(s) || s.startsWith('refresh_token_');
+}
 
 function extractTokenError(j, status) {
   const e = j && j.error;
   let err, dead = false;
   if (e && typeof e === 'object') {
     err = e.code || e.type || ('HTTP ' + status);
-    dead = DEAD_CODES.has(String(e.code || ''));
+    dead = isDeadTokenCode(e.code);
   } else if (typeof e === 'string' && e) {
     err = e;
     dead = e === 'invalid_grant';

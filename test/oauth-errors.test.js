@@ -15,6 +15,18 @@ test('对象形态 error(实测 401 token_expired)显示真实 code + 失效提�
   assert.ok(!out.includes('请检查网络'), '401 token 失效不得再伪装成网络问题');
 });
 
+test('refresh_token_reused(实测 2026-09-18 用户案例)显示已失效提示', () => {
+  const out = extractTokenError({ error: { code: 'refresh_token_reused' } }, 401);
+  assert.ok(out.includes('refresh_token_reused'), '实际: ' + out);
+  assert.ok(out.includes('已失效'), 'reused=token已被轮换,应提示已失效,实际: ' + out);
+  assert.ok(!out.includes('请检查网络'), '实际: ' + out);
+});
+
+test('同族变体(refresh_token_ 前缀)一律按已失效处理', () => {
+  const out = extractTokenError({ error: { code: 'refresh_token_invalid' } }, 401);
+  assert.ok(out.includes('已失效'), '实际: ' + out);
+});
+
 test('字符串形态 invalid_grant 保持原失效提示(经典 OAuth 兼容)', () => {
   const out = extractTokenError({ error: 'invalid_grant' }, 400);
   assert.ok(out.includes('invalid_grant'));

@@ -16,6 +16,8 @@ extraResources:
 win:
   target: nsis
   icon: build/icon.ico
+  # 非管理员打包环境跳过 rcedit 编辑(winCodeSign 缓存含 darwin symlink,无特权解压必挂)
+  signAndEditExecutable: false
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const TOML = require('@iarna/toml');
+const { migrateSessionFiles } = require('./session-migrate');
 
 const BACKUP_DIRNAME = 'relayswitcher-backups';
 const MAX_BACKUPS = 20;
@@ -471,6 +472,17 @@ function applySwitch(opts) {
       throw new Error('校验失败: provider 指向不正确');
     }
     step('校验完成', true, '写后复查通过,绑定生效');
+
+    // 7. 会话迁移(后台,不阻塞切换): 清场删掉的旧 provider 名若仍被旧对话串
+    //    引用,desktop/CLI 恢复对话时会报 "Model provider X not found" 而无法继续
+    //    (2026-09-22 事故)。此处把引用元数据迁到当前 provider——只动
+    //    "model_provider" 字段值,对话正文零触碰;每文件先备份,反向再跑即回滚。
+    if (r.removedStale.length) {
+      step('会话迁移', true, `后台迁移引用旧 provider(${r.removedStale.join(', ')})的对话串…`);
+      migrateSessionFiles({ home, fromProviders: r.removedStale, toProvider: opts.providerId })
+        .then(m => step('会话迁移完成', true, `${m.files} 个对话串共 ${m.replacements} 处引用已指向 ${opts.providerId}(正文零触碰,备份已留)`))
+        .catch(e => step('会话迁移失败', false, (e && e.message) + '(不影响本次切换结果)'));
+    }
     return { ok: true, log };
   } catch (e) {
     step('失败', false, e.message);

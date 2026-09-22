@@ -342,8 +342,9 @@ function registerIpc() {
   ipcMain.handle('rs:detectCodex', () => detectCodexRunning());
   ipcMain.handle('rs:stopCodex', () => stopCodexRunning());
   ipcMain.handle('rs:detectRivals', () => detectRivalTools());
-  // 自动更新(仅手动触发;检测走 GitHub API,下载由 UI 用浏览器完成)
+  // 自动更新(检测走 GitHub API;下载安装走 electron-updater,失败降级浏览器下载)
   ipcMain.handle('rs:checkUpdate', () => checkForUpdates());
+  ipcMain.handle('rs:installUpdate', () => autoUpdate.downloadAndInstallUpdate());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
   // ---- 目录管理(US-01/02)与批量导入(US-03) ----
   ipcMain.handle('rs:extractCatalog', async () => {
@@ -691,6 +692,8 @@ app.whenReady().then(() => {
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.once('ready-to-show', () => win.show());
+  // electron-updater 初始化(打包环境生效;事件转发与旧 {ev,info} 格式兼容)
+  autoUpdate.initAutoUpdater(win);
   // 托盘常驻 + 关窗最小化 + 开机自启(US-08;默认关窗进托盘,托盘右键退出)
   applyOpenAtLogin();
   createTray(iconPath);

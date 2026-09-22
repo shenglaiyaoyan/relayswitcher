@@ -216,7 +216,8 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
     // 无 base_url 的区块语义不明,保守不动。
     pruneProviders(body => {
       const m = body.match(/base_url\s*=\s*"([^"]+)"/);
-      return !!m && !/^(https?:\/\/)?(localhost|127\.0\.0\.1)/.test(m[1]);
+      // localhost/127.0.0.1/[::1] 均为本机网关;大小写不敏感(host 大小写不敏感)
+      return !!m && !/^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\]|\[0:0:0:0:0:0:0:1\])/i.test(m[1]);
     });
   }
   return { text: lines.join('\n'), removedStale };

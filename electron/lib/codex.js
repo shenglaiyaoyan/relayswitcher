@@ -181,7 +181,7 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
     lines.push('', ...fullNewBlock);
   }
 
-  if (opts.pruneLocalProviders === true) {
+  const pruneProviders = (matchBody) => {
     let guard = 0;
     while (guard++ < 20) {
       let stale = null;
@@ -193,7 +193,7 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
             if (/^\s*\[/.test(lines[j])) { end = j; break; }
           }
           const body = lines.slice(i + 1, end).join('\n');
-          if (/base_url\s*=\s*"(https?:\/\/)?(localhost|127\.0\.0\.1)/.test(body)) {
+          if (matchBody(body)) {
             stale = { id: hm[1], start: i, end };
             break;
           }
@@ -203,6 +203,21 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
       lines.splice(stale.start, stale.end - stale.start);
       removedStale.push(stale.id);
     }
+  };
+
+  if (opts.pruneLocalProviders === true) {
+    pruneProviders(body => /base_url\s*=\s*"(https?:\/\/)?(localhost|127\.0\.0\.1)/.test(body));
+  }
+  if (opts.pruneRemoteProviders === true) {
+    // 清场:切换后 model_provider 已指向当前 provider,其余远端区块都是旧路由残留。
+    // 旧 codex 会话锁定出生时的 provider,会继续打已废弃网关吃 503(2026-09-22
+    // 用户事故:zeniths 老区块残留,旧会话一直报错)。
+    // localhost/127.0.0.1 是合法本机网关(如 CockpitTools sidecar),不属于远端,保留;
+    // 无 base_url 的区块语义不明,保守不动。
+    pruneProviders(body => {
+      const m = body.match(/base_url\s*=\s*"([^"]+)"/);
+      return !!m && !/^(https?:\/\/)?(localhost|127\.0\.0\.1)/.test(m[1]);
+    });
   }
   return { text: lines.join('\n'), removedStale };
 }
@@ -421,7 +436,12 @@ function applySwitch(opts) {
 
     const r = patchProviderBlock(text, opts.providerId, {
       name: opts.relay.name, baseUrl: opts.relay.baseUrl, apiKey: opts.relay.apiKey
-    }, { pruneLocalProviders: !!opts.pruneLocalProviders });
+    }, {
+      pruneLocalProviders: !!opts.pruneLocalProviders,
+      // 清场默认开启:旧 codex 会话锁定出生时的 provider,残留远端老路由会让它
+      // 一直打已废弃网关吃 503;可用 opts.pruneRemoteProviders === false 显式关闭
+      pruneRemoteProviders: opts.pruneRemoteProviders !== false
+    });
     text = r.text;
 
     const newAuth = buildAuthJson(authIn, opts.account.tokens);
@@ -430,7 +450,7 @@ function applySwitch(opts) {
     TOML.parse(text);
     JSON.parse(newAuth);
     if (catalogContent) JSON.parse(catalogContent.toString('utf8'));
-    step('写前校验', true, 'TOML/JSON 解析通过' + (r.removedStale.length ? '(清理本地区块: ' + r.removedStale.join(', ') + ')' : ''));
+    step('写前校验', true, 'TOML/JSON 解析通过' + (r.removedStale.length ? '(清场删除区块: ' + r.removedStale.join(', ') + ')' : ''));
 
     // 5. 原子写入
     writeConfigText(configPath, text, cfgIn || { hasBom: false, eol: '\n' });

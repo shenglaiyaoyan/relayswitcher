@@ -130,14 +130,15 @@ function catalogOfficialCount() {
   try { return resolveOfficialCatalog().models.length; } catch { return 0; }
 }
 
-/** 拉取中转站 /v1/models 模型清单(中转目录的原料) */
-async function fetchRelayModels(relay) {
+/** 拉取中转站 /v1/models 模型清单(中转目录的原料)。失败抛真实原因,由调用方呈现 */
+async function fetchRelayModels(relay, timeoutMs = 15000) {
+  const t0 = Date.now();
   const headers = {};
   if (relay.apiKey) headers['Authorization'] = 'Bearer ' + relay.apiKey;
-  const resp = await net.fetch(relay.baseUrl.replace(/\/+$/, '') + '/models', { headers, signal: AbortSignal.timeout(10000) });
+  const resp = await net.fetch(relay.baseUrl.replace(/\/+$/, '') + '/models', { headers, signal: AbortSignal.timeout(timeoutMs) });
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const j = await resp.json();
-  return (j.data || []).map(m => m.id).filter(Boolean);
+  return { ids: (j.data || []).map(m => m.id).filter(Boolean), ms: Date.now() - t0 };
 }
 
 /** 中转站预检(US-04):轻量 /v1/models 探测,失败不阻塞切换 */
@@ -162,17 +163,36 @@ async function doSwitch(opts, event) {
     if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
   };
 
-  // 预检/预刷新/中转模型清单并行(三步互不依赖)
-  const [rivals, probe, refreshed, relayModels] = await Promise.all([
+  // /models 只发一枪:选「中转目录」时预检结论从这次拉取派生 —— 同一瞬间双发经系统代理
+  // (Clash)实测只有一路能活、另一路必挂(2026-09-22 直连/代理×单发/并发矩阵实证),
+  // 旧实现 probe 抢活路、fetch 必死,目录永远回落官方
+  const wantRelayCatalog = opts.catalogChoice === 'relay';
+  let relayFetch = null;    // 成功产物 { ids, ms }
+  let relayFetchErr = null; // 失败真实原因
+  const modelsTask = wantRelayCatalog
+    ? fetchRelayModels(relay).then(r => { relayFetch = r; }, e => { relayFetchErr = e; })
+    : null;
+
+  const [rivals, refreshed] = await Promise.all([
     detectRivalTools(),
-    probeRelay(relay),
     account.tokens.refresh_token
       ? refreshAccount(opts.accountId).catch(() => null)
       : Promise.resolve(null),
-    opts.catalogChoice === 'relay'
-      ? fetchRelayModels(relay).catch(() => null)
-      : Promise.resolve(null)
+    modelsTask || Promise.resolve()
   ]);
+
+  // 拉取挂了自动串行补一枪(无竞争);官方目录模式才独立轻探
+  let probe;
+  if (wantRelayCatalog) {
+    if (relayFetchErr) {
+      await fetchRelayModels(relay, 10000).then(r => { relayFetch = r; relayFetchErr = null; }, () => {});
+    }
+    probe = relayFetch
+      ? { ok: true, ms: relayFetch.ms, status: 200 }
+      : { ok: false, error: relayFetchErr ? relayFetchErr.message : '未知原因' };
+  } else {
+    probe = await probeRelay(relay);
+  }
   if (rivals.running) {
     sendStep('竞品工具检测', false,
       `检测到 ${rivals.tools.map(t => t.name).join(' / ')} 正在运行 — 此类工具会在运行时回写 Codex 配置,可能覆盖切换结果,建议先退出(已继续切换,可回滚)`);
@@ -194,9 +214,11 @@ async function doSwitch(opts, event) {
   }
 
   // 目录生成(v1.8.0:切换即切目录)— 官方实时 / 中转清单自动生成
-  let catalogChoice = opts.catalogChoice === 'relay' ? 'relay' : 'official';
+  let catalogChoice = wantRelayCatalog ? 'relay' : 'official';
+  const relayModels = relayFetch ? relayFetch.ids : null;
   if (catalogChoice === 'relay' && (!relayModels || relayModels.length === 0)) {
-    sendStep('目录生成', false, '中转站模型清单拉取失败或为空 — 回落官方目录(切换继续,可回滚)');
+    const why = relayFetchErr ? relayFetchErr.message : (relayModels ? '返回清单为空' : '未知原因');
+    sendStep('目录生成', false, `中转站模型清单拉取失败(${why})— 回落官方目录(切换继续,可回滚)`);
     catalogChoice = 'official';
   }
   let catalogContent;

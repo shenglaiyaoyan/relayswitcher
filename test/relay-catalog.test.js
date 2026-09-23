@@ -1,5 +1,5 @@
 'use strict';
-/* Test: 中转站模型目录自动生成 — 家族模板匹配/去重/排除/兜底 */
+/* Test: 中转站模型目录自动生成 — 家族模板匹配/去重/排除/官方形态镜像 */
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { buildRelayCatalog, pickTemplate } = require('../electron/lib/relay-catalog.js');
@@ -33,6 +33,16 @@ test('gpt-5.4 命中 5.5 模板;gpt-5.6 命中 sol 模板', () => {
   const bySlug = Object.fromEntries(cat.models.map(m => [m.slug, m]));
   assert.strictEqual(bySlug['gpt-5.4-turbo'].base_instructions, 'G55-TEXT');
   assert.strictEqual(bySlug['gpt-5.6-luna-x'].base_instructions, 'SOL-TEXT');
+});
+
+test('模板无 base_instructions 时派生条目同样不带(镜像官方 2026-09-23 形态)', () => {
+  const NOBI = { generation: '2026-09-23', models: [
+    { slug: 'gpt-6-astra', display_name: 'GPT-6 Astra', context_window: 872000, supported_reasoning_levels: [{ effort: 'xhigh' }], service_tiers: [{ id: 'priority' }] }
+  ] };
+  const cat = buildRelayCatalog(NOBI, ['gpt-6.5-nova']);
+  assert.strictEqual(cat.models.length, 1);
+  assert.ok(!('base_instructions' in cat.models[0]), '不得注入外来提示词');
+  assert.strictEqual(cat.models[0].context_window, 872000, '其余元数据照常继承');
 });
 
 test('去重 + 非法 ID + 非对话类(embedding/whisper/tts)被排除', () => {

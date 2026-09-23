@@ -2,8 +2,8 @@
 /**
  * catalog-extract.js — 从 codex.exe 二进制提取内置模型目录(US-01)。
  * 纯函数核心(可注入 buffer 单测)+ 文件定位/落盘薄壳。
- * 兜底策略:缺 base_instructions 的条目用 fallbackInstructions 填充(生产实践:
- * CockpitTools 与 v1.4.6 均采用 gpt-5.5 全文),并在 report.patchedSlugs 标注。
+ * 2026-09-23 起 codex.exe 内嵌目录已不含 base_instructions(官方改为客户端按需获取),
+ * 提取产物忠实镜像官方形态——不注入任何外来文本,注入反而可能覆盖客户端原生提示词。
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,13 +15,12 @@ const ANCHORS = [
 ];
 
 /**
- * 从二进制 buffer 提取目录。纯函数。
+ * 从二进制 buffer 提取目录。纯函数,产物镜像官方形态。
  * @param {Buffer} buffer codex.exe 内容(或测试构造)
- * @param {object} opts { fallbackInstructions: string } — 缺字段兜底文本(由调用方从已知完整目录取,不硬编码进源码)
- * @returns {{ catalog: object, report: { modelCount: number, patchedSlugs: string[] } }}
- * @throws 缺锚点 / JSON 损坏 / models 为空 / 无法兜底
+ * @returns {{ catalog: object, report: { modelCount: number } }}
+ * @throws 缺锚点 / JSON 损坏 / models 为空 / 存在无 slug 条目
  */
-function extractCatalogFromBuffer(buffer, opts = {}) {
+function extractCatalogFromBuffer(buffer) {
   let anchorIdx = -1;
   for (const a of ANCHORS) {
     anchorIdx = buffer.indexOf(a);
@@ -43,29 +42,11 @@ function extractCatalogFromBuffer(buffer, opts = {}) {
     throw new Error('目录 models 为空或缺失');
   }
 
-  // schema 校验 + 兜底
-  const patchedSlugs = [];
-  const fallback = typeof opts.fallbackInstructions === 'string' && opts.fallbackInstructions.length > 0
-    ? opts.fallbackInstructions : null;
-  let fallbackFromCatalog = null;
-  for (const m of catalog.models) {
-    if (typeof m.base_instructions === 'string' && m.base_instructions) {
-      if (m.slug === 'gpt-5.5') { fallbackFromCatalog = m.base_instructions; break; }
-      if (!fallbackFromCatalog) fallbackFromCatalog = m.base_instructions;
-    }
-  }
-  const patchText = fallback || fallbackFromCatalog;
+  // 结构校验:slug 必有;base_instructions 不再要求(2026-09-23 官方内嵌目录已不含该字段)
   for (const m of catalog.models) {
     if (!m.slug) throw new Error('目录存在无 slug 条目');
-    if (typeof m.base_instructions !== 'string' || !m.base_instructions) {
-      if (!patchText) {
-        throw new Error('条目 ' + m.slug + ' 缺 base_instructions 且无可用兜底文本(源目录中没有任何条目携带该字段)');
-      }
-      m.base_instructions = patchText;
-      patchedSlugs.push(m.slug);
-    }
   }
-  return { catalog, report: { modelCount: catalog.models.length, patchedSlugs } };
+  return { catalog, report: { modelCount: catalog.models.length } };
 }
 
 /** 从文本起点扫描平衡大括号,截取完整 JSON 对象(正确处理字符串内的 { } 与转义) */
@@ -117,10 +98,10 @@ function locateCodexBinary() {
  * 提取并落盘。
  * @returns {{ outPath, report, binPath }}
  */
-function extractToFile(outDir, opts = {}) {
+function extractToFile(outDir) {
   const binPath = locateCodexBinary();
   const buffer = fs.readFileSync(binPath);
-  const { catalog, report } = extractCatalogFromBuffer(buffer, opts);
+  const { catalog, report } = extractCatalogFromBuffer(buffer);
   fs.mkdirSync(outDir, { recursive: true });
   const hash = crypto.createHash('sha256').update(binPath + ':' + buffer.length + ':' + report.modelCount).digest('hex').slice(0, 10);
   const outPath = path.join(outDir, 'extracted-' + hash + '.json');

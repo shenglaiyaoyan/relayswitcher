@@ -420,16 +420,17 @@ function applySwitch(opts) {
     if (opts.catalogEnabled) {
       catalogContent = opts.catalogContent != null ? Buffer.from(opts.catalogContent)
         : fs.readFileSync(opts.catalogSourcePath);
-      // 部署前自检:坏目录(缺必填字段)会让 Codex 启动解析失败打不开(2026-09-06 实锤),
-      // 宁可切换失败,绝不写进 CODEX_HOME
+      // 部署前自检:结构性损坏(解析不了/无模型/缺 slug)会让 Codex 启动失败,
+      // 宁可切换失败,绝不写进 CODEX_HOME。base_instructions 不再要求 ——
+      // 2026-09-23 起官方 exe 内嵌目录本身已不含该字段(客户端按需自行获取),
+      // 注入外来文本反而可能覆盖客户端原生提示词
       const catObj = JSON.parse(catalogContent.toString('utf8'));
       if (!Array.isArray(catObj.models) || catObj.models.length === 0) {
         throw new Error('模型目录预检失败: models 为空或缺 models 数组');
       }
-      const badModels = catObj.models.filter(m => typeof m.base_instructions !== 'string' || !m.base_instructions);
+      const badModels = catObj.models.filter(m => typeof m.slug !== 'string' || !m.slug);
       if (badModels.length) {
-        throw new Error('模型目录预检失败: 以下模型缺 base_instructions(Codex 26.901.5003+ 必填,写入会导致启动报错): '
-          + badModels.map(m => m.slug || '(无slug)').join(', '));
+        throw new Error('模型目录预检失败: 存在缺 slug 的条目,写入会导致 Codex 启动报错');
       }
       text = patchTopLevelKeys(text, { model_catalog_json: opts.catalogFileName });
     } else {

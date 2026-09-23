@@ -371,9 +371,7 @@ function registerIpc() {
   // ---- 目录管理(US-01/02)与批量导入(US-03) ----
   ipcMain.handle('rs:extractCatalog', async () => {
     try {
-      const builtin = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8'));
-      const fb = (builtin.models.find(m => m.slug === 'gpt-5.5') || {}).base_instructions || '';
-      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'), { fallbackInstructions: fb });
+      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'));
       store.saveSettings({ catalogMode: 'extracted' });
       return { ok: true, report: r.report, binPath: r.binPath, outPath: r.outPath };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -582,15 +580,20 @@ async function smoke() {
   const st = codex.getStatus(home);
   check('状态读取正常', st.tomlOk && st.baseUrl === 'http://127.0.0.1:3000/v1');
 
-  // ---- 场景 E:坏目录(缺 base_instructions)被预检拒绝,绝不写入(2026-09-06 实锤事故的防回归) ----
+  // ---- 场景 E:目录预检边界 —— 2026-09-23 官方内嵌目录已不含 base_instructions,
+  //      官方原生形态必须可部署;预检只拦结构性损坏(缺 slug),坏目录绝不写入 ----
+  const nativeCat = P('native-catalog.json');
+  fs.writeFileSync(nativeCat, JSON.stringify({ models: [{ slug: 'gpt-native', display_name: 'GPT Native' }] }));
+  const rNative = codex.applySwitch(switchOpts({ catalogSourcePath: nativeCat, model: 'gpt-native' }));
+  check('官方原生目录(无 base_instructions)可正常部署', rNative.ok === true);
   const badCat = P('bad-catalog.json');
-  fs.writeFileSync(badCat, JSON.stringify({ models: [{ slug: 'broken_model', base_instructions: '' }] }));
+  fs.writeFileSync(badCat, JSON.stringify({ models: [{ display_name: 'no-slug' }] }));
   const rBad = codex.applySwitch(switchOpts({ catalogSourcePath: badCat }));
-  check('坏目录被预检拒绝(切换失败并报出缺字段模型)', rBad.ok === false && /预检/.test(rBad.error || '') && (rBad.error || '').includes('broken_model'));
+  check('缺 slug 的坏目录被预检拒绝', rBad.ok === false && /预检/.test(rBad.error || ''));
   const cfgAfterBad = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
-  check('坏目录切换未污染现有配置(仍为回滚后的 gpt-5.5)', cfgAfterBad.model === 'gpt-5.5');
+  check('坏目录切换未污染现有配置(仍为原生目录部署的 gpt-native)', cfgAfterBad.model === 'gpt-native');
   const catStill = JSON.parse(fs.readFileSync(P('relayswitcher-model-catalog.json'), 'utf8'));
-  check('已部署目录未被坏文件覆盖(全部模型仍含 base_instructions)', catStill.models.every(m => typeof m.base_instructions === 'string' && m.base_instructions));
+  check('已部署目录未被坏文件覆盖(仍为原生形态,不含 base_instructions)', catStill.models[0].slug === 'gpt-native' && catStill.models.every(m => !('base_instructions' in m)));
   fs.rmSync(home, { recursive: true, force: true });
   console.log(`\nSMOKE RESULT: ${pass} passed, ${fail} failed`);
   app.exit(fail ? 1 : 0);
@@ -683,9 +686,7 @@ app.whenReady().then(() => {
       let prev = null;
       try { prev = JSON.parse(fs.readFileSync(flag, 'utf8')).fingerprint; } catch { /* 首次 */ }
       if (prev === fp) return;
-      const builtin = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8'));
-      const fb = (builtin.models.find(m => m.slug === 'gpt-5.5') || {}).base_instructions || '';
-      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'), { fallbackInstructions: fb });
+      const r = extractToFile(path.join(app.getPath('userData'), 'catalogs'));
       fs.mkdirSync(path.dirname(flag), { recursive: true });
       fs.writeFileSync(flag, JSON.stringify({ fingerprint: fp, at: new Date().toISOString() }));
       console.log('[auto-extract] 官方目录已同步:', r.report.modelCount, '模型,来源', r.binPath);

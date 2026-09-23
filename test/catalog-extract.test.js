@@ -1,5 +1,5 @@
 'use strict';
-/* Test: catalog-extract 提取器(锚点/校验/兜底)与 catalog-merge(自定义模型派生) */
+/* Test: catalog-extract 提取器(锚点/结构校验,产物镜像官方)与 catalog-merge(自定义模型派生) */
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { extractCatalogFromBuffer } = require('../electron/lib/catalog-extract.js');
@@ -13,29 +13,22 @@ function fakeBin(models) {
 const FULL = { slug: 'gpt-5.5', base_instructions: 'FULL-TEXT', context_window: 272000, supported_reasoning_levels: [{ effort: 'low' }], service_tiers: [{ id: 'priority' }] };
 const PARTIAL = { slug: 'gpt-6-astra', context_window: 272000 };
 
-test('提取:正常锚点解析 + 缺 base_instructions 自动兜底并报告', () => {
+test('提取:正常锚点解析,产物镜像官方(缺 base_instructions 不再注入)', () => {
   const { catalog, report } = extractCatalogFromBuffer(fakeBin([FULL, PARTIAL]));
   assert.equal(report.modelCount, 2);
-  assert.deepEqual(report.patchedSlugs, ['gpt-6-astra']);
-  assert.equal(catalog.models[1].base_instructions, 'FULL-TEXT');
+  assert.equal(catalog.models[0].base_instructions, 'FULL-TEXT', '源里有的保留');
+  assert.ok(!('base_instructions' in catalog.models[1]), '源里没有的绝不注入外来文本');
 });
 
-test('提取:目录内自带兜底源(优先 gpt-5.5)', () => {
-  const donor = { slug: 'other-model', base_instructions: 'OTHER' };
-  const { catalog, report } = extractCatalogFromBuffer(fakeBin([donor, PARTIAL, FULL]));
-  assert.equal(catalog.models[1].base_instructions, 'FULL-TEXT', '应优先用 gpt-5.5 的文本而非第一个出现者');
-  assert.deepEqual(report.patchedSlugs, ['gpt-6-astra']);
+test('提取:全目录无 base_instructions 也可提取(2026-09-23 官方形态)', () => {
+  const { catalog, report } = extractCatalogFromBuffer(fakeBin([{ slug: 'only', context_window: 100000 }]));
+  assert.equal(report.modelCount, 1);
+  assert.ok(!('base_instructions' in catalog.models[0]));
 });
 
-test('提取:外部注入 fallbackInstructions 优先级最高', () => {
-  const { catalog } = extractCatalogFromBuffer(fakeBin([FULL, PARTIAL]), { fallbackInstructions: 'EXTERNAL' });
-  assert.equal(catalog.models[1].base_instructions, 'EXTERNAL');
-});
-
-test('提取:无锚点 / 无可兜底文本时明确报错', () => {
+test('提取:无锚点 / 无 slug 条目时明确报错', () => {
   assert.throws(() => extractCatalogFromBuffer(Buffer.from('no anchor here')), /锚点/);
-  const lone = { slug: 'only', base_instructions: '' };
-  assert.throws(() => extractCatalogFromBuffer(fakeBin([lone])), /无可用兜底/);
+  assert.throws(() => extractCatalogFromBuffer(fakeBin([{ context_window: 1 }])), /无 slug/);
 });
 
 test('合并:自定义模型派生 + 同 slug 改写', () => {

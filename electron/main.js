@@ -10,6 +10,7 @@ const { diffCatalogSlugs } = require('./lib/catalog-diff');
 const { extractToFile, locateCodexBinary } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
 const { buildRelayCatalog } = require('./lib/relay-catalog');
+const { applyCatalogPatch } = require('./lib/catalog-patch');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
@@ -121,9 +122,13 @@ function resolveOfficialCatalog() {
 function resolveCatalogContent(choice, relayModels) {
   const official = resolveOfficialCatalog();
   if (choice === 'relay') {
-    return Buffer.from(JSON.stringify(mergeCustomModels(buildRelayCatalog(official, relayModels), store.listCustomModels())));
+    // 中转模式:目录条目由中转站清单决定,策略只校准已提供的条目(不替中转站做加法)
+    return Buffer.from(JSON.stringify(applyCatalogPatch(
+      mergeCustomModels(buildRelayCatalog(official, relayModels), store.listCustomModels()),
+      { addMissing: false })));
   }
-  return Buffer.from(JSON.stringify(mergeCustomModels(official, store.listCustomModels())));
+  return Buffer.from(JSON.stringify(applyCatalogPatch(
+    mergeCustomModels(official, store.listCustomModels()), { addMissing: true })));
 }
 
 function catalogOfficialCount() {

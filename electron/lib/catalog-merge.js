@@ -24,6 +24,7 @@ function mergeCustomModels(catalog, customModels) {
     if (Array.isArray(cm.reasoningLevels) && cm.reasoningLevels.length) {
       merged.supported_reasoning_levels = cm.reasoningLevels.map(r => ({ effort: r, description: '' }));
     }
+    if (cm.defaultEffort) merged.default_reasoning_level = cm.defaultEffort;
     const idx = out.models.findIndex(m => m.slug === cm.slug);
     if (idx >= 0) out.models[idx] = merged; // 同 slug = 改写既有条目(用户意图:改现有模型)
     else out.models.push(merged);

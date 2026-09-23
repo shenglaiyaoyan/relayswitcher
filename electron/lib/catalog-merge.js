@@ -21,6 +21,9 @@ function mergeCustomModels(catalog, customModels) {
       merged.context_window = Number(cm.contextWindow);
       merged.max_context_window = Math.max(Number(cm.contextWindow), merged.max_context_window || 0);
     }
+    if (cm.maxContextWindow && Number(cm.maxContextWindow) > 0) {
+      merged.max_context_window = Number(cm.maxContextWindow);
+    }
     if (Array.isArray(cm.reasoningLevels) && cm.reasoningLevels.length) {
       merged.supported_reasoning_levels = cm.reasoningLevels.map(r => ({ effort: r, description: '' }));
     }

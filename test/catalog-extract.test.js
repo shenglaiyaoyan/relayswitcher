@@ -34,12 +34,13 @@ test('提取:无锚点 / 无 slug 条目时明确报错', () => {
 test('合并:自定义模型派生 + 同 slug 改写', () => {
   const cat = { models: [JSON.parse(JSON.stringify(FULL))] };
   const merged = mergeCustomModels(cat, [
-    { templateSlug: 'gpt-5.5', slug: 'my-custom-6', displayName: '我的6', contextWindow: 400000, defaultEffort: 'medium' }
+    { templateSlug: 'gpt-5.5', slug: 'my-custom-6', displayName: '我的6', contextWindow: 400000, maxContextWindow: 900000, defaultEffort: 'medium' }
   ]);
   assert.equal(merged.models.length, 2);
   const custom = merged.models.find(m => m.slug === 'my-custom-6');
   assert.equal(custom.display_name, '我的6');
   assert.equal(custom.context_window, 400000);
+  assert.equal(custom.max_context_window, 900000, 'maxContextWindow 独立覆盖硬顶');
   assert.equal(custom.base_instructions, 'FULL-TEXT', '继承模板 base_instructions');
   assert.equal(custom.default_reasoning_level, 'medium', 'defaultEffort 覆盖默认档位');
   assert.equal(cat.models.length, 1, '原目录不可变');

@@ -6,8 +6,11 @@
  * 同时执行产品策略:被替代的旧线隐藏、无对位的退役。
  *
  * 当前策略(2026-09-23):
- *   - 补入 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium,档位 low→max
- *     —— 'none' 档客户端目录无先例,暂不引入)
+ *   - 补入 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium;'none' 档
+ *     客户端目录无先例,暂不引入)
+ *   - 档位:low→max,sol 追加 ultra —— ultra 是客户端专属档(自动任务委派),API 文档
+ *     系统性不列(实测 astra/5.6-sol 文档页同样只写到 max,客户端目录却有 ultra);
+ *     sol 系历代有 ultra(5.6-sol),luna 系历代没有(5.6-luna,效率线定位),各随其脉
  *   - 上下文遵循官方模式:软限 272K(压缩线)= 官方计费分档线 —— 输入 >272K 的请求整单
  *     2x 输入(含缓存)/ 1.5x 输出计费,压缩线压在档内即省钱;硬顶 1.05M,要吃满大窗口
  *     在切换面板手填顶层 model_context_window
@@ -25,7 +28,7 @@ const PATCH_MODELS = [
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',
     description: 'Built to power complex coding and agentic workflows.',
     contextWindow: 272000, maxContextWindow: 1050000, defaultEffort: 'medium',
-    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     replaces: 'gpt-5.6-sol'
   },
   {

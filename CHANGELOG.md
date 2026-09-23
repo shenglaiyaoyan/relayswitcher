@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.10.6 (2026-09-23) — gpt-6-sol 补 ultra 档
+
+- **定性(实测)**:ultra 是**客户端专属档位**(Max 推理 + 自动任务委派),API 文档页系统性不列
+  ——astra / 5.6-sol / 5.6-luna 三页 effort 行全写到 max 为止,但客户端目录里 astra 和
+  5.6-sol 明明有 ultra。v1.10.3 照文档落档把 sol 砍狠了
+- **修正**:gpt-6-sol 追加 ultra(sol 系历代有,5.6-sol 就有);gpt-6-luna 维持 max——
+  luna 系历代无 ultra(5.6-luna 也没有,效率线定位,ultra 的任务委派开销与它相悖)
+- 单测 57 例全过;本版可用应用内一键更新升级(v1.10.5 起更新器已修复)
+
 ## v1.10.5 (2026-09-23) — 修复自动更新:electron-updater 未打进应用包
 
 - **根因(实测 asar 实锤)**:v1.9.0 给 package.json 加了 electron-updater 依赖,但构建机的

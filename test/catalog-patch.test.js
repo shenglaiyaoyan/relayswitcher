@@ -22,7 +22,8 @@ test('官方模式:补入 gpt-6-sol/luna(官方参数),隐藏被替代的 5.6 �
   assert.equal(bySlug['gpt-6-sol'].context_window, 272000, '软限=压缩线=计费分档线 272K');
   assert.equal(bySlug['gpt-6-sol'].max_context_window, 1050000, '硬顶 1.05M');
   assert.equal(bySlug['gpt-6-sol'].default_reasoning_level, 'medium', '官方默认档位 medium');
-  assert.deepEqual(bySlug['gpt-6-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max']);
+  assert.deepEqual(bySlug['gpt-6-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], 'sol 追加 ultra(客户端专属档,文档不列)');
+  assert.deepEqual(bySlug['gpt-6-luna'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max'], 'luna 系历代无 ultra');
   assert.equal(bySlug['gpt-6-sol'].display_name, 'GPT-6-Sol');
   assert.ok(!bySlug['gpt-5.6-sol'] && !bySlug['gpt-5.6-luna'], '被 6 系替代的 5.6 应隐藏');
   assert.ok(!bySlug['gpt-5.6-terra'], 'terra 无对位,退役');

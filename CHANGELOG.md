@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.10.5 (2026-09-23) — 修复自动更新:electron-updater 未打进应用包
+
+- **根因(实测 asar 实锤)**:v1.9.0 给 package.json 加了 electron-updater 依赖,但构建机的
+  node_modules 从未真正安装(`--package-lock-only` 只写 lock 不装包),而 electron-builder 只打包
+  node_modules 里实际存在的生产依赖 → 1.10.1~1.10.4 的 asar 里都没有 electron-updater,
+  运行时 require 抛错 → 自动更新永远降级浏览器下载,还误报成"updater inactive (dev/未打包环境)"
+- **修复**:真装依赖重新打包;构建后实测验证 asar 内 electron-updater 及传递依赖
+  (builder-util-runtime / fs-extra / js-yaml)齐全
+- 报错文案改诚实:区分「模块没打进包(装一次新版即修复)」与「dev/未安装环境运行」
+- 单测 57 例全过
+
 ## v1.10.4 (2026-09-23) — 修正 6 系上下文计费档:软限回归 272K 省钱线
 
 - **背景(官方模型页实证)**:计费按上下文规模分档 —— 输入 >272K 的请求**整单**按 2x 输入

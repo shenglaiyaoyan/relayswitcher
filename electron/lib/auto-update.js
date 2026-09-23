@@ -39,6 +39,7 @@ async function checkUpdate(currentVersion) {
 /* ---------------- electron-updater 真下载安装(仅打包环境生效) ---------------- */
 
 let autoUpdater = null;
+let initError = null;
 let winRef = null;
 
 function sendEvent(payload) {
@@ -66,6 +67,7 @@ function initAutoUpdater(win) {
     return { active: autoUpdater.isUpdaterActive };
   } catch (e) {
     autoUpdater = null;
+    initError = e.message;
     return { active: false, error: e.message };
   }
 }
@@ -76,8 +78,12 @@ function initAutoUpdater(win) {
  *   fallback=true 时前端应降级为浏览器打开下载页
  */
 async function downloadAndInstallUpdate() {
-  if (!autoUpdater || !autoUpdater.isUpdaterActive) {
-    return { fallback: true, reason: 'updater inactive (dev/未打包环境)' };
+  // 两种"不能自动"要分开说清:模块没打进包(打包问题,装新版解决) vs dev/未安装环境运行
+  if (!autoUpdater) {
+    return { fallback: true, reason: 'electron-updater 未打进应用包(require 失败:' + (initError || '未知') + ')— 手动安装一次新版即可修复' };
+  }
+  if (!autoUpdater.isUpdaterActive) {
+    return { fallback: true, reason: '当前为 dev/未安装环境运行,自动更新仅对正式安装的应用生效' };
   }
   try {
     const result = await autoUpdater.checkForUpdates();

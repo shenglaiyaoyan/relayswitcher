@@ -16,8 +16,9 @@ extraResources:
 win:
   target: nsis
   icon: build/icon.ico
-  # 非管理员打包环境跳过 rcedit 编辑(winCodeSign 缓存含 darwin symlink,无特权解压必挂)
-  signAndEditExecutable: false
+  # 2026-09-23 起恢复 rcedit 编辑(win32 走 app-builder 自带二进制,不碰 winCodeSign/darwin symlink;
+  # 签名无证书自动跳过)。exe 由此内嵌自定义图标/版本信息——此前 signAndEditExecutable:false
+  # 是为历史解压问题做的过度防御,副作用是 exe/快捷方式全是 Electron 默认蓝灰原子图标
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

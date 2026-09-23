@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.11.1 (2026-09-23) — exe 图标/版本信息回归(告别 Electron 蓝灰原子)
+
+- **背景**:`signAndEditExecutable: false`(历史解压问题防御)让 electron-builder 跳过 rcedit,
+  打包出的 exe 没嵌自定义图标/版本信息 —— 安装器/桌面快捷方式全是 Electron 默认蓝灰原子
+- **查证(2026-09-23)**:win32 上 rcedit 走 app-builder 自带预编译二进制,不碰 winCodeSign
+  /darwin symlink,该防御属过度防御;签名无证书自动跳过,行为安全
+- **修复**:electron-builder.yml 移除 signAndEditExecutable: false;构建产物实测验证
+  —— 版本信息(FileDescription/ProductVersion)+ 自定义图标 256 档指纹均内嵌于 exe
+- 快捷方式/任务栏/资源管理器随安装自动换回金色 RelaySwitcher 图标
+
 ## v1.11.0 (2026-09-23) — 自动更新全自动:停滞看门狗 + 自动重试,浏览器降级全删
 
 - **背景(实测)**:v1.10.6 一键更新卡在 5%——electron-updater 差分下载在代理抖动下停滞且无

@@ -19,22 +19,23 @@
  *
  * 生效范围:official 模式补缺+校准;relay 模式只校准中转站已提供的条目(不替中转站做加法)。
  * 内嵌快照追上后(slug 原生存在):新增自然退化为参数校准;下个版本移除本表即完全回归快照。
- * 参数来源:developers.openai.com/api/docs/models/gpt-6-sol / gpt-6-luna
+ * 参数来源:2026-09-23 14:36 codex.exe 内嵌目录实测(272K/872K/medium,6-sol 含 ultra,
+ * 6-luna 无 ultra)——API 文档写 1.05M 但客户端目录 872K,部署以客户端目录为准
  */
 const { mergeCustomModels } = require('./catalog-merge');
 
 const PATCH_MODELS = [
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',
-    description: 'Built to power complex coding and agentic workflows.',
-    contextWindow: 272000, maxContextWindow: 1050000, defaultEffort: 'medium',
+    description: 'Workhorse model for coding and everyday work.',
+    contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'medium',
     reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     replaces: 'gpt-5.6-sol'
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-luna', displayName: 'GPT-6-Luna',
-    description: 'Our most efficient model for focused, high-volume tasks.',
-    contextWindow: 272000, maxContextWindow: 1050000, defaultEffort: 'medium',
+    description: 'Fast and affordable model for easier tasks.',
+    contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'medium',
     reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
     replaces: 'gpt-5.6-luna'
   }

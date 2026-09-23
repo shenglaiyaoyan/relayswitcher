@@ -20,7 +20,7 @@ test('官方模式:补入 gpt-6-sol/luna(官方参数),隐藏被替代的 5.6 �
   assert.ok(bySlug['gpt-6-sol'], '应补入 gpt-6-sol');
   assert.ok(bySlug['gpt-6-luna'], '应补入 gpt-6-luna');
   assert.equal(bySlug['gpt-6-sol'].context_window, 272000, '软限=压缩线=计费分档线 272K');
-  assert.equal(bySlug['gpt-6-sol'].max_context_window, 1050000, '硬顶 1.05M');
+  assert.equal(bySlug['gpt-6-sol'].max_context_window, 872000, '硬顶按官方客户端目录 872K');
   assert.equal(bySlug['gpt-6-sol'].default_reasoning_level, 'medium', '官方默认档位 medium');
   assert.deepEqual(bySlug['gpt-6-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], 'sol 追加 ultra(客户端专属档,文档不列)');
   assert.deepEqual(bySlug['gpt-6-luna'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max'], 'luna 系历代无 ultra');
@@ -51,7 +51,7 @@ test('中转模式:提供了 gpt-6-sol 时隐藏其 5.6 前任并校准参数', 
   const bySlug = Object.fromEntries(out.models.map(m => [m.slug, m]));
   assert.ok(!bySlug['gpt-5.6-sol'], '6 系在场,5.6-sol 隐藏');
   assert.equal(bySlug['gpt-6-sol'].context_window, 272000, '校准为官方软限');
-  assert.equal(bySlug['gpt-6-sol'].max_context_window, 1050000, '校准为官方硬顶');
+  assert.equal(bySlug['gpt-6-sol'].max_context_window, 872000, '校准为官方硬顶');
   assert.equal(bySlug['gpt-6-sol'].default_reasoning_level, 'medium');
 });
 
@@ -63,7 +63,7 @@ test('内嵌快照追上后(原生条目已存在):该条目退化为参数校�
   const out = applyCatalogPatch(caught, { addMissing: true });
   const sol = out.models.find(m => m.slug === 'gpt-6-sol');
   assert.equal(sol.context_window, 272000, '按官方参数校准软限');
-  assert.equal(sol.max_context_window, 1050000, '按官方参数校准硬顶');
+  assert.equal(sol.max_context_window, 872000, '按官方参数校准硬顶');
   assert.equal(out.models.filter(m => m.slug === 'gpt-6-sol').length, 1, '不重复添加');
   assert.ok(out.models.some(m => m.slug === 'gpt-6-luna'), '仍缺失的 luna 照常补入');
 });

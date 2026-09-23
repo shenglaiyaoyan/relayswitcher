@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.11.3 (2026-09-23) — 策略表对齐官方原生:6 系已随客户端发布
+
+- **背景**:2026-09-23 14:36 codex.exe 更新,内嵌目录正式收录 gpt-6-sol / gpt-6-luna
+  (11 模型,含 ultra 于 6-sol,6-luna 无 ultra,软限 272K/硬顶 872K,medium 默认)
+- **变更**:catalog-patch 补丁条目从「补入(API 文档参数)」降级为「按官方客户端目录实测
+  参数校准」——硬顶从 API 文档的 1.05M 校准为客户端目录的 872K,描述文本同步官方原生;
+  5.6 系替代隐藏与 terra 退役策略保留(RS 策略,官方方向一致)
+- 顺带发现:官方此版把 daybreak-blue/red、gpt-5.4、auto-review 在客户端选择器隐藏
+  (visibility: hide,API 仍可用);5.6 系官方仍可见,RS 更激进地按用户指令隐藏
+- 单测 57 例全过
+
 ## v1.11.2 (2026-09-23) — 修复:设置页「本机提取目录」渲染崩溃
 
 - **根因**:v1.10.2 拆 base_instructions 兜底时改了提取 report 结构(删 patchedSlugs),

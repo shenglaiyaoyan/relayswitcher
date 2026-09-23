@@ -240,7 +240,7 @@ export default function Settings({ state, refresh, toast }) {
           <div className="parse-preview">
             <div className="pv-title"><Icon name="check" size={14} style={{ color: 'var(--ok)' }} /> 提取成功:{extractReport.report.modelCount} 个模型</div>
             <div className="pv-line">来源 <b className="mono ellipsis" style={{ maxWidth: 320 }} title={extractReport.binPath}>{extractReport.binPath}</b></div>
-            {extractReport.report.patchedSlugs.length > 0 && (
+            {(extractReport.report.patchedSlugs || []).length > 0 && (
               <div className="pv-line muted">自动修补 base_instructions:{extractReport.report.patchedSlugs.join('、')}</div>
             )}
           </div>

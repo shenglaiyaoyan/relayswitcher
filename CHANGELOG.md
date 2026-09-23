@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.11.2 (2026-09-23) — 修复:设置页「本机提取目录」渲染崩溃
+
+- **根因**:v1.10.2 拆 base_instructions 兜底时改了提取 report 结构(删 patchedSlugs),
+  Settings 提取成功报告卡里「自动修补」行仍引用 `report.patchedSlugs.length` → TypeError
+  触发渲染错误边界(v1.11.0 只修了同处 toast 的引用,漏了报告卡这一处)
+- **修复**:报告卡引用改为空安全;单测 57 例全过
+- 教训已沉淀:拆字段时全仓搜字段名兜底(v1.10.2 只搜了 electron/ 与 test/,漏了 src/)
+
 ## v1.11.1 (2026-09-23) — exe 图标/版本信息回归(告别 Electron 蓝灰原子)
 
 - **背景**:`signAndEditExecutable: false`(历史解压问题防御)让 electron-builder 跳过 rcedit,

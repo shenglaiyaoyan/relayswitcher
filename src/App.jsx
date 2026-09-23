@@ -20,12 +20,14 @@ export default function App() {
   const VALID_PAGES = ['dash', 'accounts', 'relays', 'backups', 'settings'];
   const [page, setPage] = useState(() => {
     const h = (window.location.hash || '').replace(/^#/, '');
-    return VALID_PAGES.includes(h) ? h : 'dash';
+    const m = VALID_PAGES.find(v => h.startsWith(v)); // 前缀匹配:settings-demo-* 仍落在 settings 页
+    return m || 'dash';
   });
   useEffect(() => {
     const onHash = () => {
       const h = (window.location.hash || '').replace(/^#/, '');
-      if (VALID_PAGES.includes(h)) setPage(h);
+      const m = VALID_PAGES.find(v => h.startsWith(v));
+      if (m) setPage(m);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);

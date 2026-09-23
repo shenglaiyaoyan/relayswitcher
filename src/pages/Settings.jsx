@@ -7,7 +7,7 @@ export default function Settings({ state, refresh, toast }) {
   const [saving, setSaving] = useState(false);
   const [updateBusy, setUpdBusy] = useState(false);
   const [updateResult, setUpdResult] = useState(null); // {found:true/false, version?, error?}
-  const [dl, setDl] = useState(null); // {progress, installing, message} — electron-updater 下载安装进度
+  const [dl, setDl] = useState(null); // {progress, retry?, scheduled?, ready?} — 更新下载/重试/就绪状态(事件驱动)
   const [appVersion, setAppVer] = useState('');
   const [catInfo, setCatInfo] = useState(null);
   const [extracting, setExtracting] = useState(false);
@@ -21,14 +21,32 @@ export default function Settings({ state, refresh, toast }) {
   useEffect(() => {
     if (window.rs.getVersion) window.rs.getVersion().then(v => setAppVer(v)).catch(() => {});
   }, []);
-  // electron-updater 下载/安装进度(与 App.jsx 侧边栏共用同一事件通道)
+  // electron-updater 生命周期(v1.11.0 全自动:开机自动下载/停滞自动重试/就绪重启即装,无浏览器降级)
   useEffect(() => {
     const off = window.rs.onUpdateEvent ? window.rs.onUpdateEvent(({ ev, info }) => {
-      if (ev === 'progress') setDl(d => d ? { ...d, progress: Math.round(info && info.percent || 0) } : { progress: Math.round(info && info.percent || 0), installing: false });
-      else if (ev === 'downloaded') setDl({ progress: 100, installing: true });
-      else if (ev === 'error') setDl(d => (d && d.installing ? d : null)); // 下载中报错清状态(降级提示由按钮逻辑出)
+      if (ev === 'available') setUpdResult({ found: true, version: info && info.version });
+      else if (ev === 'progress') setDl(d => ({ ...(d || { progress: 0 }), progress: Math.round((info && info.percent) || 0), retry: undefined, scheduled: undefined }));
+      else if (ev === 'retry') setDl(d => (info && info.scheduled
+        ? { ...(d || { progress: 0 }), scheduled: true }
+        : { ...(d || { progress: 0 }), retry: (info && info.attempt) || 1 }));
+      else if (ev === 'downloaded') setDl({ ready: true, progress: 100 });
+      else if (ev === 'error') setDl(d => (d && (d.ready || d.retry || d.scheduled) ? d : null)); // 重试循环内的抖动不清状态
     }) : null;
     return off || undefined;
+  }, []);
+  // 截图/设计管线专用:#settings-demo-update[-retry|-ready] 强制展示更新卡各态(正常运行由事件驱动)
+  useEffect(() => {
+    const applyDemo = () => {
+      const h = window.location.hash || '';
+      if (!h.includes('demo-update')) return;
+      setUpdResult({ found: true, version: '1.11.0' });
+      if (h.includes('retry')) setDl({ progress: 37, retry: 2 });
+      else if (h.includes('ready')) setDl({ ready: true, progress: 100 });
+      else setDl({ progress: 42 });
+    };
+    applyDemo();
+    window.addEventListener('hashchange', applyDemo);
+    return () => window.removeEventListener('hashchange', applyDemo);
   }, []);
 
   const doExtract = async () => {
@@ -37,7 +55,7 @@ export default function Settings({ state, refresh, toast }) {
       const r = await window.rs.extractCatalog();
       if (r.ok) {
         setExtractReport(r);
-        toast(`提取成功:${r.report.modelCount} 个模型${r.report.patchedSlugs.length ? `,修补 ${r.report.patchedSlugs.length} 条` : ''}`, 'ok');
+        toast(`提取成功:${r.report.modelCount} 个模型`, 'ok');
         await loadCatInfo(); setForm(f => ({ ...f, catalogMode: 'extracted' }));
       } else toast('提取失败: ' + r.error, 'bad');
     } catch (e) { toast('提取异常: ' + e.message, 'bad'); }
@@ -82,24 +100,22 @@ export default function Settings({ state, refresh, toast }) {
   };
 
   const downloadAndInstall = async () => {
-    setDl({ progress: 0, installing: false });
+    setDl({ progress: 0 });
     try {
       const r = await window.rs.installUpdate();
-      if (r && r.fallback) {
-        // electron-updater 不可用或下载失败 → 降级浏览器下载
+      if (r && r.started === false) {
         setDl(null);
-        toast('自动下载不可用(' + (r.reason || '未知原因') + '),已转浏览器下载', 'warn');
-        window.open(updateResult.url, '_blank');
-      } else if (r && r.started === false) {
-        setDl(null);
-        toast(r.reason || '远端没有更新', 'warn');
+        toast(r.error || '无法启动自动更新', 'bad');
       }
-      // started=true: 进度与安装过程由 rs:update-event 事件驱动(见下方监听)
+      // started=true:进度/停滞重试/就绪状态全部由 rs:update-event 事件驱动
     } catch (e) {
       setDl(null);
-      toast('更新失败: ' + e.message + ' — 转浏览器下载', 'warn');
-      window.open(updateResult.url, '_blank');
+      toast('更新启动失败: ' + e.message + '(后台自动重试会继续兜底)', 'bad');
     }
+  };
+
+  const restartInstall = () => {
+    try { window.rs.restartInstall(); } catch (e) { toast('重启安装失败: ' + e.message, 'bad'); }
   };
 
   const save = async () => {
@@ -328,17 +344,25 @@ export default function Settings({ state, refresh, toast }) {
         {updateResult && updateResult.found && (
           <div className="parse-preview" style={{ marginTop: 12 }}>
             <div className="pv-title"><Icon name="download" size={14} style={{ color: 'var(--ok)' }} /> 发现新版本 v{updateResult.version}</div>
-            <div className="row" style={{ marginTop: 6 }}>
-              <button className="btn btn-sm btn-gold" onClick={downloadAndInstall} disabled={!!dl}>
-                {dl
-                  ? (dl.installing
-                      ? <><Spinner size={11} /> 正在安装,装完自动重启…</>
-                      : <><Spinner size={11} /> 下载中 {dl.progress}%</>)
-                  : <><Icon name="download" size={11} /> 立即下载安装</>}
-              </button>
-              <a href={updateResult.url} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 11, textDecoration: 'none' }}>
-                直接下载 exe(慢可加 ghproxy.net 前缀)
-              </a>
+            <div className="row" style={{ marginTop: 6, justifyContent: 'space-between', gap: 12 }}>
+              {dl && dl.ready ? (<>
+                <div className="row" style={{ gap: 10 }}>
+                  <Icon name="check" size={12} style={{ color: 'var(--ok)' }} />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ok)' }}>已下载就绪 — 重启后自动安装</span>
+                </div>
+                <button className="btn btn-sm btn-gold" onClick={restartInstall}><Icon name="refresh" size={10} /> 立即重启安装</button>
+              </>) : dl ? (
+                <div className="row" style={{ gap: 10 }}>
+                  {dl.scheduled ? <Icon name="clock" size={12} style={{ color: 'var(--txt-3)' }} /> : <Spinner size={11} />}
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {dl.scheduled
+                      ? '下载停滞,60 秒后自动重试 — 无需干预'
+                      : <>下载中 {dl.progress}%{dl.retry ? <span style={{ color: 'var(--warn)', fontWeight: 500, marginLeft: 6 }}>· 停滞自动重试(第 {dl.retry} 次)</span> : ''}</>}
+                  </span>
+                </div>
+              ) : (
+                <button className="btn btn-sm btn-gold" onClick={downloadAndInstall}><Icon name="download" size={11} /> 立即下载安装</button>
+              )}
             </div>
           </div>
         )}

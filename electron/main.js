@@ -371,7 +371,8 @@ function registerIpc() {
   ipcMain.handle('rs:detectRivals', () => detectRivalTools());
   // 自动更新(检测走 GitHub API;下载安装走 electron-updater,失败降级浏览器下载)
   ipcMain.handle('rs:checkUpdate', () => checkForUpdates());
-  ipcMain.handle('rs:installUpdate', () => autoUpdate.downloadAndInstallUpdate());
+  ipcMain.handle('rs:installUpdate', () => autoUpdate.downloadAndInstallUpdate(true));
+  ipcMain.handle('rs:restartInstall', () => autoUpdate.restartToInstall());
   ipcMain.handle('rs:getVersion', () => app.getVersion());
   // ---- 目录管理(US-01/02)与批量导入(US-03) ----
   ipcMain.handle('rs:extractCatalog', async () => {
@@ -677,8 +678,10 @@ app.whenReady().then(() => {
   };
   setTimeout(autoTokenTick, 30 * 1000).unref?.();
   setInterval(autoTokenTick, 6 * 3600 * 1000).unref?.();
-  // 启动 8s 静默检查更新(失败零打扰;发现新版时侧边栏已有提示)
-  setTimeout(() => checkForUpdates().catch(() => {}), 8000).unref?.();
+  // 启动 8s 静默检查更新;发现新版直接后台自动下载(v1.11.0:停滞自动重试,就绪后重启即装,无浏览器降级)
+  setTimeout(() => checkForUpdates()
+    .then(r => { if (r && r.found) return autoUpdate.downloadAndInstallUpdate(false); })
+    .catch(() => {}), 8000).unref?.();
 
   // 官方目录自动跟进(v1.8.0):启动 15s 后检测 codex.exe 指纹(路径+大小+mtime),
   // 变了才后台重提取 — 官方出新模型/客户端升级,用户零操作,切换自动用最新目录
@@ -735,7 +738,7 @@ app.whenReady().then(() => {
         await new Promise(r => setTimeout(r, 1500));
         const outDir = path.join(app.getAppPath(), 'designs', 'captures');
         fs.mkdirSync(outDir, { recursive: true });
-        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings']) {
+        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready']) {
           await win.webContents.executeJavaScript(`location.hash = '${p}'`);
           await new Promise(r => setTimeout(r, 900));
           const img = await win.webContents.capturePage();

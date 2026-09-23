@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('rs', {
   detectRivals: () => ipcRenderer.invoke('rs:detectRivals'),
   checkUpdate: () => ipcRenderer.invoke('rs:checkUpdate'),
   installUpdate: () => ipcRenderer.invoke('rs:installUpdate'),
-  quitAndInstall: () => ipcRenderer.invoke('rs:quitAndInstall'),
+  restartInstall: () => ipcRenderer.invoke('rs:restartInstall'),
   getVersion: () => ipcRenderer.invoke('rs:getVersion'),
   extractCatalog: () => ipcRenderer.invoke('rs:extractCatalog'),
   getCatalogInfo: () => ipcRenderer.invoke('rs:getCatalogInfo'),

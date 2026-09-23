@@ -17,12 +17,12 @@
         "src/styles.css"
       ],
       "fingerprints": {
-        ".superdesign/design-system.md": "bfbcda65870127f1",
-        "src/pages/Dashboard.jsx": "df926f3bd442da70",
-        "src/components/ui.jsx": "b3e9f213d24cac6b",
-        "src/App.jsx": "1dba067c58fb32aa",
-        "src/components/TitleBar.jsx": "a4cf7afeccce0bbe",
-        "src/styles.css": "9345c9aa14168d34"
+        ".superdesign/design-system.md": "a985df3b87ce20ce",
+        "src/pages/Dashboard.jsx": "0420d8ae0986bb7d",
+        "src/components/ui.jsx": "4f76d6b5a24cad54",
+        "src/App.jsx": "92eec3609cf116ff",
+        "src/components/TitleBar.jsx": "3d843f5943d1d598",
+        "src/styles.css": "eec75c9e4b2811f4"
       },
       "references": {
         "rs-dash-baseline-v1.7": "e38fb5f5-24ea-4c3b-87b9-9dae6fbf22ea",
@@ -35,8 +35,8 @@
       "projectId": "a805413d-9409-4c70-a497-892913fbcd39",
       "activeDraftId": "4a9266be-7ff1-4e28-b686-0c2688cf63f3",
       "baselineDraftId": "4a9266be-7ff1-4e28-b686-0c2688cf63f3",
-      "baselineVersion": "v4",
-      "branchDescription": "v1.7 布局锁定 replace 迭代:桌面集成选项列表形态 + 目录对比排版(mono 语义着色)",
+      "baselineVersion": "v5",
+      "branchDescription": "v1.11.0 布局锁定 replace 迭代:更新卡三态(下载中/停滞自动重试/已下载就绪+重启安装),浏览器降级全删",
       "contextFiles": [
         ".superdesign/design-system.md",
         "src/pages/Settings.jsx",
@@ -46,15 +46,17 @@
         "src/styles.css"
       ],
       "fingerprints": {
-        ".superdesign/design-system.md": "bfbcda65870127f1",
-        "src/pages/Settings.jsx": "701d81d1f409942d",
-        "src/components/ui.jsx": "b3e9f213d24cac6b",
-        "src/App.jsx": "1dba067c58fb32aa",
-        "src/components/TitleBar.jsx": "a4cf7afeccce0bbe",
-        "src/styles.css": "9345c9aa14168d34"
+        ".superdesign/design-system.md": "a985df3b87ce20ce",
+        "src/pages/Settings.jsx": "1beebf7ebf3cfbc8",
+        "src/components/ui.jsx": "4f76d6b5a24cad54",
+        "src/App.jsx": "92eec3609cf116ff",
+        "src/components/TitleBar.jsx": "3d843f5943d1d598",
+        "src/styles.css": "eec75c9e4b2811f4"
       },
       "references": {
-        "rs-settings-v1.7": "83deaba4-839e-46a1-8720-9ddb15c4dd45"
+        "rs-settings-v1.7": "83deaba4-839e-46a1-8720-9ddb15c4dd45",
+        "rs-settings-update-ready-v1.11": "595ba85f-3e72-41dd-b9db-e1dabe16c771",
+        "rs-settings-update-retry-v1.11": "1e551836-b33f-4e3e-885c-be5203ce378e"
       }
     }
   }

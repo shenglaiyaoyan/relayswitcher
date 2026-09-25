@@ -88,8 +88,18 @@ function cleanPendingCache() {
 async function attemptDownloadOnce(userInvoked) {
   cleanPendingCache();
   let lastTick = Date.now();
+  let lastBytes = 0;
   let curCts = null;
-  const onProgress = () => { lastTick = Date.now(); };
+  // 滴漏也算停滞:30s 窗口内新增 <200KB(≈6.7KB/s)视同卡死 —— 健康路径 4MB/s 会秒级刷新,
+  // 只有真卡死/极端慢速才触发重试(2026-09-25 实测:旧看门狗只拦"完全无进展",慢速滴漏
+  // 让更新卡在 1% 永不重试)
+  const onProgress = (p) => {
+    const got = p && p.transferred != null ? p.transferred : null;
+    if (got == null || got - lastBytes >= 200 * 1024) {
+      lastTick = Date.now();
+      if (got != null) lastBytes = got;
+    }
+  };
   autoUpdater.on('download-progress', onProgress);
   const watchdog = setInterval(() => {
     if (Date.now() - lastTick > 30000 && curCts) {

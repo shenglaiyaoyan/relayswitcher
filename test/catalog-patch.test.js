@@ -25,8 +25,8 @@ test('官方模式:补入 gpt-6-sol/luna(官方参数),隐藏被替代的 5.6 �
   assert.deepEqual(bySlug['gpt-6-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], 'sol 追加 ultra(客户端专属档,文档不列)');
   assert.deepEqual(bySlug['gpt-6-luna'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max'], 'luna 系历代无 ultra');
   assert.equal(bySlug['gpt-6-sol'].display_name, 'GPT-6-Sol');
-  assert.ok(!bySlug['gpt-5.6-sol'] && !bySlug['gpt-5.6-luna'], '被 6 系替代的 5.6 应隐藏');
-  assert.ok(!bySlug['gpt-5.6-terra'], 'terra 无对位,退役');
+  assert.ok(bySlug['gpt-5.6-sol'] && bySlug['gpt-5.6-luna'], '5.6-sol/luna 恢复显示(2026-09-24 用户指令)');
+  assert.ok(!bySlug['gpt-5.6-terra'], 'terra 维持退役(用户指令)');
   assert.ok(bySlug['gpt-6-astra'] && bySlug['gpt-5.5'], '未涉及条目保持');
 });
 
@@ -41,7 +41,7 @@ test('中转模式:未提供 6 系时不做加法,terra 仍退役,5.6 系保留�
   assert.deepEqual(slugs, ['gpt-5.6-sol', 'glm-5.3'], '不加 6 系、terra 退役、其余保留');
 });
 
-test('中转模式:提供了 gpt-6-sol 时隐藏其 5.6 前任并校准参数', () => {
+test('中转模式:提供了 gpt-6-sol 时与 5.6-sol 并存(不再隐藏)并校准参数', () => {
   const relayLike = { generation: 't', models: [
     BASE.models[0], // gpt-6-astra(模板来源)
     BASE.models[1], // gpt-5.6-sol
@@ -49,7 +49,7 @@ test('中转模式:提供了 gpt-6-sol 时隐藏其 5.6 前任并校准参数', 
   ] };
   const out = applyCatalogPatch(relayLike, { addMissing: false });
   const bySlug = Object.fromEntries(out.models.map(m => [m.slug, m]));
-  assert.ok(!bySlug['gpt-5.6-sol'], '6 系在场,5.6-sol 隐藏');
+  assert.ok(bySlug['gpt-5.6-sol'], '5.6-sol 与 6-sol 并存(2026-09-24 起不再隐藏)');
   assert.equal(bySlug['gpt-6-sol'].context_window, 272000, '校准为官方软限');
   assert.equal(bySlug['gpt-6-sol'].max_context_window, 872000, '校准为官方硬顶');
   assert.equal(bySlug['gpt-6-sol'].default_reasoning_level, 'medium');

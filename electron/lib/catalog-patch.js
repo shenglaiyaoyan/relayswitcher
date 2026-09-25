@@ -5,17 +5,16 @@
  * 官方发布新模型而 codex.exe 内嵌快照滞后时,按官方公布参数把新条目补进目录;
  * 同时执行产品策略:被替代的旧线隐藏、无对位的退役。
  *
- * 当前策略(2026-09-23):
- *   - 补入 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium;'none' 档
- *     客户端目录无先例,暂不引入)
+ * 当前策略(2026-09-24):
+ *   - 补入/校准 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium;'none' 档
+ *     客户端目录无先例,暂不引入;内嵌目录已收录后补入自然退化为参数校准)
  *   - 档位:low→max,sol 追加 ultra —— ultra 是客户端专属档(自动任务委派),API 文档
- *     系统性不列(实测 astra/5.6-sol 文档页同样只写到 max,客户端目录却有 ultra);
- *     sol 系历代有 ultra(5.6-sol),luna 系历代没有(5.6-luna,效率线定位),各随其脉
- *   - 上下文遵循官方模式:软限 272K(压缩线)= 官方计费分档线 —— 输入 >272K 的请求整单
- *     2x 输入(含缓存)/ 1.5x 输出计费,压缩线压在档内即省钱;硬顶 1.05M,要吃满大窗口
- *     在切换面板手填顶层 model_context_window
- *   - gpt-5.6-sol / gpt-5.6-luna 被同名 6 系替代,6 系存在即隐藏
- *   - gpt-5.6-terra 无 6 系对位,直接退役
+ *     系统性不列;sol 系历代有,luna 系历代没有,各随其脉
+ *   - 上下文按官方客户端目录:软限 272K(=计费分档线,输入 >272K 整单 2x 输入/1.5x 输出),
+ *     硬顶 872K;要吃满大窗口在切换面板手填顶层 model_context_window
+ *   - 5.6-sol / 5.6-luna 恢复显示(2026-09-24 用户指令:6-sol 实战口碑不及 5.6-sol,
+ *     官方目录亦未隐藏 5.6 系)——不再因 6 系在场而隐藏
+ *   - gpt-5.6-terra 维持退役(用户指令;官方目录虽仍列出)
  *
  * 生效范围:official 模式补缺+校准;relay 模式只校准中转站已提供的条目(不替中转站做加法)。
  * 内嵌快照追上后(slug 原生存在):新增自然退化为参数校准;下个版本移除本表即完全回归快照。
@@ -29,15 +28,13 @@ const PATCH_MODELS = [
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',
     description: 'Workhorse model for coding and everyday work.',
     contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'medium',
-    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-    replaces: 'gpt-5.6-sol'
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-luna', displayName: 'GPT-6-Luna',
     description: 'Fast and affordable model for easier tasks.',
     contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'medium',
-    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
-    replaces: 'gpt-5.6-luna'
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max']
   }
 ];
 

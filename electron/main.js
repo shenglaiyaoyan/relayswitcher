@@ -317,7 +317,10 @@ async function refreshAccount(id) {
 async function detectCodexRunning() {
   return new Promise((resolve) => {
     const { execFile } = require('child_process');
-    execFile('tasklist', ['/FI', 'IMAGENAME eq codex.exe', '/FO', 'CSV', '/NH'], { windowsHide: true }, (err, stdout) => {
+    // timeout: 系统进程枚举异常时 tasklist 可挂数分钟(2026-09-27 实测 2m03s,
+    // codex 桌面版更新后触发),超时按"未检测到"处理,绝不阻塞切换流程
+    execFile('tasklist', ['/FI', 'IMAGENAME eq codex.exe', '/FO', 'CSV', '/NH'],
+      { windowsHide: true, timeout: 5000 }, (err, stdout) => {
       if (err) return resolve({ running: false, pids: [] });
       const pids = [];
       for (const line of String(stdout).split('\n')) {
@@ -333,7 +336,9 @@ async function detectCodexRunning() {
 async function detectRivalTools() {
   return new Promise((resolve) => {
     const { execFile } = require('child_process');
-    execFile('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true }, (err, stdout) => {
+    // 同上:tasklist 病态慢时 5s 超时跳过(竞品检测是辅助提醒,失败不阻塞切换)
+    execFile('tasklist', ['/FO', 'CSV', '/NH'],
+      { windowsHide: true, timeout: 5000 }, (err, stdout) => {
       if (err) return resolve({ running: false, tools: [] });
       const tools = findRivalProcesses(stdout);
       resolve({ running: tools.length > 0, tools });
@@ -344,7 +349,8 @@ async function detectRivalTools() {
 /* 一键止停 Codex(US-07): 强杀进程树后复查,以复查结果为准 */
 async function stopCodexRunning() {
   const { execFile } = require('child_process');
-  await new Promise((res) => execFile('taskkill', ['/IM', 'codex.exe', '/F', '/T'], { windowsHide: true }, () => res()));
+  await new Promise((res) => execFile('taskkill', ['/IM', 'codex.exe', '/F', '/T'],
+    { windowsHide: true, timeout: 8000 }, () => res()));
   const d = await detectCodexRunning();
   return { ok: !d.running, running: d.running };
 }

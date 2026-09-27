@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.11.6 (2026-09-27) — tasklist/taskkill 全部加超时:进程枚举病态慢不再卡死切换
+
+- **背景(小电脑 2026-09-27 事故)**:Codex 桌面版更新后,本机 `tasklist` 跑一次实测 2m03s
+  (正常 <1s)。doSwitch 首步 Promise.all 里的 detectRivalTools 用 execFile('tasklist') 无超时
+  裸跑 → 每次点切换都卡在竞品检测等两分多钟,表现为「一直处理中」,且连 switch 备份都未产生
+  (流程没进 applySwitch)
+- **修复**:三处 execFile 全部加超时 —— detectCodexRunning / detectRivalTools 5s(超时按
+  「未检测到」处理,跳过继续);stopCodexRunning 的 taskkill 8s。竞品检测/进程检测均为辅助
+  功能,超时跳过零影响切换正确性
+- 来源:小电脑分支(11ff28f),本机复核:单测 57/57、冒烟 38/38
+
 ## v1.11.5 (2026-09-25) — 看门狗补滴漏盲区:慢速卡 1% 也会自动重试
 
 - **背景(实测)**:v1.11.0 的停滞看门狗只拦「30 秒完全无进展」,**慢速滴漏**(每几十秒挪几个

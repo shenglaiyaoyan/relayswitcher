@@ -14,11 +14,16 @@ const BASE = {
   ]
 };
 
-test('官方模式:补入 gpt-6-sol/luna(官方参数),隐藏被替代的 5.6 系与 terra,其余不动', () => {
+test('官方模式:补入 gpt-6-sol/luna/6.1-sol(官方参数),5.6 系并存,terra 退役', () => {
   const out = applyCatalogPatch(BASE, { addMissing: true });
   const bySlug = Object.fromEntries(out.models.map(m => [m.slug, m]));
   assert.ok(bySlug['gpt-6-sol'], '应补入 gpt-6-sol');
   assert.ok(bySlug['gpt-6-luna'], '应补入 gpt-6-luna');
+  assert.ok(bySlug['gpt-6.1-sol'], '应补入 gpt-6.1-sol(exe 滞后桥接)');
+  assert.equal(bySlug['gpt-6.1-sol'].context_window, 272000, '6.1-sol 软限=计费线 272K');
+  assert.equal(bySlug['gpt-6.1-sol'].max_context_window, 4194304, '6.1-sol 硬顶 4M');
+  assert.equal(bySlug['gpt-6.1-sol'].default_reasoning_level, 'high', '6.1-sol 官方默认 high');
+  assert.deepEqual(bySlug['gpt-6.1-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'ultra'], '6.1-sol 含 ultra');
   assert.equal(bySlug['gpt-6-sol'].context_window, 272000, '软限=压缩线=计费分档线 272K');
   assert.equal(bySlug['gpt-6-sol'].max_context_window, 872000, '硬顶按官方客户端目录 872K');
   assert.equal(bySlug['gpt-6-sol'].default_reasoning_level, 'medium', '官方默认档位 medium');

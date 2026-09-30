@@ -5,10 +5,14 @@
  * 官方发布新模型而 codex.exe 内嵌快照滞后时,按官方公布参数把新条目补进目录;
  * 同时执行产品策略:被替代的旧线隐藏、无对位的退役。
  *
- * 当前策略(2026-09-24):
+ * 当前策略(2026-09-28):
  *   - 补入/校准 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium;'none' 档
  *     客户端目录无先例,暂不引入;内嵌目录已收录后补入自然退化为参数校准)
- *   - 档位:low→max,sol 追加 ultra —— ultra 是客户端专属档(自动任务委派),API 文档
+ *   - 补入 gpt-6.1-sol(官方 2026-09-28 发布,exe 滞后桥接):4M 上下文(软限仍压 272K
+ *     计费线——>272K 整单 2x,注意 6.1 系输出也是 2x 非 1.5x)、默认档位 high、
+ *     low→ultra(ultra 需额外权限层)、定位 "Near-Astra performance at Sol prices";
+ *     6.1 家族暂只有 Sol;内嵌目录收录后退化为校准
+ *   - 档位:low→max,sol 系追加 ultra —— ultra 是客户端专属档(自动任务委派),API 文档
  *     系统性不列;sol 系历代有,luna 系历代没有,各随其脉
  *   - 上下文按官方客户端目录:软限 272K(=计费分档线,输入 >272K 整单 2x 输入/1.5x 输出),
  *     硬顶 872K;要吃满大窗口在切换面板手填顶层 model_context_window
@@ -24,6 +28,12 @@
 const { mergeCustomModels } = require('./catalog-merge');
 
 const PATCH_MODELS = [
+  {
+    templateSlug: 'gpt-6-astra', slug: 'gpt-6.1-sol', displayName: 'GPT-6.1-Sol',
+    description: 'Near-Astra performance for coding and agentic workflows, at Sol prices.',
+    contextWindow: 272000, maxContextWindow: 4194304, defaultEffort: 'high',
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'ultra']
+  },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',
     description: 'Workhorse model for coding and everyday work.',

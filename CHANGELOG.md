@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.11.9 (2026-09-30) — 目录补声明 Ultra Fast 档:速度选择器解锁三档
+
+- **机制认知修正**:客户端速度档选择器由**目录元数据驱动**(`service_tiers` /
+  `additional_speed_tiers`,标签来自数据而非二进制硬编码)——提取快照每模型只声明 Fast
+  一档,选择器就被限在两档;用户实证正常桌面客户端有三档
+- **变更**:catalog-patch 给 gpt-6-astra(官方 ultrafast guide 实锤全面开放)与
+  gpt-6.1-sol(媒体报道,~300 tok/s)补声明 `ultrafast` 档:service_tiers 增加
+  {id: ultrafast, name: "Ultra Fast"},additional_speed_tiers 同步;其余模型不动
+- catalog-merge 新增 `serviceTiers` / `additionalSpeedTiers` 覆盖支持
+- 能否真正使用 Ultra Fast 仍由服务端按模型/账号门控(astra 开放,价格 6x Standard =
+  3x Fast);选项出现是第一步
+- 单测 57 例全过,冒烟 38/38
+
 ## v1.11.8 (2026-09-30) — 速度档彻底归还客户端:RS 不再写 service_tier
 
 - **背景(调研实锤)**:官方速度档已多档化 —— `priority` 已更名 Fast(新值 `fast`,旧值仍受),

@@ -29,10 +29,26 @@ const { mergeCustomModels } = require('./catalog-merge');
 
 const PATCH_MODELS = [
   {
+    // 同 slug 改写 astra:仅补声明 Ultra Fast 档 — 速度档选择器由目录元数据驱动,
+    // 提取快照只声明了 Fast 一档,选择器就被限在两档(用户实证正常客户端三档)。
+    // 官方 ultrafast guide 实锤 astra 全面开放(6x Standard);能否真用仍由服务端按账号门控
+    templateSlug: 'gpt-6-astra', slug: 'gpt-6-astra',
+    serviceTiers: [
+      { id: 'priority', name: 'Fast', description: '2x speed, increased usage' },
+      { id: 'ultrafast', name: 'Ultra Fast', description: '6x speed' }
+    ],
+    additionalSpeedTiers: ['fast', 'ultrafast']
+  },
+  {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6.1-sol', displayName: 'GPT-6.1-Sol',
     description: 'Near-Astra performance for coding and agentic workflows, at Sol prices.',
     contextWindow: 272000, maxContextWindow: 4194304, defaultEffort: 'high',
-    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'ultra']
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'ultra'],
+    serviceTiers: [
+      { id: 'priority', name: 'Fast', description: '2x speed' },
+      { id: 'ultrafast', name: 'Ultra Fast', description: 'Fastest tier' }
+    ],
+    additionalSpeedTiers: ['fast', 'ultrafast']
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',

@@ -340,7 +340,7 @@ function restoreBackup(home, id) {
 /**
  * opts: {
  *   home, account{tokens}, relay{name,baseUrl,apiKey},
- *   model, contextWindow|null, fastMode, providerId,
+ *   model, contextWindow|null, providerId,
  *   catalogEnabled, catalogSourcePath, catalogFileName,
  *   pruneLocalProviders (默认 false),
  *   onStep(name, ok, detail)
@@ -413,7 +413,8 @@ function applySwitch(opts) {
     let text = cfgIn ? cfgIn.text : '';
     const topKV = { model: opts.model, model_provider: opts.providerId };
     if (opts.contextWindow != null) topKV.model_context_window = opts.contextWindow;
-    if (opts.fastMode !== undefined) topKV.service_tier = opts.fastMode ? 'priority' : null;
+    // service_tier 不再由 RS 管理(v1.11.8):官方速度档已多档化(default/fast/ultrafast,
+    // 服务端按模型/账号门控),客户端自己的档位选择才是权威,RS 写死 priority 会踩掉它
     text = patchTopLevelKeys(text, topKV);
 
     let catalogContent = null;

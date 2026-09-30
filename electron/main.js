@@ -248,7 +248,6 @@ async function doSwitch(opts, event) {
     account, relay,
     model,
     contextWindow: opts.contextWindow != null ? opts.contextWindow : s.contextWindow,
-    fastMode: s.fastMode,
     providerId: s.providerId,
     catalogEnabled: s.catalogEnabled,
     catalogContent,
@@ -515,7 +514,7 @@ async function smoke() {
     home,
     account: { tokens: fakeTokens },
     relay: { name: 'SmokeRelay', baseUrl: 'https://relay.example.com/v1', apiKey: 'sk-smoke' },
-    model: 'gpt-6-astra', contextWindow: 872000, fastMode: true,
+    model: 'gpt-6-astra', contextWindow: 872000,
     providerId: 'codex_local_access',
     catalogEnabled: true,
     catalogSourcePath: path.join(resourcesDir(), 'model-catalog.json'),
@@ -544,7 +543,7 @@ async function smoke() {
   check('base_url 指向中转站', cfg.model_providers['codex_local_access'].base_url === 'https://relay.example.com/v1');
   check('experimental_bearer_token 写入', cfg.model_providers['codex_local_access'].experimental_bearer_token === 'sk-smoke');
   check('requires_openai_auth = true', cfg.model_providers['codex_local_access'].requires_openai_auth === true);
-  check('service_tier = priority', cfg.service_tier === 'priority');
+  check('service_tier 不再由 RS 写入(速度档归还客户端,多档选择不被踩)', cfg.service_tier === undefined);
   check('model_context_window = 872000', cfg.model_context_window === 872000);
   check('model_catalog_json 已设置', cfg.model_catalog_json === 'relayswitcher-model-catalog.json');
   check('【关键】合法本地网关区块默认保留', !!cfg.model_providers['my_local_gateway'] && cfg.model_providers['my_local_gateway'].base_url === 'http://127.0.0.1:3000/v1');

@@ -262,6 +262,7 @@ function listBackupFiles(home) {
 function backup(home, reason) {
   const dir = path.join(home, BACKUP_DIRNAME);
   fs.mkdirSync(dir, { recursive: true });
+  compactBackupDupes(dir); // 顺手压缩存量:同内容文件硬链接合一(备份大头是很少变化的目录文件)
   const ts = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
@@ -273,7 +274,7 @@ function backup(home, reason) {
     const src = path.join(home, f);
     if (fs.existsSync(src)) {
       fs.mkdirSync(path.dirname(path.join(bdir, f)), { recursive: true });
-      fs.copyFileSync(src, path.join(bdir, f));
+      copyOrLinkDedup(dir, src, path.join(bdir, f), f);
       copied.push(f);
     }
   }
@@ -283,6 +284,54 @@ function backup(home, reason) {
   }, null, 2));
   pruneBackups(home);
   return path.basename(bdir);
+}
+
+/* ---------------- 备份去重(v1.11.11):目录文件占备份 99% 且很少变化,同内容硬链接合一 ---------------- */
+
+function sha256File(p) {
+  return require('crypto').createHash('sha256').update(require('fs').readFileSync(p)).digest('hex');
+}
+
+/** 新备份写文件:若既有备份里已有同名同内容文件,硬链接复用(失败回退拷贝)——省 99% 体积 */
+function copyOrLinkDedup(dir, src, dest, name) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir).filter(d => { try { return fs.statSync(path.join(dir, d)).isDirectory(); } catch { return false; } }); } catch { /* */ }
+  entries.sort().reverse(); // 新的优先
+  const srcSize = fs.statSync(src).size;
+  let srcHash = null;
+  for (const e of entries.slice(0, MAX_BACKUPS)) {
+    const cand = path.join(dir, e, name);
+    try {
+      if (fs.statSync(cand).size !== srcSize) continue;
+      srcHash = srcHash || sha256File(src);
+      if (sha256File(cand) === srcHash) {
+        try { fs.linkSync(cand, dest); return; } catch { /* 跨卷/权限等,回退拷贝 */ }
+        break;
+      }
+    } catch { /* skip */ }
+  }
+  fs.copyFileSync(src, dest);
+}
+
+/** 存量压缩:同内容备份文件硬链接合一(硬链接只读语义不变,restore 照常读) */
+function compactBackupDupes(dir) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir).filter(d => { try { return fs.statSync(path.join(dir, d)).isDirectory(); } catch { return false; } }); } catch { return; }
+  entries.sort(); // 旧→新,旧的是母本
+  const seen = new Map(); // name|hash → 母本路径
+  for (const e of entries) {
+    let files = [];
+    try { files = fs.readdirSync(path.join(dir, e)); } catch { continue; }
+    for (const f of files) {
+      if (f === 'meta.json') continue;
+      const p = path.join(dir, e, f);
+      try { if (!fs.statSync(p).isFile()) continue; } catch { continue; }
+      const key = f + '|' + sha256File(p);
+      if (seen.has(key)) {
+        try { fs.unlinkSync(p); fs.linkSync(seen.get(key), p); } catch { /* 失败保留原样 */ }
+      } else seen.set(key, p);
+    }
+  }
 }
 
 function pruneBackups(home) {

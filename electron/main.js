@@ -482,6 +482,9 @@ async function smoke() {
       'model_provider = "my_local_gateway"',
       'model = "gpt-5.5"',
       '',
+      '[features.guardianv2]',
+      'thread_context = true',
+      '',
       '[mcp_servers.memory]',
       'command = "npx"',
       '',
@@ -548,6 +551,8 @@ async function smoke() {
   check('model_catalog_json 已设置', cfg.model_catalog_json === 'relayswitcher-model-catalog.json');
   check('【关键】合法本地网关区块默认保留', !!cfg.model_providers['my_local_gateway'] && cfg.model_providers['my_local_gateway'].base_url === 'http://127.0.0.1:3000/v1');
   check('其它配置保留(mcp_servers)', !!cfg.mcp_servers && !!cfg.mcp_servers.memory);
+  check('废弃键已清理(guardianv2.thread_context 摘除,空段段头一并移除)',
+    !(cfg.features && cfg.features.guardianv2 && cfg.features.guardianv2.thread_context) && !(cfg.features && cfg.features.guardianv2));
   check('顶层原键保留(approval_policy)', cfg.approval_policy === 'never');
 
   const cfgRaw = fs.readFileSync(P('config.toml'), 'utf8');

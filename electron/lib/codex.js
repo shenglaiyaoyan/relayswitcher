@@ -416,6 +416,7 @@ function applySwitch(opts) {
     // service_tier 不再由 RS 管理(v1.11.8):官方速度档已多档化(default/fast/ultrafast,
     // 服务端按模型/账号门控),客户端自己的档位选择才是权威,RS 写死 priority 会踩掉它
     text = patchTopLevelKeys(text, topKV);
+    text = stripDeprecatedKeys(text);
 
     let catalogContent = null;
     if (opts.catalogEnabled) {
@@ -563,9 +564,55 @@ function extractRelayCandidates(text) {
   return { ok: true, relays, current };
 }
 
+/* ---------------- 官方已废弃配置键清理(v1.11.10) ---------------- */
+/**
+ * Codex 更新公告点名废弃的配置键:键被客户端直接忽略,留着每次打开配置页都弹警告。
+ * 切换时顺手摘除(外科手术式行级删除,含 profile 覆盖段);段被清空则连段头一起移除。
+ * 新废弃键按官方公告追加到本清单。
+ */
+const DEPRECATED_KEYS = [
+  // 2026-09-30 客户端警告实锤:线程级 Guardian 上下文已永远开启,thread_context 失效
+  { section: 'features.guardianv2', key: 'thread_context' }
+];
+
+/** LF 域文本上游走废弃键(行级);仅在 LF 域调用(与 patchTopLevelKeys 同一管线) */
+function stripDeprecatedKeys(text) {
+  if (!text) return text;
+  const isDeprecated = (section, key) => DEPRECATED_KEYS.some(d =>
+    (section === d.section || section.endsWith('.' + d.section)) && key === d.key);
+  const lines = text.split('\n');
+  const out = [];
+  let section = '';
+  let headerIdx = -1;   // 当前段头在 out 的位置
+  let kept = 0;         // 当前段保留的实质行(键/注释)
+  let dropped = 0;      // 当前段摘除的废弃键行
+  const settle = () => { if (headerIdx >= 0 && dropped > 0 && kept === 0) out.splice(headerIdx, 1); };
+  for (const line of lines) {
+    const h = line.match(/^\s*\[([^\]]+)\]/);
+    if (h) {
+      settle();
+      section = h[1].trim();
+      headerIdx = out.length; kept = 0; dropped = 0;
+      out.push(line);
+      continue;
+    }
+    const kv = line.match(/^\s*([A-Za-z0-9_.-]+)\s*=/);
+    if (kv) {
+      if (isDeprecated(section, kv[1])) { dropped++; continue; }
+      kept++;
+    } else if (line.trim() !== '') {
+      kept++; // 注释等非键行保留
+    }
+    out.push(line);
+  }
+  settle();
+  return out.join('\n');
+}
+
 module.exports = {
   defaultCodexHome, readText, tomlStr, isValidProviderId,
   patchTopLevelKeys, readTopLevelKey, patchProviderBlock, buildAuthJson,
+  stripDeprecatedKeys, DEPRECATED_KEYS,
   backup, listBackups, restoreBackup, applySwitch, getStatus,
   extractRelayCandidates
 };

@@ -8,10 +8,9 @@
  * 当前策略(2026-09-28):
  *   - 补入/校准 gpt-6-sol / gpt-6-luna(官方 2026-09-22 发布;默认档位 medium;'none' 档
  *     客户端目录无先例,暂不引入;内嵌目录已收录后补入自然退化为参数校准)
- *   - 补入 gpt-6.1-sol(官方 2026-09-28 发布,exe 滞后桥接):4M 上下文(软限仍压 272K
- *     计费线——>272K 整单 2x,注意 6.1 系输出也是 2x 非 1.5x)、默认档位 high、
- *     low→ultra(ultra 需额外权限层)、定位 "Near-Astra performance at Sol prices";
- *     6.1 家族暂只有 Sol;内嵌目录收录后退化为校准
+ *   - 校准 gpt-6.1-sol(2026-10-01 exe 已原生收录):原生 272K/872K/默认 low/含 max —— 文档页的
+ *     4M/high/无 max 全被客户端目录推翻(文档少列 max、ultra 是惯例,别信);ultrafast 档声明
+ *     保留(RS 增值,原生不声明,解锁速度选择器第三档)
  *   - 档位:low→max,sol 系追加 ultra —— ultra 是客户端专属档(自动任务委派),API 文档
  *     系统性不列;sol 系历代有,luna 系历代没有,各随其脉
  *   - 上下文按官方客户端目录:软限 272K(=计费分档线,输入 >272K 整单 2x 输入/1.5x 输出),
@@ -41,9 +40,9 @@ const PATCH_MODELS = [
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6.1-sol', displayName: 'GPT-6.1-Sol',
-    description: 'Near-Astra performance for coding and agentic workflows, at Sol prices.',
-    contextWindow: 272000, maxContextWindow: 4194304, defaultEffort: 'high',
-    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'ultra'],
+    description: 'Latest workhorse model for coding and everyday work.',
+    contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'low',
+    reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     serviceTiers: [
       { id: 'priority', name: 'Fast', description: '2x speed' },
       { id: 'ultrafast', name: 'Ultra Fast', description: 'Fastest tier' }

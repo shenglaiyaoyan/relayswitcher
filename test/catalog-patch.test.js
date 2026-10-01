@@ -21,9 +21,9 @@ test('官方模式:补入 gpt-6-sol/luna/6.1-sol(官方参数),5.6 系并存,ter
   assert.ok(bySlug['gpt-6-luna'], '应补入 gpt-6-luna');
   assert.ok(bySlug['gpt-6.1-sol'], '应补入 gpt-6.1-sol(exe 滞后桥接)');
   assert.equal(bySlug['gpt-6.1-sol'].context_window, 272000, '6.1-sol 软限=计费线 272K');
-  assert.equal(bySlug['gpt-6.1-sol'].max_context_window, 4194304, '6.1-sol 硬顶 4M');
-  assert.equal(bySlug['gpt-6.1-sol'].default_reasoning_level, 'high', '6.1-sol 官方默认 high');
-  assert.deepEqual(bySlug['gpt-6.1-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'ultra'], '6.1-sol 含 ultra');
+  assert.equal(bySlug['gpt-6.1-sol'].max_context_window, 872000, '6.1-sol 硬顶按客户端目录 872K(文档 4M 不可信)');
+  assert.equal(bySlug['gpt-6.1-sol'].default_reasoning_level, 'low', '6.1-sol 原生默认 low(文档 high 不可信)');
+  assert.deepEqual(bySlug['gpt-6.1-sol'].supported_reasoning_levels.map(r => r.effort), ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], '6.1-sol 含 max+ultra(原生全梯)');
   const astraTiers = (bySlug['gpt-6-astra'].service_tiers || []).map(t => t.id);
   assert.ok(astraTiers.includes('ultrafast'), 'astra 补声明 Ultra Fast 档(选择器目录驱动)');
   const sol61Tiers = (bySlug['gpt-6.1-sol'].service_tiers || []).map(t => t.id);

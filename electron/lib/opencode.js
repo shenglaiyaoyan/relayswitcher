@@ -3,10 +3,11 @@
  * opencode.js — OpenCode 配置管理(纯函数核心)。
  * 职责:读写 ~/.config/opencode/opencode.json(JSONC 容错)与
  * ~/.local/share/opencode/auth.json;外科手术式合并/摘除 provider 块;
- * 写前备份。路径可通过传入 home 覆盖(测试用)。
+ * 写前备份。路径默认真实 home(~),可通过传入 home 覆盖(测试用)。
  */
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const PROTOCOL_ADAPTERS = {
   message: '@ai-sdk/anthropic',
@@ -14,9 +15,9 @@ const PROTOCOL_ADAPTERS = {
   responses: '@ai-sdk/openai'
 };
 
-function configPath(home) { return path.join(home || '', '.config', 'opencode', 'opencode.json'); }
-function authPath(home) { return path.join(home || '', '.local', 'share', 'opencode', 'auth.json'); }
-function backupDir(home) { return path.join(home || '', '.config', 'opencode', 'relayswitcher-backups'); }
+function configPath(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'opencode.json'); }
+function authPath(home) { return path.join(home || os.homedir(), '.local', 'share', 'opencode', 'auth.json'); }
+function backupDir(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'relayswitcher-backups'); }
 
 /** JSONC → JSON(剥掉 // 与 /* 注释;不处理嵌套在字符串内的伪注释——够用) */
 function stripJsonComments(text) {

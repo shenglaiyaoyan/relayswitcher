@@ -215,13 +215,23 @@ function createStore(userDataDir) {
     },
 
     /* ---------- OpenCode providers ---------- */
-    listOpenCodeProviders() { return data.opencodeProviders || []; },
+    listOpenCodeProviders() {
+      return (data.opencodeProviders || []).map(p => {
+        if (p.apiKeyEnc) return { ...p, apiKey: dec(p.apiKeyEnc) };
+        return p;
+      });
+    },
 
     saveOpenCodeProvider(p) {
       if (!p.id) throw new Error('provider id 必填');
-      const i = (data.opencodeProviders || []).findIndex(x => x.id === p.id);
-      if (i >= 0) data.opencodeProviders[i] = p;
-      else (data.opencodeProviders = data.opencodeProviders || []).push(p);
+      const toStore = { ...p };
+      if (toStore.apiKey) {
+        toStore.apiKeyEnc = enc(toStore.apiKey);
+        delete toStore.apiKey;
+      }
+      const i = (data.opencodeProviders || []).findIndex(x => x.id === toStore.id);
+      if (i >= 0) data.opencodeProviders[i] = toStore;
+      else (data.opencodeProviders = data.opencodeProviders || []).push(toStore);
       save();
     },
 

@@ -210,8 +210,7 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
           </Field>
         </div>
       </div>
-      {/* 模型条目(superdesign:表格式,列 = ID / 显示名 / CTX / OUT / 能力与选项 / 移除) */}
-      <div className="klabel" style={{ marginBottom: -6 }}>模型条目(勾选 / 手动添加)</div>
+      {/* 模型条目(superdesign v3:区块标题 + 右侧金色添加钮,双行条目表) */}
       <ModelEntries data={data} setData={setData} relayModels={relayModels} fetching={fetching} />
       {/* 默认模型 */}
       <Field label="默认模型">
@@ -249,13 +248,25 @@ function ModelEntries({ data, setData, relayModels, fetching }) {
     const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
     updateModel(i, 'modalities', { ...(models[i].modalities || {}), [dir]: next });
   };
-  const th = { padding: '6px 8px', fontSize: 10, color: 'var(--txt-3)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'left', fontWeight: 600 };
-  const td = { padding: '10px 8px', borderTop: '1px solid rgba(255,255,255,0.05)', verticalAlign: 'top' };
+  // superdesign v4 定稿:每模型一张 12 列网格卡(ID/显示名 竖排 3 列 | CTX/OUT 竖排 2 列 |
+  // 能力 6 列 | 移除 1 列),字段竖排填满卡高,消灭表格时代的行内大片留白
+  const grid12 = { display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 16 };
+  const span = (n) => ({ gridColumn: `span ${n}` });
+  const microLabel = { fontSize: 9, color: 'var(--txt-3)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 };
+  const bare = { width: '100%', background: 'transparent', border: 'none', padding: 0, outline: 'none' };
+  const chipXs = { fontSize: 8.5, padding: '0 8px', height: 18, lineHeight: '18px' };
+  const colHead = { fontSize: 10, fontWeight: 700, color: 'var(--txt-3)', textTransform: 'uppercase', letterSpacing: '0.08em' };
   return (
     <div>
+      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+        <div className="klabel">模型条目(勾选 / 手动添加)</div>
+        <button className="oc-add-model" onClick={() => set('models', [...models, NEW_MODEL()])}>
+          <Icon name="plus" size={11} /> 手动添加模型
+        </button>
+      </div>
       {fetching && <div className="muted row" style={{ gap: 6, margin: '10px 0', fontSize: 12 }}><Spinner size={11} /> 拉取模型清单中…</div>}
       {!fetching && relayModels && relayModels.length > 0 && (
-        <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>
           {relayModels.map(id => (
             <span key={id} className={'chip' + (models.find(m => m.id === id) ? ' on' : '')}
               onClick={() => toggleModel(id)}>{id}</span>
@@ -263,90 +274,98 @@ function ModelEntries({ data, setData, relayModels, fetching }) {
         </div>
       )}
       {!fetching && relayModels && relayModels.length === 0 && (
-        <div className="muted" style={{ fontSize: 11, margin: '10px 0' }}>该站 /v1/models 返回空,在下方手动添加</div>
+        <div className="muted" style={{ fontSize: 11, margin: '0 0 8px' }}>该站 /v1/models 返回空,点右上「手动添加模型」</div>
       )}
       {!fetching && !relayModels && models.length === 0 && (
-        <div className="muted" style={{ fontSize: 11, margin: '10px 0' }}>选中中转站后自动拉取清单,或在下方手动添加</div>
+        <div className="muted" style={{ fontSize: 11, margin: '0 0 8px' }}>选中中转站后自动拉取清单,或点右上「手动添加模型」</div>
       )}
       {models.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <th style={th}>ID</th>
-              <th style={th}>显示名</th>
-              <th style={{ ...th, width: 86 }}>CTX</th>
-              <th style={{ ...th, width: 86 }}>OUT</th>
-              <th style={th}>能力与选项</th>
-              <th style={{ ...th, width: 36 }}></th>
-            </tr>
-          </thead>
-          <tbody>
+        <div>
+          {/* 列头带(3/2/6/1 与卡片网格对齐) */}
+          <div style={{ ...grid12, gap: 0, padding: '0 16px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>
+            <div style={{ ...span(3), ...colHead }}>ID / 显示名</div>
+            <div style={{ ...span(2), ...colHead, textAlign: 'center' }}>CTX / OUT</div>
+            <div style={{ ...span(6), ...colHead, paddingLeft: 16 }}>能力与选项</div>
+            <div style={span(1)}></div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {models.map((m, i) => (
-              <tr key={i}>
-                <td style={td}>
-                  <input type="text" className="mono" value={m.id} onChange={e => updateModel(i, 'id', e.target.value)}
-                    placeholder="model id" title="模型 ID(必填)"
-                    style={{ width: '100%', minWidth: 130, fontSize: 11, background: 'transparent', border: 'none', padding: 0, color: 'var(--gold-light, var(--txt-1))' }} />
-                </td>
-                <td style={td}>
-                  <input type="text" value={m.name} onChange={e => updateModel(i, 'name', e.target.value)}
-                    placeholder="显示名"
-                    style={{ width: '100%', minWidth: 70, fontSize: 11, background: 'transparent', border: 'none', padding: 0 }} />
-                </td>
-                <td style={td}>
-                  <input type="number" value={m.limit.context} onChange={e => updateModel(i, 'limit', { ...m.limit, context: Number(e.target.value) })}
-                    placeholder="0" title="上下文窗口(0 = 不写入)"
-                    style={{ width: '100%', fontSize: 11, textAlign: 'center', background: 'transparent', border: 'none', padding: 0 }} />
-                </td>
-                <td style={td}>
-                  <input type="number" value={m.limit.output} onChange={e => updateModel(i, 'limit', { ...m.limit, output: Number(e.target.value) })}
-                    placeholder="0" title="输出上限(0 = 不写入)"
-                    style={{ width: '100%', fontSize: 11, textAlign: 'center', background: 'transparent', border: 'none', padding: 0 }} />
-                </td>
-                <td style={{ ...td, minWidth: 220 }}>
-                  {/* 2×2 能力开关 */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-                    {[['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']].map(([f, label]) => (
-                      <label key={f} className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        {label} <Toggle on={!!m[f]} onChange={v => updateModel(i, f, v)} />
-                      </label>
-                    ))}
+              <div key={i} className="oc-model-card">
+                <div style={grid12}>
+                  {/* ID / 显示名(竖排) */}
+                  <div style={{ ...span(3), display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div>
+                      <label style={microLabel}>模型 ID</label>
+                      <input type="text" className="mono" value={m.id} onChange={e => updateModel(i, 'id', e.target.value)}
+                        placeholder="model-id" title="模型 ID(必填)"
+                        style={{ ...bare, fontSize: 12, color: 'var(--gold-light)' }} />
+                    </div>
+                    <div>
+                      <label style={microLabel}>显示名</label>
+                      <input type="text" value={m.name} onChange={e => updateModel(i, 'name', e.target.value)}
+                        placeholder="显示名"
+                        style={{ ...bare, fontSize: 12 }} />
+                    </div>
                   </div>
-                  {/* 输入/输出模态 */}
-                  {[['input', '输入'], ['output', '输出']].map(([dir, label]) => (
-                    <div key={dir} className="row" style={{ gap: 4, marginTop: 6, alignItems: 'center', flexWrap: 'wrap', paddingTop: 5, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                      <span className="muted" style={{ fontSize: 9, flexShrink: 0 }}>{label}</span>
-                      {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
-                        <span key={mod} className={'chip' + (((m.modalities || {})[dir] || []).includes(mod) ? ' on' : '')}
-                          onClick={() => toggleModality(i, dir, mod)}
-                          style={{ fontSize: 10, padding: '1px 7px', lineHeight: '16px' }}>{mod}</span>
+                  {/* CTX / OUT(竖排,左右分隔线) */}
+                  <div style={{ ...span(2), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ textAlign: 'center', width: '100%' }}>
+                      <label style={microLabel}>CTX</label>
+                      <input type="number" className="mono" value={m.limit.context} onChange={e => updateModel(i, 'limit', { ...m.limit, context: Number(e.target.value) })}
+                        placeholder="0" title="上下文窗口(0 = 不写入)"
+                        style={{ ...bare, fontSize: 12, textAlign: 'center' }} />
+                    </div>
+                    <div style={{ height: 1, width: 32, background: 'rgba(255,255,255,0.05)' }}></div>
+                    <div style={{ textAlign: 'center', width: '100%' }}>
+                      <label style={microLabel}>OUT</label>
+                      <input type="number" className="mono" value={m.limit.output} onChange={e => updateModel(i, 'limit', { ...m.limit, output: Number(e.target.value) })}
+                        placeholder="0" title="输出上限(0 = 不写入)"
+                        style={{ ...bare, fontSize: 12, textAlign: 'center' }} />
+                    </div>
+                  </div>
+                  {/* 能力与选项 */}
+                  <div style={{ ...span(6), paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 32px' }}>
+                      {[['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']].map(([f, label]) => (
+                        <label key={f} className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                          {label} <Toggle on={!!m[f]} onChange={v => updateModel(i, f, v)} />
+                        </label>
                       ))}
                     </div>
-                  ))}
-                  {/* options JSON */}
-                  <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {[['input', '输入'], ['output', '输出']].map(([dir, label]) => (
+                        <div key={dir} className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span className="muted" style={{ fontSize: 9, width: 24, flexShrink: 0 }}>{label}</span>
+                          {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
+                            <span key={mod} className={'chip' + (((m.modalities || {})[dir] || []).includes(mod) ? ' on' : '')}
+                              onClick={() => toggleModality(i, dir, mod)} style={chipXs}>{mod}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                     <input type="text" className="mono" value={m.optionsText || ''} onChange={e => {
                       const raw = e.target.value;
                       try { const parsed = raw.trim() ? JSON.parse(raw) : {}; updateModel(i, 'options', parsed); updateModel(i, 'optionsText', raw); }
                       catch { updateModel(i, 'optionsText', raw); } // JSON 不完整时暂存原文
-                    }} placeholder='options JSON,如 {"reasoningEffort":"high"}(留空不写入)'
-                      style={{ flex: 1, height: 26, fontSize: 10 }} />
-                    {m.optionsText && !/^\s*\{.*\}\s*$/.test(m.optionsText) && <span style={{ color: 'var(--bad)', fontSize: 10, flexShrink: 0 }}>JSON 不完整</span>}
+                    }} placeholder='options JSON,如 {"reasoningEffort":"high"}'
+                      title="透传给 API,留空不写入;JSON 不完整时红字提示"
+                      style={{ height: 26, fontSize: 10, padding: '2px 8px', borderRadius: 8, opacity: m.optionsText ? 1 : 0.6 }} />
+                    {m.optionsText && !/^\s*\{.*\}\s*$/.test(m.optionsText) && (
+                      <span style={{ color: 'var(--bad)', fontSize: 10 }}>JSON 不完整</span>
+                    )}
                   </div>
-                </td>
-                <td style={{ ...td, textAlign: 'center' }}>
-                  <button className="icon-btn" title="移除该模型" onClick={() => removeModel(i)}>
-                    <Icon name="x" size={13} />
-                  </button>
-                </td>
-              </tr>
+                  {/* 移除(整卡 hover 才亮) */}
+                  <div style={{ ...span(1), display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <button className="oc-model-del" title="移除该模型" onClick={() => removeModel(i)}>
+                      <Icon name="trash" size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
       )}
-      <button className="btn btn-sm" style={{ marginTop: 8 }} onClick={() => set('models', [...models, NEW_MODEL()])}>
-        <Icon name="plus" size={10} /> 手动添加模型
-      </button>
     </div>
   );
 }

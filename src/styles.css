@@ -262,6 +262,37 @@ select:hover, input:hover, textarea:hover { border-color: var(--line-bright); }
 input:disabled, textarea:disabled, select:disabled { opacity: .4; }
 textarea { resize: vertical; min-height: 118px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; }
 input[type='number'] { -moz-appearance: textfield; }
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* OpenCode 模型条目(superdesign v3):区块头金色添加钮 + 常暗移除钮 */
+.oc-add-model {
+  background: none; border: none; cursor: pointer; padding: 2px 4px;
+  color: var(--gold); font-size: 11px; font-weight: 600; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px; transition: color .15s;
+}
+.oc-add-model:hover { color: var(--gold-hover); }
+/* OpenCode 模型条目(superdesign v4):每模型一张网格卡,移除钮整卡 hover 才亮 */
+.oc-model-card {
+  background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px; padding: 16px; transition: border-color .15s;
+}
+.oc-model-card:hover { border-color: rgba(167, 139, 113, 0.2); }
+.oc-model-del {
+  width: 32px; height: 32px; border-radius: 999px; flex-shrink: 0;
+  background: none; border: none; cursor: pointer; padding: 0;
+  color: var(--txt-3); opacity: .4;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color .15s, opacity .15s, background .15s;
+}
+.oc-model-card:hover .oc-model-del { opacity: 1; }
+.oc-model-del:hover { background: rgba(248, 113, 113, 0.1); color: var(--bad); }
+.oc-remove {
+  background: none; border: none; cursor: pointer; padding: 2px;
+  color: var(--txt-3); opacity: .4; display: inline-flex; align-items: center;
+  transition: color .15s, opacity .15s;
+}
+.oc-remove:hover { color: var(--bad); opacity: 1; }
 ::placeholder { color: var(--txt-3); }
 input.err, textarea.err { border-color: rgba(248, 113, 113, .6); }
 input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }

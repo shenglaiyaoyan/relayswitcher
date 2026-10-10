@@ -49,9 +49,10 @@ function readOpenCodeConfig(home) {
   const p = configPath(home);
   let raw;
   try { raw = fs.readFileSync(p, 'utf8'); } catch { return {}; }
-  const hasComments = /\/\/|\/\*/.test(raw);
+  const stripped = stripJsonComments(raw);
+  const hasComments = stripped !== raw;
   try {
-    const cfg = JSON.parse(stripJsonComments(raw));
+    const cfg = JSON.parse(stripped);
     if (hasComments) cfg._hasComments = true;
     return cfg;
   } catch (e) {
@@ -68,7 +69,11 @@ function writeOpenCodeConfig(home, cfg) {
 }
 
 function readAuthFile(home) {
-  try { return JSON.parse(fs.readFileSync(authPath(home), 'utf8')); } catch { return {}; }
+  try { return JSON.parse(fs.readFileSync(authPath(home), 'utf8')); }
+  catch (e) {
+    if (e.code === 'ENOENT') return {};
+    throw new Error('auth.json 解析失败: ' + e.message);
+  }
 }
 
 function writeAuthFile(home, auth) {
@@ -79,7 +84,7 @@ function writeAuthFile(home, auth) {
 
 function mergeProviderBlock(existing, pd) {
   const out = { ...existing };
-  if (!out.provider) out.provider = {};
+  out.provider = { ...(out.provider || {}) };
   out.provider[pd.id] = {
     npm: pd.npm,
     name: pd.name,

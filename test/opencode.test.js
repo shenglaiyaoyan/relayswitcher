@@ -126,6 +126,32 @@ test('backupOpenCode: 备份 opencode.json + auth.json 存在时生成快照目�
   assert.ok(fs.existsSync(path.join(home, '.config/opencode/relayswitcher-backups', bdir, 'auth.json')));
 });
 
+test('mergeProviderBlock: 不变异输入 existing(纯函数契约)', () => {
+  const existing = { model: 'other/m9', provider: { myrelay: { npm: 'old' }, keep: { npm: 'y' } } };
+  const snapshot = JSON.parse(JSON.stringify(existing));
+  const pd = { id: 'myrelay', npm: '@ai-sdk/openai-compatible', name: 'My Relay',
+    options: { baseURL: 'https://api.example.com/v1' }, models: {} };
+  const out = mergeProviderBlock(existing, pd);
+  assert.deepEqual(existing, snapshot, '原始 existing 深比较未被修改');
+  assert.equal(existing.provider.myrelay.npm, 'old', '原对象里的旧 provider 保持');
+  assert.equal(out.provider.myrelay.npm, '@ai-sdk/openai-compatible', '输出里是新版');
+  assert.equal(out.provider.keep.npm, 'y');
+});
+
+test('readOpenCodeConfig: 纯 JSON 含 https:// URL 不误报 _hasComments', () => {
+  const home = mkHome();
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'),
+    JSON.stringify({ provider: { myrelay: { options: { baseURL: 'https://api.example.com/v1' } } } }));
+  const cfg = readOpenCodeConfig(home);
+  assert.equal(cfg._hasComments, undefined, 'URL 里的 // 不算注释');
+});
+
+test('readAuthFile: auth.json 损坏时抛异常而非返回空对象', () => {
+  const home = mkHome();
+  fs.writeFileSync(path.join(home, '.local/share/opencode/auth.json'), '{broken json');
+  assert.throws(() => readAuthFile(home), /auth\.json 解析失败/);
+});
+
 test('writeOpenCodeConfig: 写回标准 JSON(2空格缩进+LF)', () => {
   const home = mkHome();
   const cfg = { model: 'test/m1', provider: { test: { npm: 'x' } } };

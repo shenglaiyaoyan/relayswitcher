@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Icon, Spinner, Toggle, Modal, Field, fmtK } from '../components/ui.jsx';
 
-export default function Settings({ state, refresh, toast }) {
+// mode 拆分(v1.12 导航重构):'chatgpt' = 六张 ChatGPT/Codex 专属卡;'global'(默认)= 桌面集成 + 关于更新;
+// 'opencode' = 占位(Task 4 填充)。hash 路由 #settings-chatgpt / #settings-opencode 直达。
+export default function Settings({ state, refresh, toast, mode = 'global' }) {
   const { settings, catalogBundled, status } = state;
+  const chatgptMode = mode === 'chatgpt';
+  const opencodeMode = mode === 'opencode';
   const [form, setForm] = useState({ ...settings });
   const [saving, setSaving] = useState(false);
   const [updateBusy, setUpdBusy] = useState(false);
@@ -139,8 +143,13 @@ export default function Settings({ state, refresh, toast }) {
 
   return (
     <div>
-      <div className="page-title"><h1>设置</h1><span className="sub">Settings</span></div>
+      <div className="page-title">
+        <h1>设置</h1><span className="sub">Settings</span>
+        {chatgptMode && <span className="badge gold">ChatGPT</span>}
+        {opencodeMode && <span className="badge gold">OpenCode</span>}
+      </div>
 
+      {chatgptMode && <>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="settings" size={12} /> Codex 主目录 <small>CODEX_HOME</small></div>
         <input type="text" placeholder="留空 = 默认 ~/.codex"
@@ -152,8 +161,10 @@ export default function Settings({ state, refresh, toast }) {
         <div className="klabel"><Icon name="relay" size={12} /> Provider 标识 <small>{'写入 config.toml 的 [model_providers.<id>]'}</small></div>
         <input type="text" value={form.providerId} onChange={e => setForm({ ...form, providerId: e.target.value })} />
       </div>
+      </>}
 
-      {/* 桌面集成(US-08): 托盘常驻 + 开机自启(v1.7 设计稿:选项列表形态) */}
+      {/* 桌面集成(US-08): 托盘常驻 + 开机自启(v1.7 设计稿:选项列表形态)— 全局设置 */}
+      {!chatgptMode && !opencodeMode && <>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="settings" size={12} /> 桌面集成 <small>托盘 · 开机自启</small></div>
         <div className="opt-list-row">
@@ -172,7 +183,9 @@ export default function Settings({ state, refresh, toast }) {
         </div>
         <div className="muted" style={{ marginTop: 8, fontSize: 11 }}>托盘图标右键可显示主窗口或退出;开机自启仅打包版实际注册</div>
       </div>
+      </>}
 
+      {chatgptMode && <>
       <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
         <div className="klabel"><Icon name="alert" size={12} style={{ color: 'var(--warn)' }} /> 清理本机 provider 区块 <small>高级 · 默认关闭</small></div>
         <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -309,14 +322,17 @@ export default function Settings({ state, refresh, toast }) {
         </div>
       </div>
 
-      <div className="row" style={{ marginBottom: 16 }}>
+      </>}
+
+      {/* 保存行:global(桌面集成开关)与 chatgpt(表单卡)都需要;opencode 占位无可存项 */}
+      {!opencodeMode && <div className="row" style={{ marginBottom: 16 }}>
         <button className="btn btn-gold" disabled={saving || !dirty} onClick={save}>
           {saving ? <><Spinner size={12} /> 保存中…</> : '保存设置'}
         </button>
         {dirty && <span className="muted">有未保存的修改</span>}
-      </div>
+      </div>}
 
-      <div className="card">
+      {chatgptMode && <div className="card">
         <div className="klabel"><Icon name="info" size={12} /> 工作原理 <small>What it actually does</small></div>
         <div className="muted" style={{ lineHeight: 2.1 }}>
           切换 = 备份 <span className="mono">auth.json + config.toml</span> → 账号 OAuth tokens 写入 auth.json(保持客户端订阅功能)→
@@ -324,10 +340,16 @@ export default function Settings({ state, refresh, toast }) {
           部署模型目录并设置 <span className="mono">model_catalog_json</span> → TOML/JSON 校验。<br />
           config.toml 其余内容(MCP、插件、项目信任等)逐行保留,绝不整体重写;顺带清理指向 localhost 的残留 sidecar 区块。
         </div>
-      </div>
+      </div>}
 
-      {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐) */}
-      <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
+      {/* OpenCode 专属设置占位:Task 4 填充 */}
+      {opencodeMode && <div className="card" style={{ marginBottom: 16 }}>
+        <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode 设置</div>
+        <div className="muted" style={{ padding: 32, textAlign: 'center' }}>OpenCode 专属设置即将上线(Task 4 实现)</div>
+      </div>}
+
+      {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐)— 全局设置 */}
+      {!chatgptMode && !opencodeMode && <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
         <div className="klabel"><Icon name="logo" size={12} style={{ color: 'var(--gold)' }} /> About & Update <small>关于与更新</small></div>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div className="row" style={{ gap: 12 }}>
@@ -372,7 +394,7 @@ export default function Settings({ state, refresh, toast }) {
             <span className="muted">当前已是最新版本{updateResult.version ? ` (服务端 v${updateResult.version})` : ''}</span>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

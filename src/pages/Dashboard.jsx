@@ -135,9 +135,15 @@ export default function Dashboard({ state, refresh, toast, goto }) {
   return (
     <div>
       <div className="page-title">
-        <h1>仪表盘</h1><span className="sub">Dashboard</span>
+        <h1>ChatGPT</h1><span className="sub">Dashboard</span>
         <span className="spacer" />
         <span className="muted mono ellipsis" style={{ maxWidth: 260 }} title={status.home}>{status.home}</span>
+        <button className="header-icon-btn" title="账号管理" onClick={() => goto('accounts')}>
+          <Icon name="account" size={14} />
+        </button>
+        <button className="header-icon-btn" title="ChatGPT 专属设置" onClick={() => goto('settings-chatgpt')}>
+          <Icon name="settings" size={14} />
+        </button>
         <button className={'icon-btn' + (refreshing ? ' spin' : '')} title="刷新状态" onClick={manualRefresh} disabled={refreshing}>
           <Icon name="refresh" size={15} />
         </button>

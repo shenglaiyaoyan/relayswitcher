@@ -4,30 +4,38 @@ import Accounts from './pages/Accounts.jsx';
 import Relays from './pages/Relays.jsx';
 import Backups from './pages/Backups.jsx';
 import Settings from './pages/Settings.jsx';
+import OpenCode from './pages/OpenCode.jsx';
 import { Icon, Spinner } from './components/ui.jsx';
 import TitleBar from './components/TitleBar.jsx';
 
 const NAV = [
-  { key: 'dash', ico: 'dash', label: '仪表盘' },
-  { key: 'accounts', ico: 'account', label: '账号' },
+  { key: 'dash', ico: 'dash', label: 'ChatGPT' },
+  { key: 'opencode', ico: 'bolt', label: 'OpenCode' },
   { key: 'relays', ico: 'relay', label: '中转站' },
   { key: 'backups', ico: 'backup', label: '备份' },
   { key: 'settings', ico: 'settings', label: '设置' }
 ];
 
+// 支持 #<page> 直达初始页面(调试/截图用):#relays / #backups / #settings ...
+// accounts 已从侧边栏移除但保留 hash 直达(Dashboard 页头 👤 按钮等仍可跳转)
+const VALID_PAGES = ['dash', 'accounts', 'opencode', 'relays', 'backups', 'settings'];
+// #settings-chatgpt / #settings-opencode 让 Settings 按 mode 渲染专属卡片;settings-demo-* 仍为 global
+const parseHash = () => {
+  const h = (window.location.hash || '').replace(/^#/, '');
+  const m = VALID_PAGES.find(v => h.startsWith(v)); // 前缀匹配:settings-demo-* 仍落在 settings 页
+  if (!m) return null;
+  const subMode = h.startsWith('settings-chatgpt') ? 'chatgpt'
+    : h.startsWith('settings-opencode') ? 'opencode' : 'global';
+  return { page: m, subMode };
+};
+
 export default function App() {
-  // 支持 #<page> 直达初始页面(调试/截图用):#relays / #backups / #settings ...
-  const VALID_PAGES = ['dash', 'accounts', 'relays', 'backups', 'settings'];
-  const [page, setPage] = useState(() => {
-    const h = (window.location.hash || '').replace(/^#/, '');
-    const m = VALID_PAGES.find(v => h.startsWith(v)); // 前缀匹配:settings-demo-* 仍落在 settings 页
-    return m || 'dash';
-  });
+  const [page, setPage] = useState(() => (parseHash() || {}).page || 'dash');
+  const [pageSubMode, setPageSubMode] = useState(() => (parseHash() || {}).subMode || 'global');
   useEffect(() => {
     const onHash = () => {
-      const h = (window.location.hash || '').replace(/^#/, '');
-      const m = VALID_PAGES.find(v => h.startsWith(v));
-      if (m) setPage(m);
+      const r = parseHash();
+      if (r) { setPage(r.page); setPageSubMode(r.subMode); }
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -66,6 +74,17 @@ export default function App() {
     const id = Date.now();
     setToast({ msg, kind, id });
     setTimeout(() => setToast(t => (t && t.id === id ? null : t)), 3400);
+  }, []);
+
+  // 统一页内跳转:'settings-chatgpt'/'settings-opencode' 直达 Settings 子模式;
+  // 同步写回 hash(不触发 hashchange),避免残留旧 hash 让同目标二次跳转失效
+  const goto = useCallback((target) => {
+    let p = target, sub = 'global';
+    if (target === 'settings-chatgpt' || target === 'settings-opencode') {
+      p = 'settings'; sub = target.slice('settings-'.length);
+    }
+    setPage(p); setPageSubMode(sub);
+    window.history.replaceState(null, '', '#' + (sub === 'global' ? p : target));
   }, []);
 
   useEffect(() => { refresh().finally(() => setBooted(true)); }, [refresh]);
@@ -117,13 +136,13 @@ export default function App() {
         <nav className="nav">
           {NAV.map(n => (
             <div key={n.key} className={'nav-item' + (page === n.key ? ' active' : '')}
-                 onClick={() => setPage(n.key)}>
+                 onClick={() => goto(n.key)}>
               <span className="nav-ico"><Icon name={n.ico} size={16} /></span>{n.label}
             </div>
           ))}
         </nav>
         <div className="side-bottom">
-          <div className="live-pill" onClick={() => setPage('dash')} title={wired ? `${s.activeAccount?.label || ''} → ${s.baseUrl}` : '尚未绑定'}>
+          <div className="live-pill" onClick={() => goto('dash')} title={wired ? `${s.activeAccount?.label || ''} → ${s.baseUrl}` : '尚未绑定'}>
             <span className={'dot ' + (wired ? 'ok' : s.baseUrl || s.authExists ? 'bad' : 'idle')} />
             <span className="pill-txt">
               <span className="pill-main">{wired ? '已绑定中转站' : '未绑定'}</span>
@@ -139,18 +158,19 @@ export default function App() {
               {upd.status === 'uptodate' && <b style={{ color: 'var(--txt-3)' }}>"当前已是最新版本"</b>}
             </div>
           )}
-          <button className="btn btn-sm btn-gold" style={{ marginTop: 6, width: '100%' }} onClick={() => setPage('settings')}>
+          <button className="btn btn-sm btn-gold" style={{ marginTop: 6, width: '100%' }} onClick={() => goto('settings')}>
             <Icon name="info" size={11} /> 关于与更新
           </button>
         </div>
       </aside>
       <main className="main">
         <div className="page" key={page}>
-          {page === 'dash' && <Dashboard state={state} refresh={refresh} toast={showToast} goto={setPage} />}
+          {page === 'dash' && <Dashboard state={state} refresh={refresh} toast={showToast} goto={goto} />}
           {page === 'accounts' && <Accounts state={state} refresh={refresh} toast={showToast} />}
+          {page === 'opencode' && <OpenCode state={state} refresh={refresh} toast={showToast} />}
           {page === 'relays' && <Relays state={state} refresh={refresh} toast={showToast} />}
           {page === 'backups' && <Backups refresh={refresh} toast={showToast} />}
-          {page === 'settings' && <Settings state={state} refresh={refresh} toast={showToast} />}
+          {page === 'settings' && <Settings mode={pageSubMode || 'global'} state={state} refresh={refresh} toast={showToast} />}
         </div>
       </main>
       {toast && (

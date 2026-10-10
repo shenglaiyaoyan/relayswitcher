@@ -237,6 +237,13 @@ body {
 .icon-btn.spin > * { animation: rot 0.9s linear infinite; }
 @keyframes rot { to { transform: rotate(360deg); } }
 
+/* 页头 24px 图标按钮(Dashboard 的账号/设置直达)*/
+.header-icon-btn {
+  width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; background: transparent; color: var(--txt-3); cursor: pointer; transition: all .15s;
+}
+.header-icon-btn:hover { color: var(--txt-1); border-color: var(--line); background: var(--glass); }
+
 /* spinner */
 .spinner {
   display: inline-block; border-radius: 50%;

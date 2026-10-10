@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.12.4 (2026-10-11) — 自动更新挂死修复:硬超时弃船 + 更新日志落盘
+
+- **修复更新循环永久冻结**(2026-10-11 实证:v1.12.2 升 v1.12.3 时代理抖动,downloadUpdate
+  挂死、`cts.cancel()` 掐不断挂死的请求、`await` 永不返回 → 重试循环整体冻结,UI 卡在
+  "下载中"再无事件;取证:RS 进程一条到 Clash 的 ESTABLISHED 连接零流量 + pending/ 不再被触碰):
+  - **checkForUpdates 超时 45s**:此前看门狗只护下载阶段,check 挂死处于无保护真空
+  - **单次尝试硬超时 5min**(Promise.race 弃船):不依赖 `cancel()` 生效,任何阶段挂死
+    到点即弃,循环立即进入下一轮;挂死的旧 promise 任其自然了结、结果弃置
+  - **更新日志落盘** `%APPDATA%\relayswitcher\logs\update.log`(超 1MB 自动翻新):
+    attempt start/noop/ok/fail 全记录,线上挂死类问题不再无据可查
+- 单测 81/81,冒烟 39/39,build + lint 全绿
+- 注:v1.12.2 及更早版本若已卡死,需手动完全退出 RS(托盘右键退出)重开一次才能收到本版
+
 ## v1.12.3 (2026-10-11) — OpenCode 模型条目 superdesign v4 卡片网格重构
 
 - **模型条目从「表格式」推翻重做为「卡片网格」**(superdesign v4 定稿,用户裁定 v1.12.2

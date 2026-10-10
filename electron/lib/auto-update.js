@@ -44,6 +44,22 @@ let initError = null;
 let winRef = null;
 let loopRunning = false;
 
+// 更新日志落盘:线上挂死类问题唯一的取证渠道(控制台关掉就没了)
+const UPDATE_LOG = (() => {
+  const fs = require('fs');
+  const path = require('path');
+  const file = path.join(process.env.APPDATA || '.', 'relayswitcher', 'logs', 'update.log');
+  return {
+    log(msg) {
+      try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        if (fs.existsSync(file) && fs.statSync(file).size > 1024 * 1024) fs.rmSync(file); // 超 1MB 翻新
+        fs.appendFileSync(file, `${new Date().toISOString()} ${msg}\n`);
+      } catch { /* 日志失败不影响主流程 */ }
+    }
+  };
+})();
+
 function sendEvent(payload) {
   if (winRef && !winRef.isDestroyed()) winRef.webContents.send('rs:update-event', payload);
 }
@@ -84,9 +100,15 @@ function cleanPendingCache() {
   } catch { /* 无则跳过 */ }
 }
 
-/** 单次尝试:看门狗(30s 无进展即取消)兜住停滞;成功返回 {ok},无更新 {noop} */
+/** 单次尝试:看门狗(30s 无进展即取消)兜住停滞;硬超时不依赖 cancel 生效,
+ *  连 checkForUpdates/downloadUpdate 挂死(cancel 失效的真空区)也能弃船重试。
+ *  2026-10-11 实证:v1.12.2 更新 v1.12.3 时代理抖动 → downloadUpdate 挂死、
+ *  cts.cancel() 掐不断、循环永久冻结,UI 卡"下载中"再无事件 */
+const CHECK_TIMEOUT_MS = 45000;   // checkForUpdates 正常几秒内返回
+const ATTEMPT_HARD_MS = 300000;   // 5min 硬上限:79MB 全量在 ≥275KB/s 下可完成
 async function attemptDownloadOnce(userInvoked) {
   cleanPendingCache();
+  UPDATE_LOG.log(`attempt start (userInvoked=${!!userInvoked})`);
   let lastTick = Date.now();
   let lastBytes = 0;
   let curCts = null;
@@ -106,14 +128,27 @@ async function attemptDownloadOnce(userInvoked) {
       try { curCts.cancel(); } catch { /* 已结束 */ }
     }
   }, 5000);
+  // 弃船计时:无论卡在哪个阶段(含 cancel 掐不断的挂死请求),到点即放弃本次尝试。
+  // 挂死的旧 promise 任其自然了结,结果被弃置不再使用 —— 循环立即进入下一轮
+  let abandonTimer = null;
+  const abandoned = new Promise((_, rej) => { abandonTimer = setTimeout(() => rej(new Error('attempt hard timeout')), ATTEMPT_HARD_MS); });
   try {
-    const result = await autoUpdater.checkForUpdates();
-    if (!result || !result.isUpdateAvailable) return { noop: true };
-    curCts = result.cancellationToken;
-    await autoUpdater.downloadUpdate(curCts);
+    const checkResult = await Promise.race([
+      autoUpdater.checkForUpdates(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('checkForUpdates timeout')), CHECK_TIMEOUT_MS))
+    ]);
+    if (!checkResult || !checkResult.isUpdateAvailable) { UPDATE_LOG.log('attempt noop (no update)'); return { noop: true }; }
+    curCts = checkResult.cancellationToken;
+    await Promise.race([autoUpdater.downloadUpdate(curCts), abandoned]);
+    UPDATE_LOG.log('attempt ok (downloaded)');
     if (userInvoked) autoUpdater.quitAndInstall(true, true); // 手点:装完立即重启
     return { ok: true };
+  } catch (e) {
+    UPDATE_LOG.log(`attempt fail: ${(e && e.message) || e}`);
+    if (curCts) { try { curCts.cancel(); } catch { /* 双保险 */ } }
+    throw e;
   } finally {
+    clearTimeout(abandonTimer);
     clearInterval(watchdog);
     autoUpdater.removeListener('download-progress', onProgress);
   }

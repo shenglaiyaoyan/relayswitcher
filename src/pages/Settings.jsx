@@ -345,7 +345,7 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
       {/* OpenCode 专属设置占位:Task 4 填充 */}
       {opencodeMode && <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode 设置</div>
-        <div className="muted" style={{ padding: 32, textAlign: 'center' }}>OpenCode 专属设置即将上线(Task 4 实现)</div>
+        <div className="muted" style={{ padding: 32, textAlign: 'center' }}>OpenCode 配置路径与备份策略将在此配置 — 当前请在主页面管理 Provider</div>
       </div>}
 
       {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐)— 全局设置 */}

@@ -1,0 +1,417 @@
+=== COMMITS ===
+531932f feat: 导航重构 — 侧边栏五项(ChatGPT/OpenCode/中转站/备份/设置),Settings 按 mode 拆分
+
+=== STAT ===
+ src/App.jsx             | 54 +++++++++++++++++++++++++++++++++----------------
+ src/pages/Dashboard.jsx |  8 +++++++-
+ src/pages/OpenCode.jsx  | 12 +++++++++++
+ src/pages/Settings.jsx  | 42 +++++++++++++++++++++++++++++---------
+ src/styles.css          |  7 +++++++
+ 5 files changed, 95 insertions(+), 28 deletions(-)
+
+=== DIFF ===
+diff --git a/src/App.jsx b/src/App.jsx
+index e05787e..79c29b8 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,40 +1,48 @@
+ import React, { useEffect, useState, useCallback } from 'react';
+ import Dashboard from './pages/Dashboard.jsx';
+ import Accounts from './pages/Accounts.jsx';
+ import Relays from './pages/Relays.jsx';
+ import Backups from './pages/Backups.jsx';
+ import Settings from './pages/Settings.jsx';
++import OpenCode from './pages/OpenCode.jsx';
+ import { Icon, Spinner } from './components/ui.jsx';
+ import TitleBar from './components/TitleBar.jsx';
+ 
+ const NAV = [
+-  { key: 'dash', ico: 'dash', label: '仪表盘' },
+-  { key: 'accounts', ico: 'account', label: '账号' },
++  { key: 'dash', ico: 'dash', label: 'ChatGPT' },
++  { key: 'opencode', ico: 'bolt', label: 'OpenCode' },
+   { key: 'relays', ico: 'relay', label: '中转站' },
+   { key: 'backups', ico: 'backup', label: '备份' },
+   { key: 'settings', ico: 'settings', label: '设置' }
+ ];
+ 
++// 支持 #<page> 直达初始页面(调试/截图用):#relays / #backups / #settings ...
++// accounts 已从侧边栏移除但保留 hash 直达(Dashboard 页头 👤 按钮等仍可跳转)
++const VALID_PAGES = ['dash', 'accounts', 'opencode', 'relays', 'backups', 'settings'];
++// #settings-chatgpt / #settings-opencode 让 Settings 按 mode 渲染专属卡片;settings-demo-* 仍为 global
++const parseHash = () => {
++  const h = (window.location.hash || '').replace(/^#/, '');
++  const m = VALID_PAGES.find(v => h.startsWith(v)); // 前缀匹配:settings-demo-* 仍落在 settings 页
++  if (!m) return null;
++  const subMode = h.startsWith('settings-chatgpt') ? 'chatgpt'
++    : h.startsWith('settings-opencode') ? 'opencode' : 'global';
++  return { page: m, subMode };
++};
++
+ export default function App() {
+-  // 支持 #<page> 直达初始页面(调试/截图用):#relays / #backups / #settings ...
+-  const VALID_PAGES = ['dash', 'accounts', 'relays', 'backups', 'settings'];
+-  const [page, setPage] = useState(() => {
+-    const h = (window.location.hash || '').replace(/^#/, '');
+-    const m = VALID_PAGES.find(v => h.startsWith(v)); // 前缀匹配:settings-demo-* 仍落在 settings 页
+-    return m || 'dash';
+-  });
++  const [page, setPage] = useState(() => (parseHash() || {}).page || 'dash');
++  const [pageSubMode, setPageSubMode] = useState(() => (parseHash() || {}).subMode || 'global');
+   useEffect(() => {
+     const onHash = () => {
+-      const h = (window.location.hash || '').replace(/^#/, '');
+-      const m = VALID_PAGES.find(v => h.startsWith(v));
+-      if (m) setPage(m);
++      const r = parseHash();
++      if (r) { setPage(r.page); setPageSubMode(r.subMode); }
+     };
+     window.addEventListener('hashchange', onHash);
+     return () => window.removeEventListener('hashchange', onHash);
+   }, []);
+   const [state, setState] = useState(null);
+   const [toast, setToast] = useState(null);
+   const [booted, setBooted] = useState(false);
+   const [fatal, setFatal] = useState(null);
+   const [upd, setUpd] = useState({ status: 'idle', version: null, progress: 0, message: null });
+   const [appVer, setAppVer] = useState('');
+@@ -61,20 +69,31 @@ export default function App() {
+     try { setState(await window.rs.getState()); }
+     catch (e) { setFatal(e.message); }
+   }, []);
+ 
+   const showToast = useCallback((msg, kind = 'ok') => {
+     const id = Date.now();
+     setToast({ msg, kind, id });
+     setTimeout(() => setToast(t => (t && t.id === id ? null : t)), 3400);
+   }, []);
+ 
++  // 统一页内跳转:'settings-chatgpt'/'settings-opencode' 直达 Settings 子模式;
++  // 同步写回 hash(不触发 hashchange),避免残留旧 hash 让同目标二次跳转失效
++  const goto = useCallback((target) => {
++    let p = target, sub = 'global';
++    if (target === 'settings-chatgpt' || target === 'settings-opencode') {
++      p = 'settings'; sub = target.slice('settings-'.length);
++    }
++    setPage(p); setPageSubMode(sub);
++    window.history.replaceState(null, '', '#' + (sub === 'global' ? p : target));
++  }, []);
++
+   useEffect(() => { refresh().finally(() => setBooted(true)); }, [refresh]);
+ 
+   // 后端状态变化(token 自动保养成功等)自动同步 UI — 用户永远不需要手点刷新
+   useEffect(() => {
+     const off = window.rs.onStateChanged ? window.rs.onStateChanged(() => refresh()) : null;
+     return off || undefined;
+   }, [refresh]);
+ 
+   if (!window.rs) {
+     return <div className="app" style={{ alignItems: 'center', justifyContent: 'center', color: '#78716c', flexDirection: 'column', gap: 12 }}>
+@@ -110,54 +129,55 @@ export default function App() {
+         <div className="brand">
+           <div className="brand-mark"><Icon name="logo" size={19} /></div>
+           <div>
+             <div className="wordmark">RelaySwitcher</div>
+           </div>
+         </div>
+         <div className="wordmark-sub">账号 × 中转站</div>
+         <nav className="nav">
+           {NAV.map(n => (
+             <div key={n.key} className={'nav-item' + (page === n.key ? ' active' : '')}
+-                 onClick={() => setPage(n.key)}>
++                 onClick={() => goto(n.key)}>
+               <span className="nav-ico"><Icon name={n.ico} size={16} /></span>{n.label}
+             </div>
+           ))}
+         </nav>
+         <div className="side-bottom">
+-          <div className="live-pill" onClick={() => setPage('dash')} title={wired ? `${s.activeAccount?.label || ''} → ${s.baseUrl}` : '尚未绑定'}>
++          <div className="live-pill" onClick={() => goto('dash')} title={wired ? `${s.activeAccount?.label || ''} → ${s.baseUrl}` : '尚未绑定'}>
+             <span className={'dot ' + (wired ? 'ok' : s.baseUrl || s.authExists ? 'bad' : 'idle')} />
+             <span className="pill-txt">
+               <span className="pill-main">{wired ? '已绑定中转站' : '未绑定'}</span>
+               <span className="pill-sub">{wired ? (s.activeAccount?.label || '账号') + ' → ' + (s.activeRelay?.name || s.baseUrl) : '去仪表盘完成切换'}</span>
+             </span>
+           </div>
+           {upd.status !== 'idle' && (
+             <div className="toast" style={{ position: 'relative', left: 'auto', bottom: 'auto', margin: '12px 0 0' }}>
+               {upd.status === 'checking' && <><Spinner size={12} /> 检查更新中…</>}
+               {upd.status === 'downloading' && <><Spinner size={12} /> 下载中{upd.progress ? ` ${upd.progress}%` : ''}</>}
+               {upd.status === 'ready' && <b style={{ color: 'var(--gold)' }}>发现新版本 v{upd.version},点击设置页“关于”更新</b>}
+               {upd.status === 'error' && <b style={{ color: 'var(--bad)' }}>{upd.message}</b>}
+               {upd.status === 'uptodate' && <b style={{ color: 'var(--txt-3)' }}>"当前已是最新版本"</b>}
+             </div>
+           )}
+-          <button className="btn btn-sm btn-gold" style={{ marginTop: 6, width: '100%' }} onClick={() => setPage('settings')}>
++          <button className="btn btn-sm btn-gold" style={{ marginTop: 6, width: '100%' }} onClick={() => goto('settings')}>
+             <Icon name="info" size={11} /> 关于与更新
+           </button>
+         </div>
+       </aside>
+       <main className="main">
+         <div className="page" key={page}>
+-          {page === 'dash' && <Dashboard state={state} refresh={refresh} toast={showToast} goto={setPage} />}
++          {page === 'dash' && <Dashboard state={state} refresh={refresh} toast={showToast} goto={goto} />}
+           {page === 'accounts' && <Accounts state={state} refresh={refresh} toast={showToast} />}
++          {page === 'opencode' && <OpenCode state={state} refresh={refresh} toast={showToast} />}
+           {page === 'relays' && <Relays state={state} refresh={refresh} toast={showToast} />}
+           {page === 'backups' && <Backups refresh={refresh} toast={showToast} />}
+-          {page === 'settings' && <Settings state={state} refresh={refresh} toast={showToast} />}
++          {page === 'settings' && <Settings mode={pageSubMode || 'global'} state={state} refresh={refresh} toast={showToast} />}
+         </div>
+       </main>
+       {toast && (
+         <div className={'toast ' + toast.kind} key={toast.id}>
+           <span className="t-ico"><Icon name={toast.kind === 'bad' ? 'alert' : 'check'} size={16} /></span>
+           <span>{toast.msg}</span>
+         </div>
+       )}
+       </div>
+     </div>
+diff --git a/src/pages/Dashboard.jsx b/src/pages/Dashboard.jsx
+index 3f1d156..d14f98d 100644
+--- a/src/pages/Dashboard.jsx
++++ b/src/pages/Dashboard.jsx
+@@ -128,23 +128,29 @@ export default function Dashboard({ state, refresh, toast, goto }) {
+       await refresh(); await loadBackup();
+     } catch (e) { toast('回滚失败: ' + e.message, 'bad'); }
+   };
+ 
+   const lt = status.activeRelay?.lastTest;
+   const plan = status.activeAccount ? planLabel(status.activeAccount.plan) : null;
+ 
+   return (
+     <div>
+       <div className="page-title">
+-        <h1>仪表盘</h1><span className="sub">Dashboard</span>
++        <h1>ChatGPT</h1><span className="sub">Dashboard</span>
+         <span className="spacer" />
+         <span className="muted mono ellipsis" style={{ maxWidth: 260 }} title={status.home}>{status.home}</span>
++        <button className="header-icon-btn" title="账号管理" onClick={() => goto('accounts')}>
++          <Icon name="account" size={14} />
++        </button>
++        <button className="header-icon-btn" title="ChatGPT 专属设置" onClick={() => goto('settings-chatgpt')}>
++          <Icon name="settings" size={14} />
++        </button>
+         <button className={'icon-btn' + (refreshing ? ' spin' : '')} title="刷新状态" onClick={manualRefresh} disabled={refreshing}>
+           <Icon name="refresh" size={15} />
+         </button>
+       </div>
+ 
+       {/* 状态卡 */}
+       <div className="stat-row">
+         <div className="card clickable" onClick={() => goto('accounts')} title="管理账号">
+           <div className="klabel"><Icon name="account" size={12} /> Account</div>
+           <div className="stat-main ellipsis">
+diff --git a/src/pages/OpenCode.jsx b/src/pages/OpenCode.jsx
+new file mode 100644
+index 0000000..321598f
+--- /dev/null
++++ b/src/pages/OpenCode.jsx
+@@ -0,0 +1,12 @@
++import React from 'react';
++import { Icon } from '../components/ui.jsx';
++
++// 占位页:Task 4 重写为完整 Provider 管理(消费 rs:oc:* IPC)
++export default function OpenCode() {
++  return (
++    <div>
++      <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode Providers</div>
++      <div className="muted" style={{ padding: 40, textAlign: 'center' }}>Provider 管理即将上线(Task 4 实现)</div>
++    </div>
++  );
++}
+diff --git a/src/pages/Settings.jsx b/src/pages/Settings.jsx
+index 87f374b..6cf33da 100644
+--- a/src/pages/Settings.jsx
++++ b/src/pages/Settings.jsx
+@@ -1,15 +1,19 @@
+ import React, { useEffect, useState } from 'react';
+ import { Icon, Spinner, Toggle, Modal, Field, fmtK } from '../components/ui.jsx';
+ 
+-export default function Settings({ state, refresh, toast }) {
++// mode 拆分(v1.12 导航重构):'chatgpt' = 六张 ChatGPT/Codex 专属卡;'global'(默认)= 桌面集成 + 关于更新;
++// 'opencode' = 占位(Task 4 填充)。hash 路由 #settings-chatgpt / #settings-opencode 直达。
++export default function Settings({ state, refresh, toast, mode = 'global' }) {
+   const { settings, catalogBundled, status } = state;
++  const chatgptMode = mode === 'chatgpt';
++  const opencodeMode = mode === 'opencode';
+   const [form, setForm] = useState({ ...settings });
+   const [saving, setSaving] = useState(false);
+   const [updateBusy, setUpdBusy] = useState(false);
+   const [updateResult, setUpdResult] = useState(null); // {found:true/false, version?, error?}
+   const [dl, setDl] = useState(null); // {progress, retry?, scheduled?, ready?} — 更新下载/重试/就绪状态(事件驱动)
+   const [appVersion, setAppVer] = useState('');
+   const [catInfo, setCatInfo] = useState(null);
+   const [extracting, setExtracting] = useState(false);
+   const [extractReport, setExtractReport] = useState(null);
+   const [editCm, setEditCm] = useState(null); // null=关闭 {}=新建 {...}=编辑
+@@ -132,54 +136,63 @@ export default function Settings({ state, refresh, toast }) {
+       toast('设置已保存', 'ok');
+       await refresh();
+     } catch (e) { toast(e.message, 'bad'); }
+     finally { setSaving(false); }
+   };
+ 
+   const dirty = JSON.stringify(form) !== JSON.stringify(settings);
+ 
+   return (
+     <div>
+-      <div className="page-title"><h1>设置</h1><span className="sub">Settings</span></div>
++      <div className="page-title">
++        <h1>设置</h1><span className="sub">Settings</span>
++        {chatgptMode && <span className="badge gold">ChatGPT</span>}
++        {opencodeMode && <span className="badge gold">OpenCode</span>}
++      </div>
+ 
++      {chatgptMode && <>
+       <div className="card" style={{ marginBottom: 16 }}>
+         <div className="klabel"><Icon name="settings" size={12} /> Codex 主目录 <small>CODEX_HOME</small></div>
+         <input type="text" placeholder="留空 = 默认 ~/.codex"
+                value={form.codexHome} onChange={e => setForm({ ...form, codexHome: e.target.value })} />
+         <div className="muted" style={{ marginTop: 7 }}>当前生效: <span className="mono">{status.home}</span></div>
+       </div>
+ 
+       <div className="card" style={{ marginBottom: 16 }}>
+         <div className="klabel"><Icon name="relay" size={12} /> Provider 标识 <small>{'写入 config.toml 的 [model_providers.<id>]'}</small></div>
+         <input type="text" value={form.providerId} onChange={e => setForm({ ...form, providerId: e.target.value })} />
+       </div>
++      </>}
+ 
+-      {/* 桌面集成(US-08): 托盘常驻 + 开机自启(v1.7 设计稿:选项列表形态) */}
++      {/* 桌面集成(US-08): 托盘常驻 + 开机自启(v1.7 设计稿:选项列表形态)— 全局设置 */}
++      {!chatgptMode && !opencodeMode && <>
+       <div className="card" style={{ marginBottom: 16 }}>
+         <div className="klabel"><Icon name="settings" size={12} /> 桌面集成 <small>托盘 · 开机自启</small></div>
+         <div className="opt-list-row">
+           <div className="opt-label">
+             关闭窗口时最小化到托盘
+             <span className="opt-note">后台保持 token 自动保养</span>
+           </div>
+           <Toggle on={form.closeToTray !== false} onChange={v => setForm({ ...form, closeToTray: v })} />
+         </div>
+         <div className="opt-list-row">
+           <div className="opt-label">
+             开机自动启动
+             <span className="opt-note">开机即驻留托盘</span>
+           </div>
+           <Toggle on={!!form.openAtLogin} onChange={v => setForm({ ...form, openAtLogin: v })} />
+         </div>
+         <div className="muted" style={{ marginTop: 8, fontSize: 11 }}>托盘图标右键可显示主窗口或退出;开机自启仅打包版实际注册</div>
+       </div>
++      </>}
+ 
++      {chatgptMode && <>
+       <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
+         <div className="klabel"><Icon name="alert" size={12} style={{ color: 'var(--warn)' }} /> 清理本机 provider 区块 <small>高级 · 默认关闭</small></div>
+         <div className="row" style={{ justifyContent: 'space-between' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--txt-2)', flex: 1 }}>
+             切换时删除其它指向 localhost / 127.0.0.1 的 provider 区块
+             <Toggle on={form.pruneLocalProviders} onChange={v => setForm({ ...form, pruneLocalProviders: v })} />
+           </div>
+         </div>
+         <div className="muted" style={{ marginTop: 8 }}>
+           ⚠ 仅当你确定本机没有正在使用的本地网关(sub2api / new-api / CLIProxyAPI 等以 127.0.0.1 形式配置在 config.toml 里)时才开启。
+@@ -302,39 +315,48 @@ export default function Settings({ state, refresh, toast }) {
+       <div className="card" style={{ marginBottom: 16 }}>
+         <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>仪表盘的初始选项</small></div>
+         <div className="row" style={{ marginTop: 4 }}>
+           <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>默认上下文窗口</span>
+           <input type="number" style={{ width: 130 }} value={form.contextWindow} step={1000}
+                  onChange={e => setForm({ ...form, contextWindow: e.target.value })} />
+           <span className="muted">= {fmtK(Number(form.contextWindow))} tokens</span>
+         </div>
+       </div>
+ 
+-      <div className="row" style={{ marginBottom: 16 }}>
++      </>}
++
++      {/* 保存行:global(桌面集成开关)与 chatgpt(表单卡)都需要;opencode 占位无可存项 */}
++      {!opencodeMode && <div className="row" style={{ marginBottom: 16 }}>
+         <button className="btn btn-gold" disabled={saving || !dirty} onClick={save}>
+           {saving ? <><Spinner size={12} /> 保存中…</> : '保存设置'}
+         </button>
+         {dirty && <span className="muted">有未保存的修改</span>}
+-      </div>
++      </div>}
+ 
+-      <div className="card">
++      {chatgptMode && <div className="card">
+         <div className="klabel"><Icon name="info" size={12} /> 工作原理 <small>What it actually does</small></div>
+         <div className="muted" style={{ lineHeight: 2.1 }}>
+           切换 = 备份 <span className="mono">auth.json + config.toml</span> → 账号 OAuth tokens 写入 auth.json(保持客户端订阅功能)→
+           provider 区块指向中转站(<span className="mono">requires_openai_auth=true + experimental_bearer_token</span>,登录态与流量出口解耦)→
+           部署模型目录并设置 <span className="mono">model_catalog_json</span> → TOML/JSON 校验。<br />
+           config.toml 其余内容(MCP、插件、项目信任等)逐行保留,绝不整体重写;顺带清理指向 localhost 的残留 sidecar 区块。
+         </div>
+-      </div>
++      </div>}
++
++      {/* OpenCode 专属设置占位:Task 4 填充 */}
++      {opencodeMode && <div className="card" style={{ marginBottom: 16 }}>
++        <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode 设置</div>
++        <div className="muted" style={{ padding: 32, textAlign: 'center' }}>OpenCode 专属设置即将上线(Task 4 实现)</div>
++      </div>}
+ 
+-      {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐) */}
+-      <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
++      {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐)— 全局设置 */}
++      {!chatgptMode && !opencodeMode && <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>
+         <div className="klabel"><Icon name="logo" size={12} style={{ color: 'var(--gold)' }} /> About & Update <small>关于与更新</small></div>
+         <div className="row" style={{ justifyContent: 'space-between' }}>
+           <div className="row" style={{ gap: 12 }}>
+             <div className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}><Icon name="logo" size={15} /></div>
+             <div>
+               <div style={{ fontSize: 14, fontWeight: 600 }}>RelaySwitcher <span className="badge gold mono">v{appVersion || '…'}</span></div>
+               <div className="muted" style={{ marginTop: 3 }}>Codex 账号 × 中转站 一键切换器</div>
+             </div>
+           </div>
+           <button className="btn btn-sm" onClick={checkUpdateManually} disabled={updateBusy}>
+@@ -365,14 +387,14 @@ export default function Settings({ state, refresh, toast }) {
+               )}
+             </div>
+           </div>
+         )}
+         {updateResult && !updateResult.found && (
+           <div className="row" style={{ marginTop: 10 }}>
+             <Icon name="check" size={13} style={{ color: 'var(--ok)' }} />
+             <span className="muted">当前已是最新版本{updateResult.version ? ` (服务端 v${updateResult.version})` : ''}</span>
+           </div>
+         )}
+-      </div>
++      </div>}
+     </div>
+   );
+ }
+diff --git a/src/styles.css b/src/styles.css
+index 9ab0e4a..fc450eb 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -230,20 +230,27 @@ body {
+ @keyframes goldpulse { 0%, 100% { box-shadow: 0 0 0 rgba(167, 139, 113, 0); } 50% { box-shadow: 0 0 36px rgba(167, 139, 113, .5); } }
+ 
+ .icon-btn {
+   width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+   border: 1px solid transparent; background: transparent; color: var(--txt-3); cursor: pointer; transition: all .15s;
+ }
+ .icon-btn:hover { color: var(--txt-1); border-color: var(--line); background: var(--glass); }
+ .icon-btn.spin > * { animation: rot 0.9s linear infinite; }
+ @keyframes rot { to { transform: rotate(360deg); } }
+ 
++/* 页头 24px 图标按钮(Dashboard 的账号/设置直达)*/
++.header-icon-btn {
++  width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
++  border: 1px solid transparent; background: transparent; color: var(--txt-3); cursor: pointer; transition: all .15s;
++}
++.header-icon-btn:hover { color: var(--txt-1); border-color: var(--line); background: var(--glass); }
++
+ /* spinner */
+ .spinner {
+   display: inline-block; border-radius: 50%;
+   border: 1.5px solid rgba(255, 255, 255, 0.15); border-top-color: currentColor;
+   animation: rot 0.7s linear infinite; flex-shrink: 0;
+ }
+ 
+ /* 输入 */
+ select, input[type='text'], input[type='number'], input[type='password'], textarea {
+   width: 100%; background: rgba(255, 255, 255, 0.04); color: var(--txt-1);

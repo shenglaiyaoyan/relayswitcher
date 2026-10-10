@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.12.0 (2026-10-10) — OpenCode Provider 管理 + 导航重构:RS 升格为多客户端配置管理器
+
+- **OpenCode Provider 管理**(方案 A→2):
+  - 独立 OpenCode 页:Provider 列表(协议徽章/模型数/默认模型)+ 新建/编辑/移除
+  - 表单:中转站选库(自动拉 /v1/models)或手写 URL;**协议三选一**(message/chat/responses
+    → @ai-sdk/anthropic / openai-compatible / openai);Provider ID;API Key(safeStorage
+    加密落盘);**模型条目勾选+手动添加**(每条可编辑 name/limit/context/output/reasoning/options
+    JSON 透传);默认模型下拉
+  - 写入管线:备份(opencode.json+auth.json)→ 外科合并(只动 RS 注入的 provider 块,
+    用户手写配置原样)→ auth.json 操作 → 提示重启 opencode(无热重载)
+  - JSONC 容错解析(含注释检测与写回警告);apiKey 走 auth.json 不进 opencode.json
+- **导航重构**(superdesign 三稿定稿):
+  - 侧边栏五项:**ChatGPT / OpenCode / 中转站 / 备份 / 设置**
+  - ChatGPT 页头双图标(👤账号 / ⚙设置);Settings 按归属拆分(global/chatgpt/opencode)
+  - 「仪表盘」全部更名为「ChatGPT 页」;hash 路由支持子模式(#settings-chatgpt 等)
+- **新文件**:`electron/lib/opencode.js`(纯函数 16 例单测)+ `src/pages/OpenCode.jsx`
+- 单测 81/81(含 opencode 16 例),冒烟 39/39,build + lint 全绿
+
 ## v1.11.12 (2026-10-01) — 6.1-sol 按原生目录校准:补回 max 档,修正默认档与硬顶
 
 - **背景**:2026-10-01 06:53 的 codex.exe 已原生收录 gpt-6.1-sol,原生参数把 API 文档页

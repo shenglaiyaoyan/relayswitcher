@@ -1,0 +1,260 @@
+=== COMMITS ===
+c48aa58 fix: opencode 路径无参兜底真实 home(~)+ store apiKey 走 safeStorage 加密落盘
+d836233 feat: opencode store + IPC(rs:oc:save/remove/list/readConfig/fetchModels)
+
+=== STAT ===
+ electron/lib/opencode.js |  9 ++++----
+ electron/lib/store.js    | 30 +++++++++++++++++++++++++--
+ electron/main.js         | 54 ++++++++++++++++++++++++++++++++++++++++++++++++
+ electron/preload.js      |  5 +++++
+ 4 files changed, 92 insertions(+), 6 deletions(-)
+
+=== DIFF ===
+diff --git a/electron/lib/opencode.js b/electron/lib/opencode.js
+index 14cf97c..6baf012 100644
+--- a/electron/lib/opencode.js
++++ b/electron/lib/opencode.js
+@@ -1,29 +1,30 @@
+ 'use strict';
+ /**
+  * opencode.js — OpenCode 配置管理(纯函数核心)。
+  * 职责:读写 ~/.config/opencode/opencode.json(JSONC 容错)与
+  * ~/.local/share/opencode/auth.json;外科手术式合并/摘除 provider 块;
+- * 写前备份。路径可通过传入 home 覆盖(测试用)。
++ * 写前备份。路径默认真实 home(~),可通过传入 home 覆盖(测试用)。
+  */
+ const fs = require('fs');
+ const path = require('path');
++const os = require('os');
+ 
+ const PROTOCOL_ADAPTERS = {
+   message: '@ai-sdk/anthropic',
+   chat: '@ai-sdk/openai-compatible',
+   responses: '@ai-sdk/openai'
+ };
+ 
+-function configPath(home) { return path.join(home || '', '.config', 'opencode', 'opencode.json'); }
+-function authPath(home) { return path.join(home || '', '.local', 'share', 'opencode', 'auth.json'); }
+-function backupDir(home) { return path.join(home || '', '.config', 'opencode', 'relayswitcher-backups'); }
++function configPath(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'opencode.json'); }
++function authPath(home) { return path.join(home || os.homedir(), '.local', 'share', 'opencode', 'auth.json'); }
++function backupDir(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'relayswitcher-backups'); }
+ 
+ /** JSONC → JSON(剥掉 // 与 /* 注释;不处理嵌套在字符串内的伪注释——够用) */
+ function stripJsonComments(text) {
+   let out = '', inStr = false, esc = false;
+   for (let i = 0; i < text.length; i++) {
+     const c = text[i], next = text[i + 1];
+     if (inStr) {
+       out += c;
+       if (esc) esc = false;
+       else if (c === '\\') esc = true;
+diff --git a/electron/lib/store.js b/electron/lib/store.js
+index 3fa1e51..ca7aac0 100644
+--- a/electron/lib/store.js
++++ b/electron/lib/store.js
+@@ -5,21 +5,21 @@
+  */
+ const fs = require('fs');
+ const path = require('path');
+ const crypto = require('crypto');
+ 
+ let safeStorage = null;
+ try { safeStorage = require('electron').safeStorage; } catch { /* 测试环境无 electron */ }
+ 
+ function createStore(userDataDir) {
+   const file = path.join(userDataDir, 'store.json');
+-  let data = { accounts: [], relays: [], settings: {
++  let data = { accounts: [], relays: [], opencodeProviders: [], settings: {
+     providerId: 'codex_local_access',
+     catalogFileName: 'relayswitcher-model-catalog.json',
+     catalogEnabled: true,
+     codexHome: '',
+     fastMode: true,
+     contextWindow: 872000,
+     pruneLocalProviders: false,
+     catalogMode: 'builtin',
+     closeToTray: true,
+     openAtLogin: false
+@@ -203,24 +203,50 @@ function createStore(userDataDir) {
+       if (!r) throw new Error('中转站不存在');
+       return { ...r, apiKey: r.apiKeyEnc ? dec(r.apiKeyEnc) : '' };
+     },
+ 
+     listRelays() {
+       return data.relays.map(r => ({ id: r.id, name: r.name, baseUrl: r.baseUrl,
+         hasKey: !!r.apiKeyEnc, lastTest: r.lastTest || null }));
+     },
+ 
+     setRelayTest(id, result) {
+-      const r = data.relays.find(x => x.id === id);
++      const r = data.relays.find(r => r.id === id);
+       if (r) { r.lastTest = result; save(); }
+     },
+ 
++    /* ---------- OpenCode providers ---------- */
++    listOpenCodeProviders() {
++      return (data.opencodeProviders || []).map(p => {
++        if (p.apiKeyEnc) return { ...p, apiKey: dec(p.apiKeyEnc) };
++        return p;
++      });
++    },
++
++    saveOpenCodeProvider(p) {
++      if (!p.id) throw new Error('provider id 必填');
++      const toStore = { ...p };
++      if (toStore.apiKey) {
++        toStore.apiKeyEnc = enc(toStore.apiKey);
++        delete toStore.apiKey;
++      }
++      const i = (data.opencodeProviders || []).findIndex(x => x.id === toStore.id);
++      if (i >= 0) data.opencodeProviders[i] = toStore;
++      else (data.opencodeProviders = data.opencodeProviders || []).push(toStore);
++      save();
++    },
++
++    deleteOpenCodeProvider(id) {
++      data.opencodeProviders = (data.opencodeProviders || []).filter(x => x.id !== id);
++      save();
++    },
++
+     getSettings() { return { ...data.settings }; },
+     saveSettings(s) { data.settings = { ...data.settings, ...s }; save(); return this.getSettings(); }
+   };
+ }
+ 
+ function publicAccount(a) {
+   return { id: a.id, label: a.label, email: a.email, plan: a.plan,
+     tokenExp: a.tokenExp, accountId: a.accountId, addedAt: a.addedAt };
+ }
+ 
+diff --git a/electron/main.js b/electron/main.js
+index e823609..19ebb7e 100644
+--- a/electron/main.js
++++ b/electron/main.js
+@@ -4,20 +4,21 @@ const path = require('path');
+ const fs = require('fs');
+ const { createStore } = require('./lib/store');
+ const codex = require('./lib/codex');
+ const { extractTokenError } = require('./lib/oauth-errors');
+ const { findRivalProcesses } = require('./lib/rival-guard');
+ const { diffCatalogSlugs } = require('./lib/catalog-diff');
+ const { extractToFile, locateCodexBinary } = require('./lib/catalog-extract');
+ const { mergeCustomModels } = require('./lib/catalog-merge');
+ const { buildRelayCatalog } = require('./lib/relay-catalog');
+ const { applyCatalogPatch } = require('./lib/catalog-patch');
++const oc = require('./lib/opencode');
+ 
+ const isDev = !!process.env.VITE_DEV;
+ const SMOKE = process.argv.includes('--smoke');
+ 
+ let win = null;
+ let store = null;
+ 
+ function resourcesDir() {
+   // 打包后: process.resourcesPath/resources;开发: <project>/resources
+   return app.isPackaged
+@@ -452,20 +453,73 @@ function registerIpc() {
+     if (!t || !t.access_token) return { ok: false, error: '本机登录态不是 OAuth tokens 模式(可能是 API-key 模式),无法导入为账号' };
+     if (t.account_id && store.listAccounts().some(a => a.accountId === t.account_id)) {
+       return { ok: true, skipped: true, message: '本机登录账号已在库中' };
+     }
+     const a = store.addAccount(JSON.stringify({ tokens: t }));
+     return { ok: true, account: a };
+   });
+   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
+   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
+   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); applyOpenAtLogin(); return getState(); });
++  // ---- OpenCode provider 管理(rs:oc:*):Task 1 纯函数 + store ----
++  // opencode.js 不传 home 时路径相对 cwd,这里必须显式传真实 home(~)
++  const ocHome = () => require('os').homedir();
++  ipcMain.handle('rs:oc:list', () => store.listOpenCodeProviders());
++  ipcMain.handle('rs:oc:save', (_e, p) => {
++    try {
++      oc.backupOpenCode(ocHome()); // 写前备份(真实 home)
++      const cfg = oc.readOpenCodeConfig(ocHome());
++      const auth = oc.readAuthFile(ocHome());
++      const merged = oc.mergeProviderBlock(cfg, {
++        id: p.id,
++        npm: oc.PROTOCOL_ADAPTERS[p.protocol] || oc.PROTOCOL_ADAPTERS.chat,
++        name: p.name || p.id,
++        options: { baseURL: p.baseUrl },
++        models: Object.fromEntries((p.models || []).map(m => [m.id, {
++          name: m.name || m.id,
++          ...(m.limit && m.limit.context ? { limit: m.limit } : {}),
++          ...(m.reasoning ? { reasoning: true } : {}),
++          ...(m.options && Object.keys(m.options).length ? { options: m.options } : {})
++        }])),
++        defaultModel: p.defaultModel || null
++      });
++      oc.writeOpenCodeConfig(ocHome(), merged);
++      if (p.apiKey) {
++        auth[p.id] = { type: 'api', key: p.apiKey };
++        oc.writeAuthFile(ocHome(), auth);
++      }
++      store.saveOpenCodeProvider(p);
++      return { ok: true, hasComments: !!cfg._hasComments };
++    } catch (e) { return { ok: false, error: e.message }; }
++  });
++  ipcMain.handle('rs:oc:remove', (_e, id) => {
++    try {
++      oc.backupOpenCode(ocHome());
++      const cfg = oc.readOpenCodeConfig(ocHome());
++      const auth = oc.readAuthFile(ocHome());
++      const updated = oc.removeProviderBlock(cfg, id);
++      oc.writeOpenCodeConfig(ocHome(), updated);
++      if (auth[id]) { delete auth[id]; oc.writeAuthFile(ocHome(), auth); }
++      store.deleteOpenCodeProvider(id);
++      return { ok: true };
++    } catch (e) { return { ok: false, error: e.message }; }
++  });
++  ipcMain.handle('rs:oc:readConfig', () => {
++    try { return { ok: true, config: oc.readOpenCodeConfig(ocHome()) }; } catch (e) { return { ok: false, error: e.message }; }
++  });
++  ipcMain.handle('rs:oc:fetchModels', (_e, relayId) => {
++    let relay;
++    try { relay = store.getRelay(relayId); } catch (e) { return { ok: false, error: e.message }; }
++    // 复用现有 fetchRelayModels 逻辑
++    return fetchRelayModels(relay).then(r => ({ ok: true, models: r.ids }))
++      .catch(e => ({ ok: false, error: e.message }));
++  });
+ }
+ 
+ /* ---------------- 冒烟自检(无窗口): 临时 CODEX_HOME 全流程演练 ---------------- */
+ async function smoke() {
+   const os = require('os');
+   const TOML = require('@iarna/toml');
+   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-smoke-'));
+   const P = (f) => path.join(home, f);
+ 
+   let pass = 0, fail = 0;
+diff --git a/electron/preload.js b/electron/preload.js
+index 0f03703..4041d8f 100644
+--- a/electron/preload.js
++++ b/electron/preload.js
+@@ -21,20 +21,25 @@ contextBridge.exposeInMainWorld('rs', {
+   restartInstall: () => ipcRenderer.invoke('rs:restartInstall'),
+   getVersion: () => ipcRenderer.invoke('rs:getVersion'),
+   extractCatalog: () => ipcRenderer.invoke('rs:extractCatalog'),
+   getCatalogInfo: () => ipcRenderer.invoke('rs:getCatalogInfo'),
+   setCatalogMode: (mode) => ipcRenderer.invoke('rs:setCatalogMode', mode),
+   saveCustomModel: (cm) => ipcRenderer.invoke('rs:saveCustomModel', cm),
+   deleteCustomModel: (id) => ipcRenderer.invoke('rs:deleteCustomModel', id),
+   importAccountsBatch: (texts) => ipcRenderer.invoke('rs:importAccountsBatch', texts),
+   importRelaysFromCodex: () => ipcRenderer.invoke('rs:importRelaysFromCodex'),
+   importAccountFromCodex: () => ipcRenderer.invoke('rs:importAccountFromCodex'),
++  ocList: () => ipcRenderer.invoke('rs:oc:list'),
++  ocSave: (p) => ipcRenderer.invoke('rs:oc:save', p),
++  ocRemove: (id) => ipcRenderer.invoke('rs:oc:remove', id),
++  ocReadConfig: () => ipcRenderer.invoke('rs:oc:readConfig'),
++  ocFetchModels: (relayId) => ipcRenderer.invoke('rs:oc:fetchModels', relayId),
+   onUpdateEvent: (cb) => {
+     const h = (_e, data) => cb(data);
+     ipcRenderer.on('rs:update-event', h);
+     return () => ipcRenderer.removeListener('rs:update-event', h);
+   },
+   onStateChanged: (cb) => {
+     const h = () => cb();
+     ipcRenderer.on('rs:state-changed', h);
+     return () => ipcRenderer.removeListener('rs:state-changed', h);
+   },

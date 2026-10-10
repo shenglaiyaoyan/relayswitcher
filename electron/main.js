@@ -478,7 +478,7 @@ function registerIpc() {
         options: { baseURL: p.baseUrl },
         models: Object.fromEntries((p.models || []).map(m => [m.id, {
           name: m.name || m.id,
-          ...(m.limit && m.limit.context ? { limit: m.limit } : {}),
+          ...(m.limit && (m.limit.context || m.limit.output) ? { limit: m.limit } : {}),
           ...(m.reasoning ? { reasoning: true } : {}),
           ...(m.options && Object.keys(m.options).length ? { options: m.options } : {})
         }])),

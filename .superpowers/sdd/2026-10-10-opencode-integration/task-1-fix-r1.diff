@@ -1,0 +1,124 @@
+=== FIX COMMITS ===
+7cf3106 fix: opencode.js 纯函数加固 — 合并不变异输入 / _hasComments 防 URL 误报 / auth.json 损坏显式抛错(3 例回归)
+
+=== FIX STAT ===
+ electron/lib/opencode.js | 13 +++++++++----
+ test/opencode.test.js    | 26 ++++++++++++++++++++++++++
+ 2 files changed, 35 insertions(+), 4 deletions(-)
+
+=== FIX DIFF ===
+diff --git a/electron/lib/opencode.js b/electron/lib/opencode.js
+index c62bd3d..14cf97c 100644
+--- a/electron/lib/opencode.js
++++ b/electron/lib/opencode.js
+@@ -42,51 +42,56 @@ function stripJsonComments(text) {
+     }
+     out += c;
+   }
+   return out;
+ }
+ 
+ function readOpenCodeConfig(home) {
+   const p = configPath(home);
+   let raw;
+   try { raw = fs.readFileSync(p, 'utf8'); } catch { return {}; }
+-  const hasComments = /\/\/|\/\*/.test(raw);
++  const stripped = stripJsonComments(raw);
++  const hasComments = stripped !== raw;
+   try {
+-    const cfg = JSON.parse(stripJsonComments(raw));
++    const cfg = JSON.parse(stripped);
+     if (hasComments) cfg._hasComments = true;
+     return cfg;
+   } catch (e) {
+     throw new Error('opencode.json 解析失败: ' + e.message);
+   }
+ }
+ 
+ function writeOpenCodeConfig(home, cfg) {
+   const clean = { ...cfg };
+   delete clean._hasComments;
+   const p = configPath(home);
+   fs.mkdirSync(path.dirname(p), { recursive: true });
+   fs.writeFileSync(p, JSON.stringify(clean, null, 2) + '\n');
+ }
+ 
+ function readAuthFile(home) {
+-  try { return JSON.parse(fs.readFileSync(authPath(home), 'utf8')); } catch { return {}; }
++  try { return JSON.parse(fs.readFileSync(authPath(home), 'utf8')); }
++  catch (e) {
++    if (e.code === 'ENOENT') return {};
++    throw new Error('auth.json 解析失败: ' + e.message);
++  }
+ }
+ 
+ function writeAuthFile(home, auth) {
+   const p = authPath(home);
+   fs.mkdirSync(path.dirname(p), { recursive: true });
+   fs.writeFileSync(p, JSON.stringify(auth, null, 2) + '\n');
+ }
+ 
+ function mergeProviderBlock(existing, pd) {
+   const out = { ...existing };
+-  if (!out.provider) out.provider = {};
++  out.provider = { ...(out.provider || {}) };
+   out.provider[pd.id] = {
+     npm: pd.npm,
+     name: pd.name,
+     options: pd.options || {},
+     ...(pd.models && Object.keys(pd.models).length ? { models: pd.models } : {})
+   };
+   if (pd.defaultModel) out.model = pd.defaultModel;
+   return out;
+ }
+ 
+diff --git a/test/opencode.test.js b/test/opencode.test.js
+index 7a669d7..18d8198 100644
+--- a/test/opencode.test.js
++++ b/test/opencode.test.js
+@@ -119,19 +119,45 @@ test('writeAuthFile: 保留已有条目', () => {
+ test('backupOpenCode: 备份 opencode.json + auth.json 存在时生成快照目录', () => {
+   const home = mkHome();
+   fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'), '{"model":"x"}');
+   fs.writeFileSync(path.join(home, '.local/share/opencode/auth.json'), '{"k":{"type":"api","key":"v"}}');
+   const bdir = backupOpenCode(home);
+   assert.ok(bdir, '返回备份目录名');
+   assert.ok(fs.existsSync(path.join(home, '.config/opencode/relayswitcher-backups', bdir, 'opencode.json')));
+   assert.ok(fs.existsSync(path.join(home, '.config/opencode/relayswitcher-backups', bdir, 'auth.json')));
+ });
+ 
++test('mergeProviderBlock: 不变异输入 existing(纯函数契约)', () => {
++  const existing = { model: 'other/m9', provider: { myrelay: { npm: 'old' }, keep: { npm: 'y' } } };
++  const snapshot = JSON.parse(JSON.stringify(existing));
++  const pd = { id: 'myrelay', npm: '@ai-sdk/openai-compatible', name: 'My Relay',
++    options: { baseURL: 'https://api.example.com/v1' }, models: {} };
++  const out = mergeProviderBlock(existing, pd);
++  assert.deepEqual(existing, snapshot, '原始 existing 深比较未被修改');
++  assert.equal(existing.provider.myrelay.npm, 'old', '原对象里的旧 provider 保持');
++  assert.equal(out.provider.myrelay.npm, '@ai-sdk/openai-compatible', '输出里是新版');
++  assert.equal(out.provider.keep.npm, 'y');
++});
++
++test('readOpenCodeConfig: 纯 JSON 含 https:// URL 不误报 _hasComments', () => {
++  const home = mkHome();
++  fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'),
++    JSON.stringify({ provider: { myrelay: { options: { baseURL: 'https://api.example.com/v1' } } } }));
++  const cfg = readOpenCodeConfig(home);
++  assert.equal(cfg._hasComments, undefined, 'URL 里的 // 不算注释');
++});
++
++test('readAuthFile: auth.json 损坏时抛异常而非返回空对象', () => {
++  const home = mkHome();
++  fs.writeFileSync(path.join(home, '.local/share/opencode/auth.json'), '{broken json');
++  assert.throws(() => readAuthFile(home), /auth\.json 解析失败/);
++});
++
+ test('writeOpenCodeConfig: 写回标准 JSON(2空格缩进+LF)', () => {
+   const home = mkHome();
+   const cfg = { model: 'test/m1', provider: { test: { npm: 'x' } } };
+   writeOpenCodeConfig(home, cfg);
+   const raw = fs.readFileSync(path.join(home, '.config/opencode/opencode.json'), 'utf8');
+   assert.ok(!raw.includes('//'), '不含注释');
+   assert.ok(raw.includes('\n'), 'LF 换行');
+   assert.deepEqual(JSON.parse(raw), cfg);
+ });

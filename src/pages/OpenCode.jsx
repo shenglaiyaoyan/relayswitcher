@@ -230,6 +230,15 @@ function ModelEntries({ data, setData, relayModels, fetching }) {
               <Icon name="x" size={13} />
             </button>
           </div>
+          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: 10, minWidth: 52 }}>options</span>
+            <input type="text" className="mono" value={m.optionsText || ''} onChange={e => {
+              const raw = e.target.value;
+              try { const parsed = raw.trim() ? JSON.parse(raw) : {}; updateModel(i, 'options', parsed); updateModel(i, 'optionsText', raw); }
+              catch { updateModel(i, 'optionsText', raw); } // JSON 不完整时暂存原文
+            }} placeholder='{"reasoningEffort":"high"}(透传给 API,留空不写入)' style={{ flex: 1, fontSize: 10 }} />
+            {m.optionsText && !/^\s*\{.*\}\s*$/.test(m.optionsText) && <span style={{ color: 'var(--bad)', fontSize: 10 }}>JSON 不完整</span>}
+          </div>
         </div>
       ))}
       <button className="btn btn-sm" onClick={() => set('models', [...models, { id: '', name: '', limit: { context: 0, output: 0 }, reasoning: false, options: {} }])}>

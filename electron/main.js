@@ -11,6 +11,7 @@ const { extractToFile, locateCodexBinary } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
 const { buildRelayCatalog } = require('./lib/relay-catalog');
 const { applyCatalogPatch } = require('./lib/catalog-patch');
+const oc = require('./lib/opencode');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
@@ -459,6 +460,59 @@ function registerIpc() {
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); applyOpenAtLogin(); return getState(); });
+  // ---- OpenCode provider 管理(rs:oc:*):Task 1 纯函数 + store ----
+  // opencode.js 不传 home 时路径相对 cwd,这里必须显式传真实 home(~)
+  const ocHome = () => require('os').homedir();
+  ipcMain.handle('rs:oc:list', () => store.listOpenCodeProviders());
+  ipcMain.handle('rs:oc:save', (_e, p) => {
+    try {
+      oc.backupOpenCode(ocHome()); // 写前备份(真实 home)
+      const cfg = oc.readOpenCodeConfig(ocHome());
+      const auth = oc.readAuthFile(ocHome());
+      const merged = oc.mergeProviderBlock(cfg, {
+        id: p.id,
+        npm: oc.PROTOCOL_ADAPTERS[p.protocol] || oc.PROTOCOL_ADAPTERS.chat,
+        name: p.name || p.id,
+        options: { baseURL: p.baseUrl },
+        models: Object.fromEntries((p.models || []).map(m => [m.id, {
+          name: m.name || m.id,
+          ...(m.limit && m.limit.context ? { limit: m.limit } : {}),
+          ...(m.reasoning ? { reasoning: true } : {}),
+          ...(m.options && Object.keys(m.options).length ? { options: m.options } : {})
+        }])),
+        defaultModel: p.defaultModel || null
+      });
+      oc.writeOpenCodeConfig(ocHome(), merged);
+      if (p.apiKey) {
+        auth[p.id] = { type: 'api', key: p.apiKey };
+        oc.writeAuthFile(ocHome(), auth);
+      }
+      store.saveOpenCodeProvider(p);
+      return { ok: true, hasComments: !!cfg._hasComments };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+  ipcMain.handle('rs:oc:remove', (_e, id) => {
+    try {
+      oc.backupOpenCode(ocHome());
+      const cfg = oc.readOpenCodeConfig(ocHome());
+      const auth = oc.readAuthFile(ocHome());
+      const updated = oc.removeProviderBlock(cfg, id);
+      oc.writeOpenCodeConfig(ocHome(), updated);
+      if (auth[id]) { delete auth[id]; oc.writeAuthFile(ocHome(), auth); }
+      store.deleteOpenCodeProvider(id);
+      return { ok: true };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+  ipcMain.handle('rs:oc:readConfig', () => {
+    try { return { ok: true, config: oc.readOpenCodeConfig(ocHome()) }; } catch (e) { return { ok: false, error: e.message }; }
+  });
+  ipcMain.handle('rs:oc:fetchModels', (_e, relayId) => {
+    let relay;
+    try { relay = store.getRelay(relayId); } catch (e) { return { ok: false, error: e.message }; }
+    // 复用现有 fetchRelayModels 逻辑
+    return fetchRelayModels(relay).then(r => ({ ok: true, models: r.ids }))
+      .catch(e => ({ ok: false, error: e.message }));
+  });
 }
 
 /* ---------------- 冒烟自检(无窗口): 临时 CODEX_HOME 全流程演练 ---------------- */

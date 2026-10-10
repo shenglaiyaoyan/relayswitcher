@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld('rs', {
   importAccountsBatch: (texts) => ipcRenderer.invoke('rs:importAccountsBatch', texts),
   importRelaysFromCodex: () => ipcRenderer.invoke('rs:importRelaysFromCodex'),
   importAccountFromCodex: () => ipcRenderer.invoke('rs:importAccountFromCodex'),
+  ocList: () => ipcRenderer.invoke('rs:oc:list'),
+  ocSave: (p) => ipcRenderer.invoke('rs:oc:save', p),
+  ocRemove: (id) => ipcRenderer.invoke('rs:oc:remove', id),
+  ocReadConfig: () => ipcRenderer.invoke('rs:oc:readConfig'),
+  ocFetchModels: (relayId) => ipcRenderer.invoke('rs:oc:fetchModels', relayId),
   onUpdateEvent: (cb) => {
     const h = (_e, data) => cb(data);
     ipcRenderer.on('rs:update-event', h);

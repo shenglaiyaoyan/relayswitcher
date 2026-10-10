@@ -12,7 +12,7 @@ try { safeStorage = require('electron').safeStorage; } catch { /* 测试环境�
 
 function createStore(userDataDir) {
   const file = path.join(userDataDir, 'store.json');
-  let data = { accounts: [], relays: [], settings: {
+  let data = { accounts: [], relays: [], opencodeProviders: [], settings: {
     providerId: 'codex_local_access',
     catalogFileName: 'relayswitcher-model-catalog.json',
     catalogEnabled: true,
@@ -210,8 +210,24 @@ function createStore(userDataDir) {
     },
 
     setRelayTest(id, result) {
-      const r = data.relays.find(x => x.id === id);
+      const r = data.relays.find(r => r.id === id);
       if (r) { r.lastTest = result; save(); }
+    },
+
+    /* ---------- OpenCode providers ---------- */
+    listOpenCodeProviders() { return data.opencodeProviders || []; },
+
+    saveOpenCodeProvider(p) {
+      if (!p.id) throw new Error('provider id 必填');
+      const i = (data.opencodeProviders || []).findIndex(x => x.id === p.id);
+      if (i >= 0) data.opencodeProviders[i] = p;
+      else (data.opencodeProviders = data.opencodeProviders || []).push(p);
+      save();
+    },
+
+    deleteOpenCodeProvider(id) {
+      data.opencodeProviders = (data.opencodeProviders || []).filter(x => x.id !== id);
+      save();
     },
 
     getSettings() { return { ...data.settings }; },

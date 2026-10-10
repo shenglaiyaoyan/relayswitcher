@@ -461,9 +461,11 @@ function registerIpc() {
   ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); applyOpenAtLogin(); return getState(); });
   // ---- OpenCode provider 管理(rs:oc:*):Task 1 纯函数 + store ----
-  // opencode.js 不传 home 时路径相对 cwd,这里必须显式传真实 home(~)
+  // 显式传 home 双保险(opencode.js 无参时已兜底 os.homedir())
   const ocHome = () => require('os').homedir();
-  ipcMain.handle('rs:oc:list', () => store.listOpenCodeProviders());
+  ipcMain.handle('rs:oc:list', (_e) => {
+    try { return store.listOpenCodeProviders(); } catch (e) { return []; }
+  });
   ipcMain.handle('rs:oc:save', (_e, p) => {
     try {
       oc.backupOpenCode(ocHome()); // 写前备份(真实 home)

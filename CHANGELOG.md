@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.12.2 (2026-10-10) — OpenCode 表单 superdesign v2 重构 + 界面卡顿修复
+
+- **OpenCode 表单按 superdesign v2 设计稿重构**(用户裁定 v1 不合格):
+  - 模型条目改为**表格式布局**:ID(mono)/ 显示名 / CTX / OUT / 能力与选项 / 移除 六列,
+    多模型纵向对比一目了然;CTX/OUT 全宽居中,7 位数字完整可见
+  - 能力开关排成 **2×2 网格**(推理/附件/工具/Temp),模态 chips 紧凑化(输入/输出两行)
+  - options JSON 输入框收入能力列,行尾灰色 ✕(hover 变红)专职移除
+  - 基本信息区两列排布(中转站独占一行;Base URL↔协议类型、Provider ID↔API Key 成对);
+    Modal 加宽 720→860
+  - demo 截图状态新增 `#opencode-demo-rows`(预填两行模型,验证表格布局)
+- **界面卡顿修复**:`webPreferences.backgroundThrottling: false` — 窗口失焦/被遮挡时
+  Chromium 不再节流渲染,切回不再卡一帧
+- 单测 81/81,冒烟 39/39,build + lint 全绿;--capture 全 12 态出图正常
+
 ## v1.12.1 (2026-10-10) — OpenCode 表单完善:能力开关全量 + apiKey 自动带入 + 布局修复
 
 - **模型条目表单补全**(用户反馈,对照官方 schema 18 字段):

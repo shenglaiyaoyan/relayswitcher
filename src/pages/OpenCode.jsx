@@ -26,6 +26,29 @@ export default function OpenCode({ state, toast, goto }) {
   };
   useEffect(() => { load(); }, []); // eslint-disable-line
 
+  // 截图/设计管线专用:#opencode-demo-new 强制打开新建 Modal(正常运行不可达)
+  // #opencode-demo-rows 同理,额外预填两行模型验证表格布局
+  useEffect(() => {
+    const applyDemo = () => {
+      const h = window.location.hash || '';
+      if (h.includes('demo-new') || h.includes('demo-rows')) {
+        setRelayModels(null); setIsNew(true); setProviders([]);
+        const base = { ...NEW_PROVIDER(), id: 'my-relay', name: 'My Relay', baseUrl: 'https://api.example.com/v1' };
+        if (h.includes('demo-rows')) {
+          base.models = [
+            { id: 'claude-sonnet-4-5', name: 'Sonnet 4.5', limit: { context: 200000, output: 64000 }, reasoning: true, attachment: true, tool_call: true, temperature: false, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { reasoningEffort: 'high' }, optionsText: '{"reasoningEffort":"high"}' },
+            { id: 'gpt-4o', name: 'GPT-4o', limit: { context: 128000, output: 16384 }, reasoning: false, attachment: false, tool_call: true, temperature: true, modalities: { input: ['text', 'image'], output: ['text'] }, options: {}, optionsText: '' }
+          ];
+          base.defaultModel = 'my-relay/gpt-4o';
+        }
+        setEditing(base);
+      }
+    };
+    applyDemo();
+    window.addEventListener('hashchange', applyDemo);
+    return () => window.removeEventListener('hashchange', applyDemo);
+  }, []);
+
   const openAdd = () => { setRelayModels(null); setIsNew(true); setEditing(NEW_PROVIDER()); };
   const openEdit = (p) => { setRelayModels(null); setIsNew(false); setEditing(p); };
 
@@ -107,7 +130,7 @@ export default function OpenCode({ state, toast, goto }) {
       </div>
 
       {/* 新建/编辑 Modal */}
-      <Modal open={!!editing} width={720}
+      <Modal open={!!editing} width={860}
         title={<><Icon name="bolt" size={15} /> {isNew ? '新建 Provider' : '编辑 Provider'}</>}
         onClose={() => setEditing(null)}
         footer={<>
@@ -141,37 +164,56 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Field label="中转站(选库自动填充,或手写)">
-        <div className="row" style={{ gap: 8 }}>
-          <Select style={{ flex: 1, minWidth: 0 }} value={data.relayId || ''} onChange={pickRelay}
-            placeholder="— 手写 —" emptyText="中转站库为空 — 去「中转站」页添加"
-            options={[{ value: '', label: '手写(清空关联)' }].concat(
-              relays.map(r => ({ value: r.id, label: r.name, desc: r.baseUrl })))} />
-          {data.relayId && (
-            <button className="btn btn-sm" disabled={fetching} onClick={() => onFetchModels(data.relayId)}>
-              {fetching ? <Spinner size={11} /> : <Icon name="refresh" size={11} />} 拉 /v1/models
-            </button>
-          )}
+      {/* 基本信息(对应 superdesign「基本信息」区块) */}
+      <div className="klabel" style={{ marginBottom: -6 }}>基本信息</div>
+      <div className="row" style={{ gap: 14, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label="中转站(选库自动填充,或手写)">
+            <Select style={{ width: '100%' }} value={data.relayId || ''} onChange={pickRelay}
+              placeholder="— 手写 —" emptyText="中转站库为空 — 去「中转站」页添加"
+              options={[{ value: '', label: '手写(清空关联)' }].concat(
+                relays.map(r => ({ value: r.id, label: r.name, desc: r.baseUrl })))} />
+          </Field>
         </div>
-      </Field>
-      <Field label="Base URL" hint="填到 /v1 为止">
-        <input type="text" value={data.baseUrl} onChange={e => set('baseUrl', e.target.value)} placeholder="https://api.example.com/v1" style={{ width: '100%' }} />
-      </Field>
-      <Field label="协议类型" hint="决定 opencode 用哪个 ai-sdk 适配器">
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          {PROTOCOLS.map(p => (
-            <span key={p.value} className={'chip' + (data.protocol === p.value ? ' on' : '')}
-              onClick={() => set('protocol', p.value)} title={p.desc}>{p.label}</span>
-          ))}
+        {data.relayId && (
+          <button className="btn btn-sm" style={{ marginBottom: 2, flexShrink: 0 }} disabled={fetching} onClick={() => onFetchModels(data.relayId)}>
+            {fetching ? <Spinner size={11} /> : <Icon name="refresh" size={11} />} 拉 /v1/models
+          </button>
+        )}
+      </div>
+      <div className="row" style={{ gap: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label="Base URL" hint="填到 /v1 为止">
+            <input type="text" value={data.baseUrl} onChange={e => set('baseUrl', e.target.value)} placeholder="https://api.example.com/v1" style={{ width: '100%' }} />
+          </Field>
         </div>
-      </Field>
-      <Field label="Provider ID" hint="opencode.json 里 provider 的键名">
-        <input type="text" value={data.id} onChange={e => set('id', e.target.value)} placeholder="my-relay" style={{ width: 200 }} />
-      </Field>
-      <Field label="API Key" hint={isNew ? '写入 auth.json,不进 opencode.json' : '留空 = 保持不变'}>
-        <input type="password" value={data.apiKey} onChange={e => set('apiKey', e.target.value)} placeholder="sk-…" style={{ width: '100%' }} />
-      </Field>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label="协议类型" hint="决定 opencode 用哪个 ai-sdk 适配器">
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {PROTOCOLS.map(p => (
+                <span key={p.value} className={'chip' + (data.protocol === p.value ? ' on' : '')}
+                  onClick={() => set('protocol', p.value)} title={p.desc}>{p.label}</span>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </div>
+      <div className="row" style={{ gap: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label="Provider ID" hint="opencode.json 里 provider 的键名">
+            <input type="text" className="mono" value={data.id} onChange={e => set('id', e.target.value)} placeholder="my-relay" style={{ width: '100%' }} />
+          </Field>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label="API Key" hint={isNew ? '写入 auth.json,不进 opencode.json' : '留空 = 保持不变'}>
+            <input type="password" value={data.apiKey} onChange={e => set('apiKey', e.target.value)} placeholder="sk-…" style={{ width: '100%' }} />
+          </Field>
+        </div>
+      </div>
+      {/* 模型条目(superdesign:表格式,列 = ID / 显示名 / CTX / OUT / 能力与选项 / 移除) */}
+      <div className="klabel" style={{ marginBottom: -6 }}>模型条目(勾选 / 手动添加)</div>
       <ModelEntries data={data} setData={setData} relayModels={relayModels} fetching={fetching} />
+      {/* 默认模型 */}
       <Field label="默认模型">
         <Select value={data.defaultModel || ''} onChange={v => set('defaultModel', v)}
           placeholder="不设默认" emptyText="先在上方添加模型"
@@ -181,22 +223,36 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
   );
 }
 
+const NEW_MODEL = () => ({
+  id: '', name: '',
+  limit: { context: 0, output: 0 },
+  reasoning: false, attachment: false, tool_call: false, temperature: false,
+  modalities: { input: ['text'], output: ['text'] },
+  options: {}, optionsText: ''
+});
+
 function ModelEntries({ data, setData, relayModels, fetching }) {
   const set = (k, v) => setData(d => ({ ...d, [k]: v }));
   const models = data.models || [];
   const toggleModel = (modelId) => {
     const exists = models.find(m => m.id === modelId);
     if (exists) set('models', models.filter(m => m.id !== modelId));
-    else set('models', [...models, { id: modelId, name: modelId, limit: { context: 0, output: 0 }, reasoning: false, options: {} }]);
+    else set('models', [...models, { ...NEW_MODEL(), id: modelId, name: modelId }]);
   };
   // 按下标更新:手动添加的行 id 可能为空,按 id 定位会串行
   const updateModel = (i, field, value) => {
     set('models', models.map((m, j) => j === i ? { ...m, [field]: value } : m));
   };
   const removeModel = (i) => set('models', models.filter((_, j) => j !== i));
+  const toggleModality = (i, dir, mod) => {
+    const cur = (models[i].modalities && models[i].modalities[dir]) || [];
+    const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
+    updateModel(i, 'modalities', { ...(models[i].modalities || {}), [dir]: next });
+  };
+  const th = { padding: '6px 8px', fontSize: 10, color: 'var(--txt-3)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'left', fontWeight: 600 };
+  const td = { padding: '10px 8px', borderTop: '1px solid rgba(255,255,255,0.05)', verticalAlign: 'top' };
   return (
     <div>
-      <div className="klabel">模型条目(勾选 / 手动添加)</div>
       {fetching && <div className="muted row" style={{ gap: 6, margin: '10px 0', fontSize: 12 }}><Spinner size={11} /> 拉取模型清单中…</div>}
       {!fetching && relayModels && relayModels.length > 0 && (
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
@@ -212,67 +268,83 @@ function ModelEntries({ data, setData, relayModels, fetching }) {
       {!fetching && !relayModels && models.length === 0 && (
         <div className="muted" style={{ fontSize: 11, margin: '10px 0' }}>选中中转站后自动拉取清单,或在下方手动添加</div>
       )}
-      {models.map((m, i) => (
-        <div key={i} className="parse-preview" style={{ marginBottom: 8, padding: '8px 12px' }}>
-          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input type="text" className="mono" value={m.id} onChange={e => updateModel(i, 'id', e.target.value)}
-              placeholder="model id" title="模型 ID(必填)" style={{ width: 210, fontSize: 11 }} />
-            <input type="text" value={m.name} onChange={e => updateModel(i, 'name', e.target.value)}
-              placeholder="显示名" style={{ width: 130, fontSize: 11 }} />
-            <input type="number" value={m.limit.context} onChange={e => updateModel(i, 'limit', { ...m.limit, context: Number(e.target.value) })}
-              placeholder="ctx" title="上下文窗口(0 = 不写入)" style={{ width: 110, fontSize: 11 }} />
-            <input type="number" value={m.limit.output} onChange={e => updateModel(i, 'limit', { ...m.limit, output: Number(e.target.value) })}
-              placeholder="out" title="输出上限(0 = 不写入)" style={{ width: 110, fontSize: 11 }} />
-            <label className="muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-              推理 <Toggle on={!!m.reasoning} onChange={v => updateModel(i, 'reasoning', v)} />
-            </label>
-            <button className="icon-btn" title="移除该模型" onClick={() => removeModel(i)}>
-              <Icon name="x" size={13} />
-            </button>
-          </div>
-          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
-              附件 <Toggle on={!!m.attachment} onChange={v => updateModel(i, 'attachment', v)} />
-            </label>
-            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
-              工具调用 <Toggle on={!!m.tool_call} onChange={v => updateModel(i, 'tool_call', v)} />
-            </label>
-            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
-              支持 temperature <Toggle on={!!m.temperature} onChange={v => updateModel(i, 'temperature', v)} />
-            </label>
-          </div>
-          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="muted" style={{ fontSize: 10, minWidth: 52 }}>输入模态</span>
-            {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
-              <span key={mod} className={'chip' + ((m.modalities && m.modalities.input || []).includes(mod) ? ' on' : '')}
-                onClick={() => {
-                  const cur = (m.modalities && m.modalities.input || []);
-                  const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
-                  updateModel(i, 'modalities', { ...(m.modalities || {}), input: next });
-                }} style={{ fontSize: 10, padding: '2px 8px' }}>{mod}</span>
+      {models.length > 0 && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <th style={th}>ID</th>
+              <th style={th}>显示名</th>
+              <th style={{ ...th, width: 86 }}>CTX</th>
+              <th style={{ ...th, width: 86 }}>OUT</th>
+              <th style={th}>能力与选项</th>
+              <th style={{ ...th, width: 36 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((m, i) => (
+              <tr key={i}>
+                <td style={td}>
+                  <input type="text" className="mono" value={m.id} onChange={e => updateModel(i, 'id', e.target.value)}
+                    placeholder="model id" title="模型 ID(必填)"
+                    style={{ width: '100%', minWidth: 130, fontSize: 11, background: 'transparent', border: 'none', padding: 0, color: 'var(--gold-light, var(--txt-1))' }} />
+                </td>
+                <td style={td}>
+                  <input type="text" value={m.name} onChange={e => updateModel(i, 'name', e.target.value)}
+                    placeholder="显示名"
+                    style={{ width: '100%', minWidth: 70, fontSize: 11, background: 'transparent', border: 'none', padding: 0 }} />
+                </td>
+                <td style={td}>
+                  <input type="number" value={m.limit.context} onChange={e => updateModel(i, 'limit', { ...m.limit, context: Number(e.target.value) })}
+                    placeholder="0" title="上下文窗口(0 = 不写入)"
+                    style={{ width: '100%', fontSize: 11, textAlign: 'center', background: 'transparent', border: 'none', padding: 0 }} />
+                </td>
+                <td style={td}>
+                  <input type="number" value={m.limit.output} onChange={e => updateModel(i, 'limit', { ...m.limit, output: Number(e.target.value) })}
+                    placeholder="0" title="输出上限(0 = 不写入)"
+                    style={{ width: '100%', fontSize: 11, textAlign: 'center', background: 'transparent', border: 'none', padding: 0 }} />
+                </td>
+                <td style={{ ...td, minWidth: 220 }}>
+                  {/* 2×2 能力开关 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                    {[['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']].map(([f, label]) => (
+                      <label key={f} className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        {label} <Toggle on={!!m[f]} onChange={v => updateModel(i, f, v)} />
+                      </label>
+                    ))}
+                  </div>
+                  {/* 输入/输出模态 */}
+                  {[['input', '输入'], ['output', '输出']].map(([dir, label]) => (
+                    <div key={dir} className="row" style={{ gap: 4, marginTop: 6, alignItems: 'center', flexWrap: 'wrap', paddingTop: 5, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span className="muted" style={{ fontSize: 9, flexShrink: 0 }}>{label}</span>
+                      {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
+                        <span key={mod} className={'chip' + (((m.modalities || {})[dir] || []).includes(mod) ? ' on' : '')}
+                          onClick={() => toggleModality(i, dir, mod)}
+                          style={{ fontSize: 10, padding: '1px 7px', lineHeight: '16px' }}>{mod}</span>
+                      ))}
+                    </div>
+                  ))}
+                  {/* options JSON */}
+                  <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+                    <input type="text" className="mono" value={m.optionsText || ''} onChange={e => {
+                      const raw = e.target.value;
+                      try { const parsed = raw.trim() ? JSON.parse(raw) : {}; updateModel(i, 'options', parsed); updateModel(i, 'optionsText', raw); }
+                      catch { updateModel(i, 'optionsText', raw); } // JSON 不完整时暂存原文
+                    }} placeholder='options JSON,如 {"reasoningEffort":"high"}(留空不写入)'
+                      style={{ flex: 1, height: 26, fontSize: 10 }} />
+                    {m.optionsText && !/^\s*\{.*\}\s*$/.test(m.optionsText) && <span style={{ color: 'var(--bad)', fontSize: 10, flexShrink: 0 }}>JSON 不完整</span>}
+                  </div>
+                </td>
+                <td style={{ ...td, textAlign: 'center' }}>
+                  <button className="icon-btn" title="移除该模型" onClick={() => removeModel(i)}>
+                    <Icon name="x" size={13} />
+                  </button>
+                </td>
+              </tr>
             ))}
-            <span className="muted" style={{ fontSize: 10, marginLeft: 8 }}>输出模态</span>
-            {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
-              <span key={mod} className={'chip' + ((m.modalities && m.modalities.output || []).includes(mod) ? ' on' : '')}
-                onClick={() => {
-                  const cur = (m.modalities && m.modalities.output || []);
-                  const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
-                  updateModel(i, 'modalities', { ...(m.modalities || {}), output: next });
-                }} style={{ fontSize: 10, padding: '2px 8px' }}>{mod}</span>
-            ))}
-          </div>
-          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: 10, minWidth: 52 }}>options</span>
-            <input type="text" className="mono" value={m.optionsText || ''} onChange={e => {
-              const raw = e.target.value;
-              try { const parsed = raw.trim() ? JSON.parse(raw) : {}; updateModel(i, 'options', parsed); updateModel(i, 'optionsText', raw); }
-              catch { updateModel(i, 'optionsText', raw); } // JSON 不完整时暂存原文
-            }} placeholder='{"reasoningEffort":"high"}(透传给 API,留空不写入)' style={{ flex: 1, fontSize: 10 }} />
-            {m.optionsText && !/^\s*\{.*\}\s*$/.test(m.optionsText) && <span style={{ color: 'var(--bad)', fontSize: 10 }}>JSON 不完整</span>}
-          </div>
-        </div>
-      ))}
-      <button className="btn btn-sm" onClick={() => set('models', [...models, { id: '', name: '', limit: { context: 0, output: 0 }, reasoning: false, options: {} }])}>
+          </tbody>
+        </table>
+      )}
+      <button className="btn btn-sm" style={{ marginTop: 8 }} onClick={() => set('models', [...models, NEW_MODEL()])}>
         <Icon name="plus" size={10} /> 手动添加模型
       </button>
     </div>

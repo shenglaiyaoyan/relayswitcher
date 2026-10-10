@@ -43,3 +43,14 @@ Task 3: complete (commits b831028..531932f, review clean; minor: 4处'仪表盘'
 - F5(info/deferred): defaultModel 前缀不随 id 改动重算;toast warn 无 CSS(既有)
 
 Task 4: complete (commits 531932f..ad3eea0, review Approved; F1/F2/F4 → Task 5, F3/F5 deferred)
+
+Task 5: complete (F1/F2/F4 fixed, 81/81+39/39, v1.12.0 released 90f5a54)
+ALL TASKS COMPLETE
+
+
+## Rulings
+- R1: main 分支直接开发(用户既有工作流,12 次发版全走 main)
+- R2: apiKey 明文→safeStorage 加密(审查前修正,与 relays 先例对齐)
+- R3: ocList 返回解密 apiKey(Task 4 审查 F3,留后续剥)
+- R4: backupOpenCode 同秒覆盖(时间戳秒粒度,留后续加毫秒)
+- R5: Settings opencode 占位改'配置路径与备份策略将在此配置'(Task 5 收尾)

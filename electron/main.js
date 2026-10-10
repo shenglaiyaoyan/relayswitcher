@@ -789,7 +789,8 @@ app.whenReady().then(() => {
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false, sandbox: false
+      contextIsolation: true, nodeIntegration: false, sandbox: false,
+      backgroundThrottling: false // 窗口失焦不节流渲染,防止切回来卡一帧
     }
   });
   if (isDev) win.loadURL('http://localhost:5173');
@@ -810,7 +811,7 @@ app.whenReady().then(() => {
         await new Promise(r => setTimeout(r, 1500));
         const outDir = path.join(app.getAppPath(), 'designs', 'captures');
         fs.mkdirSync(outDir, { recursive: true });
-        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready']) {
+        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready', 'opencode', 'opencode-demo-new', 'opencode-demo-rows']) {
           await win.webContents.executeJavaScript(`location.hash = '${p}'`);
           await new Promise(r => setTimeout(r, 900));
           const img = await win.webContents.capturePage();

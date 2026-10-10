@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.12.1 (2026-10-10) — OpenCode 表单完善:能力开关全量 + apiKey 自动带入 + 布局修复
+
+- **模型条目表单补全**(用户反馈,对照官方 schema 18 字段):
+  - 能力开关补至四个:**推理 / 附件 / 工具调用 / 支持 temperature**(全部 Toggle)
+  - 新增**输入/输出模态多选**(text / image / audio / video / pdf,chip 形态)——"收图"能力在此声明
+  - options JSON 透传保留(留空不写入,JSON 不完整红字提示)
+  - 所有字段写入 opencode.json 的模型条目(main.js 映射同步)
+- **apiKey 自动带入**:选中转站后 key 留空 → 从站库自动带入(safeStorage 解密),
+  不再要求用户手动复制粘贴
+- **布局修复**(用户反馈):移除按钮移回行内(不再脱离);数字框加宽(110px,能装 7 位)
+- 单测 81/81,冒烟 39/39,build + lint 全绿
+
 ## v1.12.0 (2026-10-10) — OpenCode Provider 管理 + 导航重构:RS 升格为多客户端配置管理器
 
 - **OpenCode Provider 管理**(方案 A→2):

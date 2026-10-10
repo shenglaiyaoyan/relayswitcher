@@ -220,15 +220,46 @@ function ModelEntries({ data, setData, relayModels, fetching }) {
             <input type="text" value={m.name} onChange={e => updateModel(i, 'name', e.target.value)}
               placeholder="显示名" style={{ width: 130, fontSize: 11 }} />
             <input type="number" value={m.limit.context} onChange={e => updateModel(i, 'limit', { ...m.limit, context: Number(e.target.value) })}
-              placeholder="ctx" title="上下文窗口(0 = 不写入)" style={{ width: 88, fontSize: 11 }} />
+              placeholder="ctx" title="上下文窗口(0 = 不写入)" style={{ width: 110, fontSize: 11 }} />
             <input type="number" value={m.limit.output} onChange={e => updateModel(i, 'limit', { ...m.limit, output: Number(e.target.value) })}
-              placeholder="out" title="输出上限(0 = 不写入)" style={{ width: 88, fontSize: 11 }} />
+              placeholder="out" title="输出上限(0 = 不写入)" style={{ width: 110, fontSize: 11 }} />
             <label className="muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
               推理 <Toggle on={!!m.reasoning} onChange={v => updateModel(i, 'reasoning', v)} />
             </label>
-            <button className="icon-btn" style={{ marginLeft: 'auto' }} title="移除该模型" onClick={() => removeModel(i)}>
+            <button className="icon-btn" title="移除该模型" onClick={() => removeModel(i)}>
               <Icon name="x" size={13} />
             </button>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+              附件 <Toggle on={!!m.attachment} onChange={v => updateModel(i, 'attachment', v)} />
+            </label>
+            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+              工具调用 <Toggle on={!!m.tool_call} onChange={v => updateModel(i, 'tool_call', v)} />
+            </label>
+            <label className="muted" style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+              支持 temperature <Toggle on={!!m.temperature} onChange={v => updateModel(i, 'temperature', v)} />
+            </label>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 10, minWidth: 52 }}>输入模态</span>
+            {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
+              <span key={mod} className={'chip' + ((m.modalities && m.modalities.input || []).includes(mod) ? ' on' : '')}
+                onClick={() => {
+                  const cur = (m.modalities && m.modalities.input || []);
+                  const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
+                  updateModel(i, 'modalities', { ...(m.modalities || {}), input: next });
+                }} style={{ fontSize: 10, padding: '2px 8px' }}>{mod}</span>
+            ))}
+            <span className="muted" style={{ fontSize: 10, marginLeft: 8 }}>输出模态</span>
+            {['text', 'image', 'audio', 'video', 'pdf'].map(mod => (
+              <span key={mod} className={'chip' + ((m.modalities && m.modalities.output || []).includes(mod) ? ' on' : '')}
+                onClick={() => {
+                  const cur = (m.modalities && m.modalities.output || []);
+                  const next = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
+                  updateModel(i, 'modalities', { ...(m.modalities || {}), output: next });
+                }} style={{ fontSize: 10, padding: '2px 8px' }}>{mod}</span>
+            ))}
           </div>
           <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}>
             <span className="muted" style={{ fontSize: 10, minWidth: 52 }}>options</span>

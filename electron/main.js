@@ -480,13 +480,19 @@ function registerIpc() {
           name: m.name || m.id,
           ...(m.limit && (m.limit.context || m.limit.output) ? { limit: m.limit } : {}),
           ...(m.reasoning ? { reasoning: true } : {}),
+          ...(m.attachment ? { attachment: true } : {}),
+          ...(m.tool_call ? { tool_call: true } : {}),
+          ...(m.temperature ? { temperature: true } : {}),
+          ...(m.modalities && (m.modalities.input?.length || m.modalities.output?.length) ? { modalities: m.modalities } : {}),
           ...(m.options && Object.keys(m.options).length ? { options: m.options } : {})
         }])),
         defaultModel: p.defaultModel || null
       });
       oc.writeOpenCodeConfig(ocHome(), merged);
-      if (p.apiKey) {
-        auth[p.id] = { type: 'api', key: p.apiKey };
+      // apiKey:用户填了用填的;选了中转站但 key 留空 → 从站库自动带入(relay.apiKey 解密后)
+      const effKey = p.apiKey || (p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null);
+      if (effKey) {
+        auth[p.id] = { type: 'api', key: effKey };
         oc.writeAuthFile(ocHome(), auth);
       }
       store.saveOpenCodeProvider(p);

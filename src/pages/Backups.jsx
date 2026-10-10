@@ -44,7 +44,7 @@ export default function Backups({ refresh, toast }) {
       {backups === null
         ? <div className="skeleton" style={{ height: 140 }} />
         : backups.length === 0
-          ? <Empty icon="backup" title="暂无备份" hint="去仪表盘执行一次切换,这里就会出现第一份快照" />
+          ? <Empty icon="backup" title="暂无备份" hint="去 ChatGPT 页执行一次切换,这里就会出现第一份快照" />
           : <div className="tl">
               {backups.map(b => {
                 const rs = REASON_STYLE[b.reason] || { label: b.reason, cls: '' };

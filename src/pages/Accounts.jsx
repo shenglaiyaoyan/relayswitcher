@@ -205,7 +205,7 @@ export default function Accounts({ state, refresh, toast }) {
       </div>
 
       {accounts.length === 0
-        ? <Empty icon="account" title="账号库为空" hint="导入第一个账号后,即可在仪表盘参与一键切换"
+        ? <Empty icon="account" title="账号库为空" hint="导入第一个账号后,即可在 ChatGPT 页参与一键切换"
             action={<div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 6 }}>
               <button className="btn btn-gold btn-sm" onClick={importFromCodexAccount}>
                 <Icon name="download" size={12} /> 从本机 Codex 导入登录账号

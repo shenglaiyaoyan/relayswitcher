@@ -146,7 +146,7 @@ export default function App() {
             <span className={'dot ' + (wired ? 'ok' : s.baseUrl || s.authExists ? 'bad' : 'idle')} />
             <span className="pill-txt">
               <span className="pill-main">{wired ? '已绑定中转站' : '未绑定'}</span>
-              <span className="pill-sub">{wired ? (s.activeAccount?.label || '账号') + ' → ' + (s.activeRelay?.name || s.baseUrl) : '去仪表盘完成切换'}</span>
+              <span className="pill-sub">{wired ? (s.activeAccount?.label || '账号') + ' → ' + (s.activeRelay?.name || s.baseUrl) : '去 ChatGPT 页完成切换'}</span>
             </span>
           </div>
           {upd.status !== 'idle' && (
@@ -167,7 +167,7 @@ export default function App() {
         <div className="page" key={page}>
           {page === 'dash' && <Dashboard state={state} refresh={refresh} toast={showToast} goto={goto} />}
           {page === 'accounts' && <Accounts state={state} refresh={refresh} toast={showToast} />}
-          {page === 'opencode' && <OpenCode state={state} refresh={refresh} toast={showToast} />}
+          {page === 'opencode' && <OpenCode state={state} refresh={refresh} toast={showToast} goto={goto} />}
           {page === 'relays' && <Relays state={state} refresh={refresh} toast={showToast} />}
           {page === 'backups' && <Backups refresh={refresh} toast={showToast} />}
           {page === 'settings' && <Settings mode={pageSubMode || 'global'} state={state} refresh={refresh} toast={showToast} />}

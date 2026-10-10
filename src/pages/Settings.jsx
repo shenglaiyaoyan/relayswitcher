@@ -313,7 +313,7 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
       </Modal>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>仪表盘的初始选项</small></div>
+        <div className="klabel"><Icon name="bolt" size={12} /> 切换默认值 <small>ChatGPT 页的初始选项</small></div>
         <div className="row" style={{ marginTop: 4 }}>
           <span style={{ fontSize: 13, color: 'var(--txt-2)' }}>默认上下文窗口</span>
           <input type="number" style={{ width: 130 }} value={form.contextWindow} step={1000}

@@ -117,19 +117,32 @@ function writeAuthFile(home, auth) {
 
 function mergeProviderBlock(existing, pd) {
   const out = { ...existing };
-  out.providers = { ...(out.providers || {}) };
-  out.providers[pd.id] = {
+  // 顶层键跟随文件里已有的形态:opencode 1.19 及更早只认 provider(单数),
+  // dev 新版只认 providers(复数)——写错键的块会被整块忽略,表现为「RS 里加了,
+  // opencode 里没有」。只有文件里已有复数键(或同 id 已在复数键下)才写新形态。
+  const hasNew = !!(out.providers && Object.keys(out.providers).length);
+  const hasOld = !!(out.provider && Object.keys(out.provider).length);
+  const legacy = hasOld && !hasNew;
+  const block = {
     ...(pd.rawExtra || {}), // RS 未建模的块级键原样保留(冲突时 RS 字段赢)
-    package: pd.package,
     name: pd.name,
-    settings: pd.settings || {},
     ...(pd.models && Object.keys(pd.models).length ? { models: pd.models } : {})
   };
-  // 同 id 旧形态块(v1.12.0-1.12.5 写的 provider/npm/options)清理,避免双写
-  if (out.provider && Object.prototype.hasOwnProperty.call(out.provider, pd.id)) {
-    const { [pd.id]: _legacy, ...rest } = out.provider;
-    if (Object.keys(rest).length === 0) delete out.provider;
-    else out.provider = rest;
+  if (legacy) {
+    // 旧形态:npm + options。package/settings 是新形态字段名,写进去旧版不读
+    block.npm = pd.package;
+    block.options = pd.settings || {};
+    out.provider = { ...(out.provider || {}), [pd.id]: block };
+  } else {
+    block.package = pd.package;
+    block.settings = pd.settings || {};
+    out.providers = { ...(out.providers || {}), [pd.id]: block };
+    // 同 id 的旧形态块清理,避免双写(新版只读 providers,留着只会让检测读出两份)
+    if (out.provider && Object.prototype.hasOwnProperty.call(out.provider, pd.id)) {
+      const { [pd.id]: _legacy, ...rest } = out.provider;
+      if (Object.keys(rest).length === 0) delete out.provider;
+      else out.provider = rest;
+    }
   }
   if (pd.defaultModel) out.model = pd.defaultModel;
   return out;

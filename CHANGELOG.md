@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.12.9 (2026-10-14) — OpenCode 写入跟随配置文件的键形态(修「RS 加了 opencode 里没有」)
+
+- **修复写入丢失**(真机复现):v1.12.6 起写回一律写顶层 `providers`(复数)键,但
+  opencode 1.19 及更早只认 `provider`(单数)键,写进复数键的块被整块忽略。
+  本机实证:RS 写入 dihuang-workbuddy 后文件里确实有该块,OpenCode 1.19.0
+  `models` 命令却只列出 dihuang-zcode(留在单数键下的旧块)
+- **写回跟随文件已有形态**:配置里只有 `provider` 单数键时,新 provider 写进单数键
+  并用旧字段名(npm/options);文件已是 `providers` 复数键时维持新形态(package/settings)。
+  dev 新版 schema 只认复数键,所以不能一律倒退
+- 实证:以本机写入前备份复现「新增 workbuddy」,写回产物交 OpenCode 1.19.0 加载,
+  dihuang-workbuddy 与 dihuang-zcode 同时列出、退出码 0
+- 单测 94/94(新增:旧形态文件写回不冒出 providers 键)
+
 ## v1.12.8 (2026-10-14) — OpenCode 已有 provider 检测:兼容 jsonc 文件名与旧版 variants 对象形态
 
 - **修复「小电脑一个 provider 都检测不到」**(真机复现):检测只读 `opencode.json`,而

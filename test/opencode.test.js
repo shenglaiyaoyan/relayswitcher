@@ -92,6 +92,20 @@ test('mergeProviderBlock: 注入新 provider 到空配置(真 schema:providers/p
   assert.equal(out.providers.myrelay.models['gpt-6-sol'].modelID, 'gpt-6-sol');
 });
 
+test('mergeProviderBlock: 配置只有旧形态 provider 键时写回旧形态(opencode 1.19 不认 providers 复数键)', () => {
+  const existing = { provider: { zcode: { npm: '@ai-sdk/anthropic', options: { baseURL: 'https://z.example.com/v1' } } } };
+  const pd = { id: 'workbuddy', package: '@ai-sdk/anthropic', name: 'WorkBuddy',
+    settings: { baseURL: 'https://w.example.com/v1', apiKey: 'k' }, models: {} };
+  const out = mergeProviderBlock(existing, pd);
+  assert.equal(out.providers, undefined, '旧形态文件不能冒出 providers 键,否则旧版 opencode 直接忽略');
+  assert.ok(out.provider.workbuddy, '新 provider 必须落在 opencode 1.19 读的 provider 键下');
+  assert.equal(out.provider.workbuddy.npm, '@ai-sdk/anthropic');
+  assert.equal(out.provider.workbuddy.options.baseURL, 'https://w.example.com/v1');
+  assert.equal(out.provider.workbuddy.options.apiKey, 'k');
+  assert.equal(out.provider.workbuddy.package, undefined);
+  assert.ok(out.provider.zcode, '原有 provider 块必须保留');
+});
+
 test('mergeProviderBlock: 同 id 覆盖其他保留 + 旧形态 provider 块同步清理', () => {
   const existing = { providers: { myrelay: { package: 'old' }, other: { package: '@opencode/ai/providers/anthropic' } },
     provider: { myrelay: { npm: 'legacy' } } };

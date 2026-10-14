@@ -29,7 +29,21 @@ const LEGACY_ADAPTER_TO_PROTOCOL = Object.fromEntries(
   Object.entries(PROTOCOL_ADAPTERS).map(([k, v]) => [v, k])
 );
 
-function configPath(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'opencode.json'); }
+/* 官方加载器(packages/core/src/config/discovery.ts)认两个文件名:
+   names = ["opencode.json", "opencode.jsonc"],且按 toReversed() 取用——jsonc 在场时胜出。
+   只认 .json 会让「配置写在 opencode.jsonc」的机器一个 provider 都检测不到。 */
+const CONFIG_NAMES = ['opencode.jsonc', 'opencode.json'];
+
+function configDir(home) { return path.join(home || os.homedir(), '.config', 'opencode'); }
+
+/** 实际在用的配置文件:jsonc 优先(对齐官方),都不存在时返回将要创建的 opencode.json */
+function configPath(home) {
+  const dir = configDir(home);
+  for (const name of CONFIG_NAMES) {
+    if (fs.existsSync(path.join(dir, name))) return path.join(dir, name);
+  }
+  return path.join(dir, 'opencode.json');
+}
 function authPath(home) { return path.join(home || os.homedir(), '.local', 'share', 'opencode', 'auth.json'); }
 function backupDir(home) { return path.join(home || os.homedir(), '.config', 'opencode', 'relayswitcher-backups'); }
 
@@ -69,6 +83,7 @@ function readOpenCodeConfig(home) {
   try {
     const cfg = JSON.parse(stripped);
     if (hasComments) cfg._hasComments = true;
+    cfg._configFile = path.basename(p); // 写回必须落回读到的那个文件,不能另造 opencode.json
     return cfg;
   } catch (e) {
     throw new Error('opencode.json 解析失败: ' + e.message);
@@ -78,7 +93,10 @@ function readOpenCodeConfig(home) {
 function writeOpenCodeConfig(home, cfg) {
   const clean = { ...cfg };
   delete clean._hasComments;
-  const p = configPath(home);
+  // 读自哪个文件就写回哪个文件(jsonc 用户不能被拆出一份 opencode 不优先读的 json)
+  const target = CONFIG_NAMES.includes(cfg._configFile) ? cfg._configFile : null;
+  delete clean._configFile;
+  const p = target ? path.join(configDir(home), target) : configPath(home);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, JSON.stringify(clean, null, 2) + '\n');
 }
@@ -157,7 +175,13 @@ function providerBlockToRS(id, block, cfg) {
       ...mExtra,
       ...(modelID && modelID !== mid ? { modelID } : {}) // modelID 与键名不同时保真
     };
-    const variantIds = (variants || []).map(v => v && v.id).filter(Boolean);
+    // variants 有两种合法形态,由 opencode 版本决定(本机 1.19.0 实测):
+    // 新版(dev)是数组 [{id, settings, body}];1.19 及更早是对象 {id: {effort|thinking|…}}。
+    // 数组形态喂给旧版会直接判配置非法,所以形态必须记住并原样写回。
+    const variantsShape = Array.isArray(variants) ? 'array' : (variants && typeof variants === 'object' ? 'object' : 'array');
+    const variantIds = variantsShape === 'object'
+      ? Object.keys(variants)
+      : (variants || []).map(v => v && v.id).filter(Boolean);
     const efforts = [...new Set([reasoningEffort, ...variantIds].filter(Boolean))];
     return {
       id: mid,
@@ -171,7 +195,8 @@ function providerBlockToRS(id, block, cfg) {
       effort: reasoningEffort || '',
       baseEffort: reasoningEffort || '', // 基础档:写回时不合成为 variant(它就是 base settings)
       efforts,
-      variantsRaw: variants || [],
+      variantsShape,
+      variantsRaw: variants || (variantsShape === 'object' ? {} : []),
       options: restOpts,
       ...(Object.keys(rawExtra).length ? { rawExtra } : {})
     };
@@ -199,18 +224,28 @@ function modelsToBlocks(models) {
   return Object.fromEntries((models || []).filter(m => m && m.id).map(m => {
     const raw = { ...(m.rawExtra || {}) };
     const settings = { ...(m.options || {}) };
+    const objectShape = m.variantsShape === 'object';
+    const rawVariants = m.variantsRaw || (objectShape ? {} : []);
     if (m.effort) {
       settings.reasoningEffort = m.effort;
-      const v = (m.variantsRaw || []).find(x => x && x.id === m.effort);
-      if (v) {
+      const v = objectShape ? rawVariants[m.effort] : (rawVariants || []).find(x => x && x.id === m.effort);
+      if (v && !objectShape) {
         Object.assign(settings, v.settings || {});
         if (v.body || raw.body) raw.body = { ...(raw.body || {}), ...(v.body || {}) };
       }
     } else delete settings.reasoningEffort;
-    const kept = (m.variantsRaw || []).filter(v => v && v.id && (m.efforts || []).includes(v.id));
-    const fresh = (m.efforts || []).filter(e => e && !kept.some(v => v.id === e) && e !== m.baseEffort)
-      .map(e => ({ id: e, settings: { reasoningEffort: e } }));
-    const variants = [...kept, ...fresh];
+    const wanted = new Set((m.efforts || []).filter(Boolean));
+    let variants;
+    if (objectShape) {
+      // 旧版 opencode 只认对象形态,改写成数组会被判配置非法——只做档位增删,条目原样保留
+      variants = Object.fromEntries(Object.entries(rawVariants).filter(([k]) => wanted.has(k)));
+      for (const e of wanted) if (!(e in variants)) variants[e] = { effort: e };
+    } else {
+      const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id));
+      const fresh = [...wanted].filter(e => !kept.some(v => v.id === e) && e !== m.baseEffort)
+        .map(e => ({ id: e, settings: { reasoningEffort: e } }));
+      variants = [...kept, ...fresh];
+    }
     return [m.id, {
       ...raw,
       name: m.name || m.id,
@@ -226,7 +261,7 @@ function modelsToBlocks(models) {
           ? { input: m.modalities.input, output: m.modalities.output } : {})
       },
       ...(Object.keys(settings).length ? { settings } : {}),
-      ...(variants.length ? { variants } : {})
+      ...(objectShape ? (Object.keys(variants).length ? { variants } : {}) : (variants.length ? { variants } : {}))
     }];
   }));
 }
@@ -254,7 +289,7 @@ function backupOpenCode(home) {
   const bdir = path.join(bdirRoot, stamp + '_opencode');
   fs.mkdirSync(bdir, { recursive: true });
   let copied = 0;
-  for (const [src, name] of [[cfg, 'opencode.json'], [auth, 'auth.json']]) {
+  for (const [src, name] of [[cfg, path.basename(cfg)], [auth, 'auth.json']]) {
     try { fs.copyFileSync(src, path.join(bdir, name)); copied++; } catch { /* 不存在则跳过 */ }
   }
   if (copied === 0) { fs.rmdirSync(bdir); return null; }
@@ -262,7 +297,7 @@ function backupOpenCode(home) {
 }
 
 module.exports = {
-  PROTOCOL_ADAPTERS, PROVIDER_PACKAGES, configPath, authPath,
+  PROTOCOL_ADAPTERS, PROVIDER_PACKAGES, CONFIG_NAMES, configPath, authPath,
   readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,

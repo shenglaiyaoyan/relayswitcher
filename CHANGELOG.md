@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.12.8 (2026-10-14) — OpenCode 已有 provider 检测:兼容 jsonc 文件名与旧版 variants 对象形态
+
+- **修复「小电脑一个 provider 都检测不到」**(真机复现):检测只读 `opencode.json`,而
+  opencode 官方加载器认两个文件名(`opencode.json` 与 `opencode.jsonc`,jsonc 优先)。
+  配置写在 `opencode.jsonc` 的机器上,检测读到的是空文件,列表永远为空
+- **修复检测被静默打崩**:`variants` 有两种合法形态——新版是数组 `[{id, settings}]`,
+  1.19 及更早是对象 `{id: {effort}}`(本机装的 OpenCode 桌面版 1.19.0 实测:**数组形态
+  直接报 Configuration is invalid**)。旧代码只认数组,遇到对象形态抛 TypeError,
+  异常被 `rs:oc:list` 吞掉,表现同样是「一个都没检测到」
+- **写回跟随读到的形态**:读自 jsonc 写回 jsonc(不再另造一份 opencode 不优先读的 json);
+  对象形态的 variants 原样写回,只做档位增删,绝不改写成数组(否则旧版 opencode 配置非法)
+- 实证:本机真实 opencode.jsonc(2 provider / 5 模型)检测读全;RS 写回管线往返产物
+  交 OpenCode 1.19.0 加载,5 个模型原样列出、退出码 0
+- 单测 93/93(opencode 23→28,新增 jsonc 优先/双文件并存/jsonc 写回/对象形态读/对象形态写回)
+
 ## v1.12.7 (2026-10-14) — OpenCode baseURL 防呆:裸域名自动补 /v1(修 Not Found)
 
 - **修复 404 Not Found 坑**(真机复现+矩阵实证):opencode 的 `@opencode/ai/providers/anthropic`

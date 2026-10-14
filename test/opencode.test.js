@@ -51,6 +51,27 @@ test('readOpenCodeConfig: 文件不存在返回空对象', () => {
   assert.deepEqual(cfg, {});
 });
 
+test('readOpenCodeConfig: 只有 opencode.jsonc 时也能读到(官方双文件名,jsonc 优先)', () => {
+  const home = mkHome();
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.jsonc'),
+    '{\n  // 注释\n  "provider": { "dihuang": { "npm": "@ai-sdk/anthropic" } }\n}');
+  const cfg = readOpenCodeConfig(home);
+  assert.ok(cfg.provider.dihuang, 'jsonc 里的 provider 必须被识别');
+  assert.equal(cfg._hasComments, true);
+  assert.equal(cfg._configFile, 'opencode.jsonc');
+});
+
+test('readOpenCodeConfig: json 与 jsonc 并存时 jsonc 胜出(对齐官方 names.toReversed)', () => {
+  const home = mkHome();
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'),
+    JSON.stringify({ provider: { old: { npm: 'x' } } }));
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.jsonc'),
+    JSON.stringify({ provider: { fresh: { npm: 'y' } } }));
+  const cfg = readOpenCodeConfig(home);
+  assert.ok(cfg.provider.fresh);
+  assert.equal(cfg.provider.old, undefined);
+});
+
 test('readOpenCodeConfig: 检测到注释返回 _hasComments=true(写回时警告)', () => {
   const home = mkHome();
   fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'), '{ // c\n "a": 1 }');
@@ -122,6 +143,50 @@ test('writeAuthFile: 保留已有条目', () => {
   const final = readAuthFile(home);
   assert.equal(final.existing.key, 'sk-old');
   assert.equal(final.newone.key, 'sk-new');
+});
+
+test('providerBlockToRS: variants 对象形态(opencode 1.19 及更早)不崩且档位读全', () => {
+  const block = { name: 'Dihuang', npm: '@ai-sdk/anthropic',
+    options: { baseURL: 'https://example.com/v1', apiKey: 'k' },
+    models: { 'GLM-5.3': { name: 'GLM-5.3', reasoning: true, tool_call: true,
+      modalities: { input: ['text'], output: ['text'] },
+      variants: { low: { effort: 'low' }, high: { effort: 'high' }, max: { effort: 'max' } } } } };
+  const rs = providerBlockToRS('dihuang', block, {});
+  assert.equal(rs.models.length, 1);
+  assert.deepEqual(rs.models[0].efforts.sort(), ['high', 'low', 'max']);
+  assert.equal(rs.models[0].variantsShape, 'object');
+  // 对象形态原样保留,写回时不能被改写成数组(旧版 opencode 会判配置非法)
+  assert.deepEqual(rs.models[0].variantsRaw, block.models['GLM-5.3'].variants);
+});
+
+test('modelsToBlocks: 对象形态 variants 原样写回,档位增删落在对象上', () => {
+  const [id, block] = Object.entries(modelsToBlocks([{
+    id: 'GLM-5.3', name: 'GLM-5.3', reasoning: true, tool_call: true,
+    modalities: { input: ['text'], output: ['text'] },
+    variantsShape: 'object',
+    variantsRaw: { low: { effort: 'low' }, high: { effort: 'high' } },
+    efforts: ['low', 'max']
+  }]))[0];
+  assert.equal(id, 'GLM-5.3');
+  assert.equal(Array.isArray(block.variants), false, '对象形态不能被改写成数组');
+  assert.deepEqual(Object.keys(block.variants).sort(), ['low', 'max']);
+  assert.deepEqual(block.variants.low, { effort: 'low' });
+  assert.ok(block.variants.max);
+});
+
+test('writeOpenCodeConfig: 读自 jsonc 的配置写回 jsonc,不另造 opencode.json', () => {
+  const home = mkHome();
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.jsonc'),
+    JSON.stringify({ provider: { keep: { npm: 'x' } } }));
+  const cfg = readOpenCodeConfig(home);
+  cfg.model = 'keep/m1';
+  writeOpenCodeConfig(home, cfg);
+  assert.ok(fs.existsSync(path.join(home, '.config/opencode/opencode.jsonc')));
+  assert.equal(fs.existsSync(path.join(home, '.config/opencode/opencode.json')), false,
+    '不能把用户的 jsonc 配置拆成一个 opencode 不优先读的 json');
+  const back = JSON.parse(fs.readFileSync(path.join(home, '.config/opencode/opencode.jsonc'), 'utf8'));
+  assert.equal(back.model, 'keep/m1');
+  assert.ok(back.provider.keep);
 });
 
 test('backupOpenCode: 备份 opencode.json + auth.json 存在时生成快照目录', () => {

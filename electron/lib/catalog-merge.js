@@ -11,7 +11,10 @@ function mergeCustomModels(catalog, customModels) {
     if (!cm || !cm.templateSlug || !cm.slug || !/^[a-z0-9][a-z0-9._-]*$/i.test(cm.slug)) {
       throw new Error('自定义模型配置非法(缺 templateSlug/slug 或 slug 含非法字符): ' + JSON.stringify(cm));
     }
-    const tpl = bySlug.get(cm.templateSlug);
+    // 模板缺席但目标 slug 已在目录 → 用既有条目当底(中转模式校准语义:站清单没有
+    // 模板模型时不该炸切换,派生条目本来就在,只是参数被补丁覆盖)。
+    // 两者都不在才是真配置错误。
+    const tpl = bySlug.get(cm.templateSlug) || bySlug.get(cm.slug);
     if (!tpl) throw new Error('自定义模型 ' + cm.slug + ' 的模板 ' + cm.templateSlug + ' 不存在于目录');
     const merged = JSON.parse(JSON.stringify(tpl)); // 深拷贝
     merged.slug = cm.slug;

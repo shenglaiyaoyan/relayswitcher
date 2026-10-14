@@ -1,17 +1,24 @@
 # Changelog
 
-## v1.12.9 (2026-10-14) — OpenCode 写入跟随配置文件的键形态(修「RS 加了 opencode 里没有」)
+## v1.12.9 (2026-10-14) — 双修:中转模式切换中止(补丁炸目录生成)+ OpenCode 写入跟随键形态
 
-- **修复写入丢失**(真机复现):v1.12.6 起写回一律写顶层 `providers`(复数)键,但
-  opencode 1.19 及更早只认 `provider`(单数)键,写进复数键的块被整块忽略。
-  本机实证:RS 写入 dihuang-workbuddy 后文件里确实有该块,OpenCode 1.19.0
-  `models` 命令却只列出 dihuang-zcode(留在单数键下的旧块)
-- **写回跟随文件已有形态**:配置里只有 `provider` 单数键时,新 provider 写进单数键
-  并用旧字段名(npm/options);文件已是 `providers` 复数键时维持新形态(package/settings)。
-  dev 新版 schema 只认复数键,所以不能一律倒退
-- 实证:以本机写入前备份复现「新增 workbuddy」,写回产物交 OpenCode 1.19.0 加载,
-  dihuang-workbuddy 与 dihuang-zcode 同时列出、退出码 0
-- 单测 94/94(新增:旧形态文件写回不冒出 providers 键)
+### 修复一:中转模式切换中止 —— 站清单无模板模型时补丁炸目录生成(本机)
+- **根因**(最小复现百分百命中):中转模式目录补丁只对「站清单里已有的 slug」校准——
+  站里有 `gpt-6-sol` 就会跑它的补丁(模板声明 `gpt-6-astra`),但派生目录只含站内模型,
+  站清单没有 astra(dihuang 等站实测:有 sol/luna、无 astra)→「模板不存在于目录」→
+  切换中止
+- **修复**(`mergeCustomModels`):模板缺席但目标 slug 已在目录时,用既有条目当底做
+  校准覆盖;模板与 slug 都不在才报错(真配置错误不放过)
+- 端到端验证:真实提取目录 + dihuang 真实清单 → 补丁通过,gpt-6-sol 校准 272K/medium/五档,
+  terra 照常隐藏;新增 test/catalog-merge.test.js(回落校准 + 双缺席守卫)
+
+### 修复二:OpenCode 写入跟随配置文件的键形态(协作机)
+- v1.12.6 起写回一律写顶层 `providers`(复数)键,但 opencode 1.19 及更早只认
+  `provider`(单数)键,写进复数键的块被整块忽略——「RS 里加了,opencode 里没有」
+- **写回跟随文件已有形态**:只有单数键的文件写单数键并用旧字段名(npm/options);
+  已是复数键的维持新形态(package/settings)。dev 新版 schema 只认复数键,不能一律倒退
+- 实证:写入产物交 OpenCode 1.19.0 加载,新块与旧块同时列出、退出码 0
+
 
 ## v1.12.8 (2026-10-14) — OpenCode 已有 provider 检测:兼容 jsonc 文件名与旧版 variants 对象形态
 

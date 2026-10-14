@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.12.7 (2026-10-14) — OpenCode baseURL 防呆:裸域名自动补 /v1(修 Not Found)
+
+- **修复 404 Not Found 坑**(真机复现+矩阵实证):opencode 的 `@opencode/ai/providers/anthropic`
+  包把 baseURL 当完整 API 根,只追加 `/messages`(不像 Anthropic 官方 SDK 自补 /v1)——
+  baseURL 缺 `/v1` 时请求打到 `/messages` 直接 404。三种协议包统一要求 baseURL 含 `/v1`
+- **保存时自动规范化**(`normalizeBaseUrl`):裸域名(如 `https://gw.example.com`)自动补
+  `/v1`;已含 `/v1` 或自定义路径(如 `/api`)的不动,尊重显式选择;表单提示同步更新
+- 实证记录:anthropic(message)与 openai(responses)包在该网关实测可用,`#variant`
+  档位切换全通;openai-compatible(chat)包对自定义模型报 Model unavailable,建议中转站
+  优先选 Anthropic Messages 协议
+- 单测 88/88,冒烟 39/39,build + lint 全绿
+
 ## v1.12.6 (2026-10-14) — OpenCode 真 schema 全面切换 + 已有配置自动全量接管
 
 - **Schema 迁移(重大修正)**:v1.12.0-v1.12.5 依据过时文档实现的 `provider`/`npm`/`options`

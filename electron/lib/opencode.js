@@ -231,6 +231,19 @@ function modelsToBlocks(models) {
   }));
 }
 
+/** baseURL 防呆:opencode 三种协议包都把 baseURL 当完整 API 根(anthropic 包只追加
+ * /messages,不像 Anthropic 官方 SDK 自补 /v1)——裸域名缺 /v1 会 404 Not Found。
+ * 只在路径为空时自动补 /v1;已含 /v1 或自定义路径的尊重用户显式选择。 */
+function normalizeBaseUrl(url) {
+  const u = (url || '').trim().replace(/\/+$/, '');
+  if (!u) return '';
+  try {
+    const parsed = new URL(u);
+    if (parsed.pathname === '' || parsed.pathname === '/') return u + '/v1';
+  } catch { /* 非 URL 原样返回,让上游报错 */ }
+  return u;
+}
+
 function backupOpenCode(home) {
   const cfg = configPath(home);
   const auth = authPath(home);
@@ -253,6 +266,6 @@ module.exports = {
   readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
-  providerBlockToRS, modelsToBlocks,
+  providerBlockToRS, modelsToBlocks, normalizeBaseUrl,
   backupOpenCode, stripJsonComments
 };

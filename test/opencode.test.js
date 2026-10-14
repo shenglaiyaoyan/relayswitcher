@@ -269,3 +269,19 @@ test('modelsToBlocks: 基础档(baseEffort)不合成 variant,选中基础档只�
   assert.deepEqual(blocks.q.variants.map(v => v.id), ['high']);   // minimal 不合成
   assert.equal(blocks.q.settings.reasoningEffort, 'minimal');     // 基础档只写 base
 });
+
+/* ---------------- v1.12.7:baseURL 防呆(opencode 三种协议包都要求 baseURL 含 /v1) ---------------- */
+
+const { normalizeBaseUrl } = require('../electron/lib/opencode.js');
+
+test('normalizeBaseUrl: 裸域名自动补 /v1(anthropic 包只追加 /messages,缺 /v1 会 404)', () => {
+  assert.equal(normalizeBaseUrl('https://dihuang.zeniths.codes'), 'https://dihuang.zeniths.codes/v1');
+  assert.equal(normalizeBaseUrl('https://dihuang.zeniths.codes/'), 'https://dihuang.zeniths.codes/v1');
+  assert.equal(normalizeBaseUrl('http://127.0.0.1:8088'), 'http://127.0.0.1:8088/v1');
+});
+
+test('normalizeBaseUrl: 已含 /v1 或自定义路径的不动(尊重用户显式选择)', () => {
+  assert.equal(normalizeBaseUrl('https://dihuang.zeniths.codes/v1'), 'https://dihuang.zeniths.codes/v1');
+  assert.equal(normalizeBaseUrl('https://gw.example.com/api'), 'https://gw.example.com/api');
+  assert.equal(normalizeBaseUrl(''), '');
+});

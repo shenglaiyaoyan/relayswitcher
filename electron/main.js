@@ -492,7 +492,7 @@ function registerIpc() {
         id: p.id,
         package: oc.PROVIDER_PACKAGES[p.protocol] || p.pkg || oc.PROVIDER_PACKAGES.chat,
         name: p.name || p.id,
-        settings: { ...(p.settingsExtra || {}), baseURL: p.baseUrl, ...(effKey ? { apiKey: effKey } : {}) },
+        settings: { ...(p.settingsExtra || {}), baseURL: oc.normalizeBaseUrl(p.baseUrl), ...(effKey ? { apiKey: effKey } : {}) }, // 裸域名自动补 /v1(防 404)
         models: oc.modelsToBlocks(p.models),
         ...(p.rawExtra ? { rawExtra: p.rawExtra } : {}),
         defaultModel: p.defaultModel || null

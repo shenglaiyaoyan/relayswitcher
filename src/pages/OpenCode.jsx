@@ -242,7 +242,7 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
         </div>
         <div className="row" style={{ gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="oc-flabel">Base URL <span className="oc-fhint">填到 /v1 为止</span></div>
+            <div className="oc-flabel">Base URL <span className="oc-fhint">填到 /v1 为止(三种协议包都要求含 /v1,裸域名保存时自动补)</span></div>
             <input type="text" className="mono" value={data.baseUrl} onChange={e => set('baseUrl', e.target.value)} placeholder="https://api.example.com/v1" style={{ width: '100%' }} />
           </div>
           <div style={{ flexShrink: 0 }}>

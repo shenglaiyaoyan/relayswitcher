@@ -8,7 +8,8 @@ const path = require('path');
 const {
   PROTOCOL_ADAPTERS, readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
-  mergeProviderBlock, removeProviderBlock, backupOpenCode
+  mergeProviderBlock, removeProviderBlock, backupOpenCode,
+  providerBlockToRS, modelsToBlocks
 } = require('../electron/lib/opencode.js');
 
 const OC_HOME = path.join(os.homedir(), '.config', 'opencode');
@@ -57,39 +58,46 @@ test('readOpenCodeConfig: 检测到注释返回 _hasComments=true(写回时警�
   assert.equal(cfg._hasComments, true);
 });
 
-test('mergeProviderBlock: 注入新 provider 到空配置', () => {
+test('mergeProviderBlock: 注入新 provider 到空配置(真 schema:providers/package/settings)', () => {
   const existing = {};
-  const pd = { id: 'myrelay', npm: '@ai-sdk/openai-compatible', name: 'My Relay',
-    options: { baseURL: 'https://api.example.com/v1' },
-    models: { 'gpt-6-sol': { name: 'GPT-6-Sol', limit: { context: 272000, output: 128000 } } } };
+  const pd = { id: 'myrelay', package: '@opencode/ai/providers/openai-compatible', name: 'My Relay',
+    settings: { baseURL: 'https://api.example.com/v1' },
+    models: { 'gpt-6-sol': { name: 'GPT-6-Sol', modelID: 'gpt-6-sol', limit: { context: 272000, output: 128000 } } } };
   const out = mergeProviderBlock(existing, pd);
-  assert.ok(out.provider.myrelay);
-  assert.equal(out.provider.myrelay.npm, '@ai-sdk/openai-compatible');
-  assert.equal(out.provider.myrelay.models['gpt-6-sol'].limit.context, 272000);
+  assert.ok(out.providers.myrelay);
+  assert.equal(out.providers.myrelay.package, '@opencode/ai/providers/openai-compatible');
+  assert.equal(out.providers.myrelay.settings.baseURL, 'https://api.example.com/v1');
+  assert.equal(out.providers.myrelay.models['gpt-6-sol'].limit.context, 272000);
+  assert.equal(out.providers.myrelay.models['gpt-6-sol'].modelID, 'gpt-6-sol');
 });
 
-test('mergeProviderBlock: 已有 provider 同 id 覆盖,其他 provider 保留', () => {
-  const existing = { provider: { myrelay: { npm: 'old' }, other: { npm: '@ai-sdk/anthropic' } } };
-  const pd = { id: 'myrelay', npm: '@ai-sdk/openai-compatible', name: 'My Relay',
-    options: { baseURL: 'https://new.example.com/v1' }, models: {} };
+test('mergeProviderBlock: 同 id 覆盖其他保留 + 旧形态 provider 块同步清理', () => {
+  const existing = { providers: { myrelay: { package: 'old' }, other: { package: '@opencode/ai/providers/anthropic' } },
+    provider: { myrelay: { npm: 'legacy' } } };
+  const pd = { id: 'myrelay', package: '@opencode/ai/providers/openai-compatible', name: 'My Relay',
+    settings: { baseURL: 'https://new.example.com/v1' }, models: {} };
   const out = mergeProviderBlock(existing, pd);
-  assert.equal(out.provider.myrelay.npm, '@ai-sdk/openai-compatible');
-  assert.equal(out.provider.myrelay.options.baseURL, 'https://new.example.com/v1');
-  assert.equal(out.provider.other.npm, '@ai-sdk/anthropic');
+  assert.equal(out.providers.myrelay.package, '@opencode/ai/providers/openai-compatible');
+  assert.equal(out.providers.other.package, '@opencode/ai/providers/anthropic');
+  assert.ok(!out.provider || !out.provider.myrelay, '同 id 旧形态块清理,避免双写');
 });
 
-test('mergeProviderBlock: 顶层 model 键同步写入', () => {
-  const existing = { provider: { myrelay: { npm: 'x' } } };
-  const pd = { id: 'myrelay', npm: 'x', name: 'x', options: {}, models: {}, defaultModel: 'myrelay/gpt-6-sol' };
+test('mergeProviderBlock: 顶层 model 键同步写入 + rawExtra 保留', () => {
+  const existing = { providers: { myrelay: { package: 'x' } } };
+  const pd = { id: 'myrelay', package: 'x', name: 'x', settings: {}, models: {},
+    defaultModel: 'myrelay/gpt-6-sol', rawExtra: { whitelist: ['a'] } };
   const out = mergeProviderBlock(existing, pd);
   assert.equal(out.model, 'myrelay/gpt-6-sol');
+  assert.deepEqual(out.providers.myrelay.whitelist, ['a']);
 });
 
-test('removeProviderBlock: 摘除指定 provider,其余保留', () => {
-  const existing = { model: 'myrelay/m1', provider: { myrelay: { npm: 'x' }, keep: { npm: 'y' } } };
+test('removeProviderBlock: 摘除指定 provider(providers + 旧 provider 双清),其余保留', () => {
+  const existing = { model: 'myrelay/m1', providers: { myrelay: { package: 'x' }, keep: { package: 'y' } },
+    provider: { myrelay: { npm: 'legacy' } } };
   const out = removeProviderBlock(existing, 'myrelay');
-  assert.ok(!out.provider.myrelay);
-  assert.ok(out.provider.keep);
+  assert.ok(!out.providers.myrelay);
+  assert.ok(out.providers.keep);
+  assert.ok(!out.provider || !out.provider.myrelay);
   assert.ok(!out.model, '顶层 model 被清除(指向已摘除的 provider)');
 });
 
@@ -127,15 +135,15 @@ test('backupOpenCode: 备份 opencode.json + auth.json 存在时生成快照目�
 });
 
 test('mergeProviderBlock: 不变异输入 existing(纯函数契约)', () => {
-  const existing = { model: 'other/m9', provider: { myrelay: { npm: 'old' }, keep: { npm: 'y' } } };
+  const existing = { model: 'other/m9', providers: { myrelay: { package: 'old' }, keep: { package: 'y' } } };
   const snapshot = JSON.parse(JSON.stringify(existing));
-  const pd = { id: 'myrelay', npm: '@ai-sdk/openai-compatible', name: 'My Relay',
-    options: { baseURL: 'https://api.example.com/v1' }, models: {} };
+  const pd = { id: 'myrelay', package: '@opencode/ai/providers/openai-compatible', name: 'My Relay',
+    settings: { baseURL: 'https://api.example.com/v1' }, models: {} };
   const out = mergeProviderBlock(existing, pd);
   assert.deepEqual(existing, snapshot, '原始 existing 深比较未被修改');
-  assert.equal(existing.provider.myrelay.npm, 'old', '原对象里的旧 provider 保持');
-  assert.equal(out.provider.myrelay.npm, '@ai-sdk/openai-compatible', '输出里是新版');
-  assert.equal(out.provider.keep.npm, 'y');
+  assert.equal(existing.providers.myrelay.package, 'old', '原对象里的旧 provider 保持');
+  assert.equal(out.providers.myrelay.package, '@opencode/ai/providers/openai-compatible', '输出里是新版');
+  assert.equal(out.providers.keep.package, 'y');
 });
 
 test('readOpenCodeConfig: 纯 JSON 含 https:// URL 不误报 _hasComments', () => {
@@ -160,4 +168,104 @@ test('writeOpenCodeConfig: 写回标准 JSON(2空格缩进+LF)', () => {
   assert.ok(!raw.includes('//'), '不含注释');
   assert.ok(raw.includes('\n'), 'LF 换行');
   assert.deepEqual(JSON.parse(raw), cfg);
+});
+
+/* ---------------- v1.12.6:真 schema(providers/package/settings/capabilities/variants)自动全量接管 + 无痕保真 ---------------- */
+
+test('providerBlockToRS: 真 schema 全字段反解析(variants/capabilities/settings/key)', () => {
+  const p = providerBlockToRS('qwen-local', {
+    name: 'Qwen 本地离线',
+    package: '@opencode/ai/providers/openai-compatible',
+    settings: { baseURL: 'http://127.0.0.1:8088/v1', apiKey: 'local', timeout: 3600000 },
+    models: {
+      'qwen3.8-27b': {
+        name: 'Qwen3.8 27B 本地', modelID: 'qwen3.8-27b',
+        capabilities: { tools: true, input: ['text'], output: ['text'] },
+        settings: { reasoningEffort: 'minimal', temperature: 1.0 },
+        limit: { context: 16384, output: 6144 },
+        variants: [
+          { id: 'high', settings: { reasoningEffort: 'high' }, body: { enable: true } },
+          { id: 'xhigh', settings: { reasoningEffort: 'xhigh' } }
+        ],
+        cost: { input: 0 }
+      }
+    }
+  }, { model: 'qwen-local/qwen3.8-27b' });
+  assert.equal(p.id, 'qwen-local');
+  assert.equal(p.protocol, 'chat');
+  assert.equal(p.baseUrl, 'http://127.0.0.1:8088/v1');
+  assert.equal(p.apiKey, 'local');                          // key 从 settings 提取
+  assert.deepEqual(p.settingsExtra, { timeout: 3600000 });  // baseURL/apiKey 之外的键保留
+  assert.equal(p.defaultModel, 'qwen-local/qwen3.8-27b');
+  assert.equal(p.imported, true);
+  const m = p.models[0];
+  assert.equal(m.id, 'qwen3.8-27b'); assert.equal(m.name, 'Qwen3.8 27B 本地');
+  assert.deepEqual(m.limit, { context: 16384, output: 6144 });
+  assert.equal(m.tool_call, true);
+  assert.deepEqual(m.modalities, { input: ['text'], output: ['text'] });
+  assert.equal(m.effort, 'minimal');                                // 基础档
+  assert.deepEqual(m.efforts, ['minimal', 'high', 'xhigh']);       // 基础档 + variants
+  assert.deepEqual(m.variantsRaw.map(v => v.id), ['high', 'xhigh']);
+  assert.equal(m.baseEffort, 'minimal');                           // 基础档标记(写回不合成 variant)
+  assert.deepEqual(m.options, { temperature: 1.0 });               // reasoningEffort 拆出,其余保留
+  assert.deepEqual(m.rawExtra, { cost: { input: 0 } });            // 未建模键保真
+});
+
+test('providerBlockToRS: 未知包名原样保留 + 旧形态(npm/options)兼容导入', () => {
+  const p1 = providerBlockToRS('weird', {
+    package: '@mycorp/custom', settings: { baseURL: 'https://x.io/v1', api: 'custom' },
+    command: ['bin'], models: {}
+  }, {});
+  assert.equal(p1.protocol, '@mycorp/custom');
+  assert.equal(p1.pkg, '@mycorp/custom');
+  assert.deepEqual(p1.settingsExtra, { api: 'custom' });
+  assert.deepEqual(p1.rawExtra, { command: ['bin'] });
+  const p2 = providerBlockToRS('legacy', {
+    npm: '@ai-sdk/openai-compatible', options: { baseURL: 'https://y.io/v1' }, models: {}
+  }, {});
+  assert.equal(p2.protocol, 'chat');
+  assert.equal(p2.baseUrl, 'https://y.io/v1');
+});
+
+test('modelsToBlocks: 档位写基础 reasoningEffort;选中 variant 时叠加其 settings/body', () => {
+  const blocks = modelsToBlocks([
+    { id: 'a', name: 'A', limit: { context: 1000, output: 0 }, tool_call: true,
+      modalities: { input: ['text'], output: ['text'] }, effort: 'high',
+      options: { temperature: 1 },
+      variantsRaw: [{ id: 'high', settings: { reasoningEffort: 'high' }, body: { enable: true } }],
+      efforts: ['high'], rawExtra: { cost: { input: 1 } } },
+    { id: 'b', name: 'B', effort: '', options: {} }
+  ]);
+  const a = blocks.a;
+  assert.equal(a.modelID, 'a');
+  assert.equal(a.settings.reasoningEffort, 'high');
+  assert.equal(a.settings.temperature, 1);
+  assert.deepEqual(a.body, { enable: true });            // 选中 variant 的 body 叠加为基础 body
+  assert.deepEqual(a.cost, { input: 1 });                // rawExtra 保真
+  assert.equal(a.capabilities.tools, true);
+  assert.deepEqual(a.capabilities.input, ['text']);
+  assert.deepEqual(a.variants.map(v => v.id), ['high']); // variants 原样保留
+  assert.ok(!('settings' in blocks.b), '未选档位且无其余键 → 不写 settings');
+});
+
+test('modelsToBlocks: 新增档位生成 variant,删除档位移除 variant', () => {
+  const blocks = modelsToBlocks([
+    { id: 'm', name: 'M', effort: '', efforts: ['low', 'ultra'],
+      variantsRaw: [{ id: 'low', settings: { reasoningEffort: 'low' } }] },
+    { id: 'n', name: 'N', effort: '', efforts: ['low'],
+      variantsRaw: [{ id: 'low', settings: { reasoningEffort: 'low' } }, { id: 'gone' }] }
+  ]);
+  assert.deepEqual(blocks.m.variants.map(v => v.id), ['low', 'ultra']);       // ultra 新生成
+  assert.deepEqual(blocks.m.variants[1], { id: 'ultra', settings: { reasoningEffort: 'ultra' } });
+  assert.deepEqual(blocks.n.variants.map(v => v.id), ['low']);                // gone 已删
+});
+
+test('modelsToBlocks: 基础档(baseEffort)不合成 variant,选中基础档只写 base settings', () => {
+  const blocks = modelsToBlocks([
+    { id: 'q', name: 'Q', effort: 'minimal', baseEffort: 'minimal',
+      efforts: ['minimal', 'high'],
+      variantsRaw: [{ id: 'high', settings: { reasoningEffort: 'high' } }], options: {} }
+  ]);
+  assert.deepEqual(blocks.q.variants.map(v => v.id), ['high']);   // minimal 不合成
+  assert.equal(blocks.q.settings.reasoningEffort, 'minimal');     // 基础档只写 base
 });

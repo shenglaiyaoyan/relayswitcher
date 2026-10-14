@@ -36,7 +36,11 @@ export default function OpenCode({ state, toast, goto }) {
   const [demoDialog, setDemoDialog] = useState(false); // 截图管线:强制打开首个模型的编辑弹窗
 
   const load = async () => {
-    try { setProviders(await window.rs.ocList()); } catch (e) { toast(e.message, 'bad'); }
+    try {
+      const r = await window.rs.ocList() || {};
+      setProviders(r.providers || []);
+      if (r.imported > 0) toast(`已从配置文件导入 ${r.imported} 个现有 Provider(接管前原文件零改动)`, 'ok');
+    } catch (e) { toast(e.message, 'bad'); }
   };
   useEffect(() => { load(); }, []); // eslint-disable-line
 
@@ -252,7 +256,7 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
           </div>
         </div>
         <div>
-          <div className="oc-flabel">API Key <span className="oc-fhint">{isNew ? '仅写入 auth.json,不进 opencode.json' : '留空 = 保持不变'}</span></div>
+          <div className="oc-flabel">API Key <span className="oc-fhint">{isNew ? '存于 provider settings,随 opencode.json 写入' : '留空 = 保持不变'}</span></div>
           <input type="password" className="mono" value={data.apiKey} onChange={e => set('apiKey', e.target.value)} placeholder="sk-…" style={{ width: '100%' }} />
         </div>
       </Group>

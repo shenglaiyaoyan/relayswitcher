@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.12.6 (2026-10-14) — OpenCode 真 schema 全面切换 + 已有配置自动全量接管
+
+- **Schema 迁移(重大修正)**:v1.12.0-v1.12.5 依据过时文档实现的 `provider`/`npm`/`options`
+  + auth.json 是旧形态;本版以**本机 opencode-cli 二进制实测 + 用户真实 opencode.json** 为准
+  全面切换真 schema:顶层 `providers`(复数)、块内 `package`(`@opencode/ai/providers/*`)与
+  `settings`,**apiKey 存 provider settings(auth.json 彻底退役)**,模型条目
+  `modelID`/`capabilities`(tools+input/output)/`settings`/`variants`/`limit`
+- **自动全量接管**:打开 OpenCode 页即识别 opencode.json 里已有 provider(新旧双形态兼容读),
+  自动导入 RS 管理(key/settings/模型全字段;原文件零改动);首次导入 toast 提示
+- **档位卡片 ↔ 原生 variants 直译**:导入识别 variants(如 high/xhigh)为档位卡;选中档位写
+  base `settings.reasoningEffort`,选中 variant 时其 settings/body 叠加为基础值;新增档位
+  自动生成 variant、删除档位移除 variant;基础档(baseEffort)不误合成 variant
+- **无痕保真**:RS 未建模内容全保留——块级未知键(rawExtra)、settings 内未知键如
+  timeout(settingsExtra)、模型条目 cost/body/compatibility(rawExtra);写回时原样合回;
+  **真机往返自检深度一致**;同 id 旧形态块写回时自动清理避免双写
+- 单测 86/86,冒烟 39/39,build + lint 全绿
+
 ## v1.12.5 (2026-10-14) — OpenCode 配置三层架构落地(ZCode 式):嵌套模型弹窗 + 跟随推荐配置 + 思考强度档位卡片
 
 - **信息架构重构**(参照 ZCode 桌面客户端「模型供应商」设置,逆向其 asar 提取结构;

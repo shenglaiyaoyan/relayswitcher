@@ -464,43 +464,41 @@ function registerIpc() {
   // 显式传 home 双保险(opencode.js 无参时已兜底 os.homedir())
   const ocHome = () => require('os').homedir();
   ipcMain.handle('rs:oc:list', (_e) => {
-    try { return store.listOpenCodeProviders(); } catch (e) { return []; }
+    try {
+      // 自动全量接管(v1.12.6):配置文件里有而 store 没有的 provider 读入 store。
+      // 纯读取,此步不写 opencode.json;读取失败(损坏/缺文件)回退纯 store 列表
+      let imported = 0;
+      try {
+        const cfg = oc.readOpenCodeConfig(ocHome());
+        const known = new Set(store.listOpenCodeProviders().map(p => p.id));
+        const blocks = [...Object.entries(cfg.providers || {}), ...Object.entries(cfg.provider || {})]; // 新旧双形态
+        for (const [id, block] of blocks) {
+          if (!id || known.has(id) || !block || typeof block !== 'object') continue;
+          store.saveOpenCodeProvider(oc.providerBlockToRS(id, block, cfg));
+          imported++;
+        }
+      } catch { /* 配置文件不可读 → 维持现状 */ }
+      return { providers: store.listOpenCodeProviders(), imported };
+    } catch (e) { return { providers: [], imported: 0, error: e.message }; }
   });
   ipcMain.handle('rs:oc:save', (_e, p) => {
     try {
       oc.backupOpenCode(ocHome()); // 写前备份(真实 home)
       const cfg = oc.readOpenCodeConfig(ocHome());
-      const auth = oc.readAuthFile(ocHome());
+      // apiKey:用户填了用填的;选了中转站但 key 留空 → 从站库自动带入(relay.apiKey 解密后)。
+      // 真 schema(v1.12.6)key 存 provider.settings,不再写 auth.json
+      const effKey = p.apiKey || (p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null);
       const merged = oc.mergeProviderBlock(cfg, {
         id: p.id,
-        npm: oc.PROTOCOL_ADAPTERS[p.protocol] || oc.PROTOCOL_ADAPTERS.chat,
+        package: oc.PROVIDER_PACKAGES[p.protocol] || p.pkg || oc.PROVIDER_PACKAGES.chat,
         name: p.name || p.id,
-        options: { baseURL: p.baseUrl },
-        models: Object.fromEntries((p.models || []).map(m => [m.id, {
-          name: m.name || m.id,
-          ...(m.limit && (m.limit.context || m.limit.output) ? { limit: m.limit } : {}),
-          ...(m.reasoning ? { reasoning: true } : {}),
-          ...(m.attachment ? { attachment: true } : {}),
-          ...(m.tool_call ? { tool_call: true } : {}),
-          ...(m.temperature ? { temperature: true } : {}),
-          ...(m.modalities && (m.modalities.input?.length || m.modalities.output?.length) ? { modalities: m.modalities } : {}),
-          /* 档位卡片选中值写入 options.reasoningEffort;未选中时清掉旧值,其余 options 键保留 */
-          ...((() => {
-            const o = { ...(m.options || {}) };
-            if (m.effort) o.reasoningEffort = m.effort; else delete o.reasoningEffort;
-            return Object.keys(o).length ? { options: o } : {};
-          })())
-        }])),
+        settings: { ...(p.settingsExtra || {}), baseURL: p.baseUrl, ...(effKey ? { apiKey: effKey } : {}) },
+        models: oc.modelsToBlocks(p.models),
+        ...(p.rawExtra ? { rawExtra: p.rawExtra } : {}),
         defaultModel: p.defaultModel || null
       });
       oc.writeOpenCodeConfig(ocHome(), merged);
-      // apiKey:用户填了用填的;选了中转站但 key 留空 → 从站库自动带入(relay.apiKey 解密后)
-      const effKey = p.apiKey || (p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null);
-      if (effKey) {
-        auth[p.id] = { type: 'api', key: effKey };
-        oc.writeAuthFile(ocHome(), auth);
-      }
-      store.saveOpenCodeProvider(p);
+      store.saveOpenCodeProvider({ ...p, apiKey: effKey || '' });
       return { ok: true, hasComments: !!cfg._hasComments };
     } catch (e) { return { ok: false, error: e.message }; }
   });

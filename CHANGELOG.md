@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.12.5 (2026-10-14) — OpenCode 配置三层架构落地(ZCode 式):嵌套模型弹窗 + 跟随推荐配置 + 思考强度档位卡片
+
+- **信息架构重构**(参照 ZCode 桌面客户端「模型供应商」设置,逆向其 asar 提取结构;
+  设计稿:主 Modal = superdesign e904bc75 收敛版,模型弹窗 = byok-design-mcp/GLM-5.3 三迭代定稿 ffc4ad1b):
+  - **主 Modal 只管连接**(收窄到 680px):分组「接入」(中转站/Base URL/协议/API Key)、「标识」
+    (Provider ID + 新增 Provider 名称字段)、「模型清单」、「默认模型」
+  - **模型清单 = 行列表**(取代 v1.12.3 的参数海):每行 = mono 金色 ID + 显示名 + ctx 徽章 +
+    effort 徽章 + 编辑(笔)/移除(✕)hover 图标钮;点击行打开编辑弹窗
+  - **嵌套「编辑模型」弹窗**(640px,portal 挂 body 叠于主 Modal 之上):标题 + 金色 mono 模型
+    ID 徽章;**「跟随推荐配置」开关**(ON = 绿色提示条 + 字段显示推荐值禁改,OFF = 全字段可编辑)
+  - **思考强度档位卡片**(取代 options JSON 手写):low/medium/high/max 卡片,点击选中(金色高亮)、
+    行尾 ✕ 删除、虚线「+ 新增档位」卡内联输入自定义档位(如 ultra);选中档位写入
+    `options.reasoningEffort`,未选中不写,其余 options 键保留
+  - 弹窗 footer:左「删除模型」红字钮,右 取消/保存模型;基本组四字段统一居左对齐
+- **设计管线**:新增 byok-design-mcp(用户自研设计 MCP)通道;`#opencode-demo-dialog` 截图态
+- 单测 81/81,冒烟 39/39,build + lint 全绿;DOM 探针实证跟随推荐配置生效(绿条+推荐值+仅工具开)
+
 ## v1.12.4 (2026-10-11) — 自动更新挂死修复:硬超时弃船 + 更新日志落盘
 
 - **修复更新循环永久冻结**(2026-10-11 实证:v1.12.2 升 v1.12.3 时代理抖动,downloadUpdate

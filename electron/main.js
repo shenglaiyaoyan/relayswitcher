@@ -484,7 +484,12 @@ function registerIpc() {
           ...(m.tool_call ? { tool_call: true } : {}),
           ...(m.temperature ? { temperature: true } : {}),
           ...(m.modalities && (m.modalities.input?.length || m.modalities.output?.length) ? { modalities: m.modalities } : {}),
-          ...(m.options && Object.keys(m.options).length ? { options: m.options } : {})
+          /* 档位卡片选中值写入 options.reasoningEffort;未选中时清掉旧值,其余 options 键保留 */
+          ...((() => {
+            const o = { ...(m.options || {}) };
+            if (m.effort) o.reasoningEffort = m.effort; else delete o.reasoningEffort;
+            return Object.keys(o).length ? { options: o } : {};
+          })())
         }])),
         defaultModel: p.defaultModel || null
       });
@@ -811,7 +816,7 @@ app.whenReady().then(() => {
         await new Promise(r => setTimeout(r, 1500));
         const outDir = path.join(app.getAppPath(), 'designs', 'captures');
         fs.mkdirSync(outDir, { recursive: true });
-        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready', 'opencode', 'opencode-demo-new', 'opencode-demo-rows']) {
+        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready', 'opencode', 'opencode-demo-new', 'opencode-demo-rows', 'opencode-demo-dialog']) {
           await win.webContents.executeJavaScript(`location.hash = '${p}'`);
           await new Promise(r => setTimeout(r, 900));
           const img = await win.webContents.capturePage();

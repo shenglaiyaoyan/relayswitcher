@@ -106,6 +106,22 @@ test('mergeProviderBlock: 配置只有旧形态 provider 键时写回旧形态(o
   assert.ok(out.provider.zcode, '原有 provider 块必须保留');
 });
 
+test('mergeProviderBlock: 旧形态文件里新增 provider 的 variants 必须是对象(数组会被 opencode 1.19 判整份配置非法)', () => {
+  const existing = { provider: { zcode: { npm: '@ai-sdk/anthropic', models: {
+    'GLM-5.3': { variants: { low: { effort: 'low' }, high: { effort: 'high' } } } } } } };
+  // 新增的 provider 没有读到过的形态记录(variantsShape 缺省),档位来自用户勾选
+  // models 是 RS 模型数组(与 UI 保存时的 payload 同形态),不是写好的 opencode 块
+  const pd = { id: 'accio', package: '@ai-sdk/anthropic', name: 'Accio',
+    settings: { baseURL: 'https://a.example.com/v1' },
+    models: [{ id: 'claude-opus-4.8', name: 'Opus 4.8', reasoning: true,
+      efforts: ['low', 'high', 'max'] }] };
+  const out = mergeProviderBlock(existing, pd);
+  assert.ok(out.provider.accio, 'legacy 文件必须写进 provider 键,实际键: ' + Object.keys(out).join(','));
+  const v = out.provider.accio.models['claude-opus-4.8'].variants;
+  assert.equal(Array.isArray(v), false, '旧版 opencode 遇数组 variants 直接拒绝整份配置');
+  assert.deepEqual(Object.keys(v).sort(), ['high', 'low', 'max']);
+});
+
 test('mergeProviderBlock: 同 id 覆盖其他保留 + 旧形态 provider 块同步清理', () => {
   const existing = { providers: { myrelay: { package: 'old' }, other: { package: '@opencode/ai/providers/anthropic' } },
     provider: { myrelay: { npm: 'legacy' } } };

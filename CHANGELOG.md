@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.12.10 (2026-10-15) — 新增 provider 的 variants 跟随文件形态(修「加一个,opencode 全部消失」)
+
+- **修复写入后 opencode 里什么都没有**(真机复现):v1.12.9 只修了顶层键,
+  新增 provider 的 `variants` 仍固定写数组形态。opencode 1.19 及更早要求
+  variants 是对象,**一个数组就拒绝整份配置**——本机实证:RS 写入
+  dihuang-accio 后,`opencode models` 直接报 Configuration is invalid,
+  连原来正常的 dihuang-zcode / dihuang-workbuddy 一起消失
+- **variants 形态跟随文件**:新增 provider 没有自己的形态记录,写回时扫描
+  文件里已有 provider 的 variants 形态并跟随(旧版对象 / 新版数组);
+  导入的 provider 仍按读到的形态原样写回
+- 实证:以本机 19:57 写入前备份复现「新增 accio」,variants 写成对象、
+  三个 provider 同在 `provider` 键下;只改形态后 OpenCode 1.19.0 即列出全部
+- 单测 95/95(新增:旧形态文件新增 provider 的 variants 必须是对象)
+
 ## v1.12.9 (2026-10-14) — OpenCode 写入跟随配置文件的键形态(修「RS 加了 opencode 里没有」)
 
 - **修复写入丢失**(真机复现):v1.12.6 起写回一律写顶层 `providers`(复数)键,但

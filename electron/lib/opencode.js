@@ -123,10 +123,16 @@ function mergeProviderBlock(existing, pd) {
   const hasNew = !!(out.providers && Object.keys(out.providers).length);
   const hasOld = !!(out.provider && Object.keys(out.provider).length);
   const legacy = hasOld && !hasNew;
+  // pd.models 两种来源:已写好的 opencode 块(对象,键是模型 id),或 RS 模型数组
+  // (UI 保存时的 payload,元素带 id/efforts)。后者要按文件里已有 provider 的
+  // variants 形态生成——新增 provider 没有自己的形态记录,默认走数组会让旧版
+  // opencode 拒绝整份配置。
+  const hint = fileVariantsShape(existing);
+  const models = Array.isArray(pd.models) ? modelsToBlocks(pd.models, hint) : pd.models;
   const block = {
     ...(pd.rawExtra || {}), // RS 未建模的块级键原样保留(冲突时 RS 字段赢)
     name: pd.name,
-    ...(pd.models && Object.keys(pd.models).length ? { models: pd.models } : {})
+    ...(models && Object.keys(models).length ? { models } : {})
   };
   if (legacy) {
     // 旧形态:npm + options。package/settings 是新形态字段名,写进去旧版不读
@@ -233,11 +239,27 @@ function providerBlockToRS(id, block, cfg) {
 /** RS models → opencode.json models 对象(真 schema:modelID/capabilities/settings/variants;
     档位选中写基础 settings.reasoningEffort,选中 variant 时其 settings/body 叠加为基础值;
     档位增删同步 variants;rawExtra/cost/body 保真) */
-function modelsToBlocks(models) {
+/** 文件里已有 provider 的 variants 形态:旧版 opencode 全文件统一为对象,
+    新版统一为数组。新增 provider 没有自己的形态记录,必须跟随文件,否则
+    一个数组 variants 会让旧版 opencode 拒绝整份配置(所有 provider 一起消失)。 */
+function fileVariantsShape(existing) {
+  const blocks = [...Object.values((existing && existing.provider) || {}),
+    ...Object.values((existing && existing.providers) || {})];
+  for (const b of blocks) {
+    for (const m of Object.values((b && b.models) || {})) {
+      if (Array.isArray(m && m.variants)) return 'array';
+      if (m && m.variants && typeof m.variants === 'object') return 'object';
+    }
+  }
+  return null;
+}
+
+function modelsToBlocks(models, shapeHint) {
   return Object.fromEntries((models || []).filter(m => m && m.id).map(m => {
     const raw = { ...(m.rawExtra || {}) };
     const settings = { ...(m.options || {}) };
-    const objectShape = m.variantsShape === 'object';
+    // 模型自带形态优先(导入的原样写回);没有时跟随文件里已有 provider 的形态
+    const objectShape = m.variantsShape ? m.variantsShape === 'object' : shapeHint === 'object';
     const rawVariants = m.variantsRaw || (objectShape ? {} : []);
     if (m.effort) {
       settings.reasoningEffort = m.effort;
@@ -314,6 +336,6 @@ module.exports = {
   readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
-  providerBlockToRS, modelsToBlocks, normalizeBaseUrl,
+  providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl,
   backupOpenCode, stripJsonComments
 };

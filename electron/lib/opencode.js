@@ -314,6 +314,20 @@ function normalizeBaseUrl(url) {
   return u;
 }
 
+/** 解析「拉取模型」的目标:显式 baseUrl 优先(手动填的站也能拉),
+    缺 baseUrl/apiKey 时回落到中转站库。target 可以是 relayId 字符串(兼容旧调用)。 */
+function resolveFetchTarget(target, lookupRelay) {
+  const t = typeof target === 'string' ? { relayId: target } : (target || {});
+  let relay = null;
+  if (t.relayId && typeof lookupRelay === 'function') {
+    try { relay = lookupRelay(t.relayId); } catch { relay = null; }
+  }
+  const baseUrl = String(t.baseUrl || (relay && relay.baseUrl) || '').trim();
+  const apiKey = t.apiKey || (relay && relay.apiKey) || '';
+  if (!baseUrl) return { error: '先填 Base URL,或选一个中转站' };
+  return { baseUrl, apiKey };
+}
+
 function backupOpenCode(home) {
   const cfg = configPath(home);
   const auth = authPath(home);
@@ -336,6 +350,6 @@ module.exports = {
   readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
-  providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl,
+  providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl, resolveFetchTarget,
   backupOpenCode, stripJsonComments
 };

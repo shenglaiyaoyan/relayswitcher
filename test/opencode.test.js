@@ -9,7 +9,7 @@ const {
   PROTOCOL_ADAPTERS, readOpenCodeConfig, writeOpenCodeConfig,
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock, backupOpenCode,
-  providerBlockToRS, modelsToBlocks
+  providerBlockToRS, modelsToBlocks, fileVariantsShape, resolveFetchTarget
 } = require('../electron/lib/opencode.js');
 
 const OC_HOME = path.join(os.homedir(), '.config', 'opencode');
@@ -26,6 +26,32 @@ test('PROTOCOL_ADAPTERS: message→anthropic, chat→openai-compatible, response
   assert.equal(PROTOCOL_ADAPTERS.message, '@ai-sdk/anthropic');
   assert.equal(PROTOCOL_ADAPTERS.chat, '@ai-sdk/openai-compatible');
   assert.equal(PROTOCOL_ADAPTERS.responses, '@ai-sdk/openai');
+});
+
+/* resolveFetchTarget:手动填的站(不在中转站库)也必须能拉模型 */
+test('resolveFetchTarget: 手写 baseUrl+apiKey 直接可用,不依赖站库', () => {
+  const r = resolveFetchTarget({ baseUrl: 'https://manual.example.com/v1', apiKey: 'sk-x' }, () => { throw new Error('不该查库'); });
+  assert.equal(r.baseUrl, 'https://manual.example.com/v1');
+  assert.equal(r.apiKey, 'sk-x');
+  assert.equal(r.error, undefined);
+});
+
+test('resolveFetchTarget: 只传 relayId(旧调用)仍从中转站库取', () => {
+  const r = resolveFetchTarget('relay-1', (id) => ({ id, baseUrl: 'https://lib.example.com/v1', apiKey: 'sk-lib' }));
+  assert.equal(r.baseUrl, 'https://lib.example.com/v1');
+  assert.equal(r.apiKey, 'sk-lib');
+});
+
+test('resolveFetchTarget: 表单 baseUrl 优先于站库(改了地址就用改的)', () => {
+  const r = resolveFetchTarget({ relayId: 'relay-1', baseUrl: 'https://edited.example.com/v1' },
+    () => ({ baseUrl: 'https://lib.example.com/v1', apiKey: 'sk-lib' }));
+  assert.equal(r.baseUrl, 'https://edited.example.com/v1');
+  assert.equal(r.apiKey, 'sk-lib'); // key 没填时回落到站库
+});
+
+test('resolveFetchTarget: 既没 baseUrl 也没站 → 明确报错而不是静默失败', () => {
+  const r = resolveFetchTarget({}, () => null);
+  assert.ok(r.error && r.error.includes('Base URL'));
 });
 
 test('readOpenCodeConfig: 纯 JSON 正常解析', () => {

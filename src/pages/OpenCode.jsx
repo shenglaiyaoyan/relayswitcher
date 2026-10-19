@@ -13,17 +13,17 @@ const slugify = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '-').replac
 const protocolLabel = (v) => (PROTOCOLS.find(p => p.value === v) || {}).label || v;
 const NEW_PROVIDER = () => ({ id: '', name: '', protocol: 'chat', baseUrl: '', apiKey: '', relayId: '', models: [], defaultModel: '' });
 
-// RS 推荐配置(「跟随推荐配置」开关 ON 时套用;设计稿 byok ffc4ad1b + ZCode 参照)
-const RECOMMENDED = (id) => ({
+// 新建模型的默认值 = 自定义空配置(不套推荐)。推荐值只在用户显式点「套用推荐」时写入,
+// 且写入后仍是可编辑的普通值,不再有"跟随"状态回写覆盖用户数据。
+const NEW_MODEL = (id) => ({
+  id: id || '',
   name: id || '',
   limit: { context: 0, output: 0 },
   reasoning: false, attachment: false, tool_call: true, temperature: false,
   modalities: { input: ['text'], output: ['text'] },
-  efforts: ['low', 'medium', 'high', 'max'],
-  effort: '',
+  efforts: [], effort: '',
   options: {}
 });
-const NEW_MODEL = (id) => ({ id: id || '', ...RECOMMENDED(id) });
 
 export default function OpenCode({ state, toast, goto }) {
   const [providers, setProviders] = useState([]);
@@ -76,7 +76,7 @@ export default function OpenCode({ state, toast, goto }) {
       const payload = { ...editing, models: (editing.models || []).filter(m => m.id && m.id.trim()) };
       const r = await window.rs.ocSave(payload);
       if (r.ok) {
-        toast(`Provider「${editing.id}」已写入 ~/.config/opencode/opencode.json — 重启 opencode 生效`, 'ok');
+        toast(`Provider「${editing.id}」已写入 opencode 配置 — 重启 opencode 生效`, 'ok');
         if (r.hasComments) toast('原配置文件含注释,写回后注释已丢失', 'warn');
         setEditing(null); await load();
       } else toast(r.error, 'bad');
@@ -91,12 +91,14 @@ export default function OpenCode({ state, toast, goto }) {
     else toast(r.error, 'bad');
   };
 
-  // 拉模型清单(选站自动触发 / 手动点按;fetching 锁单飞,不并发重复请求)
-  const fetchModels = async (relayId) => {
-    if (!relayId || fetching) return;
+  // 拉模型清单:选中转站自动触发;手动填的站只要 Base URL 有值也能拉(不再依赖站库)
+  // 显式传当前表单值,避免 setData 异步导致读到旧的 editing
+  const fetchModels = async (override) => {
+    if (fetching) return;
+    const src = override && typeof override === 'object' ? override : (editing || {});
     setFetching(true); setRelayModels(null);
     try {
-      const r = await window.rs.ocFetchModels(relayId);
+      const r = await window.rs.ocFetchModels({ relayId: src.relayId || '', baseUrl: src.baseUrl || '', apiKey: src.apiKey || '' });
       if (r.ok) setRelayModels(r.models);
       else toast(r.error, 'warn');
     } catch (e) { toast(e.message, 'warn'); }
@@ -116,14 +118,14 @@ export default function OpenCode({ state, toast, goto }) {
       {/* Provider 列表 */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
-          <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode Providers <small>写入 opencode.json + auth.json</small></div>
+          <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode Providers <small>写入 opencode.json / opencode.jsonc</small></div>
           <button className="btn btn-sm btn-gold" onClick={openAdd}>
             <Icon name="plus" size={11} /> 新建 Provider
           </button>
         </div>
         {providers.length === 0 && (
           <Empty icon="bolt" title="尚无 Provider"
-            hint="从你的中转站库选一个站,RS 自动拉取模型清单并填入参数"
+            hint="从你的中转站库选一个站,或手写 Base URL / API Key 后拉取模型清单"
             action={<button className="btn btn-gold btn-sm" style={{ marginTop: 8 }} onClick={openAdd}>
               <Icon name="plus" size={12} /> 新建 Provider
             </button>} />
@@ -153,7 +155,7 @@ export default function OpenCode({ state, toast, goto }) {
         footer={<>
           <button className="btn btn-sm" onClick={() => setEditing(null)} disabled={busy}>取消</button>
           <button className="btn btn-sm btn-gold" disabled={busy || !editing?.id} onClick={save}>
-            {busy ? <><Spinner size={11} /> 写入中…</> : '写入 opencode.json'}
+            {busy ? <><Spinner size={11} /> 写入中…</> : '写入 opencode 配置'}
           </button>
         </>}>
         {editing && <ProviderForm data={editing} setData={setEditing}
@@ -162,7 +164,7 @@ export default function OpenCode({ state, toast, goto }) {
       </Modal>
 
       <Confirm open={!!confirmDel} danger title="移除 Provider"
-        message={<span>确定移除 <b style={{ color: 'var(--txt-1)' }}>{confirmDel}</b> 吗?将同步清理 opencode.json 与 auth.json 中的对应区块(写前已自动备份)。</span>}
+        message={<span>确定移除 <b style={{ color: 'var(--txt-1)' }}>{confirmDel}</b> 吗?将同步清理 opencode 配置文件与 auth.json 中的对应区块(写前已自动备份)。</span>}
         confirmLabel="移除" onCancel={() => setConfirmDel(null)} onConfirm={remove} />
     </div>
   );
@@ -202,9 +204,10 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
   const pickRelay = (v) => {
     const r = relays.find(x => x.id === v);
     if (r) {
-      set('relayId', r.id); set('baseUrl', r.baseUrl); set('name', r.name);
-      if (!data.id) { const slug = slugify(r.name); if (slug) set('id', slug); }
-      onFetchModels(r.id);
+      const next = { relayId: r.id, baseUrl: r.baseUrl, name: r.name };
+      if (!data.id) { const slug = slugify(r.name); if (slug) next.id = slug; }
+      setData(d => ({ ...d, ...next }));
+      onFetchModels({ relayId: r.id, baseUrl: r.baseUrl, apiKey: data.apiKey || r.apiKey || '' });
     } else set('relayId', '');
   };
 
@@ -234,11 +237,11 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
               options={[{ value: '', label: '手写(清空关联)' }].concat(
                 relays.map(r => ({ value: r.id, label: r.name, desc: r.baseUrl })))} />
           </div>
-          {data.relayId && (
-            <button className="oc-link-btn" style={{ marginBottom: 2, flexShrink: 0 }} disabled={fetching} onClick={() => onFetchModels(data.relayId)}>
-              {fetching ? <Spinner size={11} /> : <Icon name="refresh" size={11} />} 从 /v1/models 拉取
-            </button>
-          )}
+          <button className="oc-link-btn" style={{ marginBottom: 2, flexShrink: 0 }} disabled={fetching || !data.baseUrl}
+            title={data.baseUrl ? '用当前 Base URL 和 API Key 拉取' : '先填 Base URL'}
+            onClick={() => onFetchModels({ relayId: data.relayId, baseUrl: data.baseUrl, apiKey: data.apiKey })}>
+            {fetching ? <Spinner size={11} /> : <Icon name="refresh" size={11} />} 从 /v1/models 拉取
+          </button>
         </div>
         <div className="row" style={{ gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -293,7 +296,7 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
           <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>该站 /v1/models 返回空,点右上「添加模型」手动加</div>
         )}
         {!fetching && !relayModels && models.length === 0 && (
-          <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>选中中转站后自动拉取清单,或点右上「添加模型」</div>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>填好 Base URL 后点上方「从 /v1/models 拉取」,或点右上「添加模型」手动加</div>
         )}
         {models.length > 0 && (
           <div className="oc-model-list">
@@ -332,18 +335,28 @@ function ProviderForm({ data, setData, relays, relayModels, fetching, onFetchMod
   );
 }
 
-/* ---------------- 第二层:编辑模型弹窗(设计稿 byok ffc4ad1b) ---------------- */
+/* ---------------- 第二层:编辑模型弹窗 ----------------
+   无"跟随推荐"状态:打开时永远是用户自己存下的值(没有就用自定义空配置)。
+   推荐参数降级为一次性按钮——点了只把推荐值填进表单,之后照样随便改。 */
+const RECOMMENDED_LIMITS = { context: 1000000, output: 128000 };
+const RECOMMENDED_EFFORTS = ['low', 'medium', 'high', 'max'];
+
 function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
   const [m, setM] = useState(draft);
-  const [follow, setFollow] = useState(true); // 跟随推荐配置:ON=字段用推荐值(禁改)
   const [adding, setAdding] = useState(false); // 新增档位的内联输入态
   const [newEffort, setNewEffort] = useState('');
   const set = (k, v) => setM(d => ({ ...d, [k]: v }));
-  const recommended = RECOMMENDED(m.id);
-  // 展示/保存用的有效值:follow=ON 时套推荐(id 始终用草稿的)
-  const eff = follow ? { ...recommended, id: m.id } : m;
 
-  const commitModel = () => onSave(follow ? { ...m, ...recommended, id: m.id } : m);
+  // 一次性套用推荐:填进去就是普通值,不锁定、不回写
+  const applyRecommended = () => {
+    setM(d => ({
+      ...d,
+      limit: { ...RECOMMENDED_LIMITS },
+      reasoning: true, attachment: true, tool_call: true,
+      modalities: { input: ['text', 'image'], output: ['text'] },
+      efforts: d.efforts && d.efforts.length ? d.efforts : [...RECOMMENDED_EFFORTS]
+    }));
+  };
 
   const removeEffort = (e) => {
     const next = m.efforts.filter(x => x !== e);
@@ -354,42 +367,36 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
     const v = newEffort.trim();
     if (v && !m.efforts.includes(v)) {
       set('efforts', [...m.efforts, v]);
-      if (!follow) set('effort', v);
-      else { setFollow(false); set('effort', v); } // 选中新档位 = 脱离推荐
+      set('effort', v);
     }
     setNewEffort(''); setAdding(false);
   };
 
   const body = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {follow && (
-        <div className="oc-follow-bar">
-          <Icon name="check" size={14} /> 已应用推荐配置 · 关闭开关可自定义全部字段
-        </div>
-      )}
       {/* 基本 */}
       <Group icon="box" label="基本">
         <div className="row" style={{ gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="oc-flabel">模型 ID</div>
-            <input type="text" className={'mono' + (follow ? ' oc-ro' : '')} value={m.id} onChange={e => set('id', e.target.value)} placeholder="model-id" style={{ width: '100%' }} />
+            <input type="text" className="mono" value={m.id} onChange={e => set('id', e.target.value)} placeholder="model-id" style={{ width: '100%' }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="oc-flabel">显示名</div>
-            <input type="text" className={follow ? ' oc-ro' : ''} value={eff.name} disabled={follow}
-              onChange={e => set('name', e.target.value)} placeholder="显示名" style={{ width: '100%' }} />
+            <input type="text" value={m.name || ''} onChange={e => set('name', e.target.value)}
+              placeholder="留空 = 用模型 ID" style={{ width: '100%' }} />
           </div>
         </div>
         <div className="row" style={{ gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="oc-flabel">上下文窗口 <span className="oc-fhint">0 = 不写入</span></div>
-            <input type="number" className={'mono' + (follow ? ' oc-ro' : '')} value={eff.limit.context} disabled={follow}
-              onChange={e => set('limit', { ...eff.limit, context: Number(e.target.value) })} placeholder="0" style={{ width: '100%' }} />
+            <div className="oc-flabel">上下文窗口 <span className="oc-fhint">tokens,留空或 0 = 不写入</span></div>
+            <NumField value={m.limit?.context} onChange={v => set('limit', { ...(m.limit || {}), context: v })}
+              placeholder="如 1000000" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="oc-flabel">最大输出 <span className="oc-fhint">0 = 不写入</span></div>
-            <input type="number" className={'mono' + (follow ? ' oc-ro' : '')} value={eff.limit.output} disabled={follow}
-              onChange={e => set('limit', { ...eff.limit, output: Number(e.target.value) })} placeholder="0" style={{ width: '100%' }} />
+            <div className="oc-flabel">最大输出 <span className="oc-fhint">tokens,留空或 0 = 不写入</span></div>
+            <NumField value={m.limit?.output} onChange={v => set('limit', { ...(m.limit || {}), output: v })}
+              placeholder="如 128000" />
           </div>
         </div>
       </Group>
@@ -397,10 +404,9 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
       <Group icon="sparkles" label="能力">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
           {[['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']].map(([f, label]) => (
-            <div key={f} className="oc-cap-cell" onClick={() => follow ? undefined : set(f, !eff[f])}
-              style={follow ? { opacity: 0.7, cursor: 'default' } : undefined}>
+            <div key={f} className="oc-cap-cell" onClick={() => set(f, !m[f])}>
               <span>{label}</span>
-              <Toggle on={!!eff[f]} onChange={(v) => { if (!follow) set(f, v); }} />
+              <Toggle on={!!m[f]} onChange={(v) => set(f, v)} />
             </div>
           ))}
         </div>
@@ -408,14 +414,11 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
           <div key={dir} className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
             <span className="muted" style={{ fontSize: 11, width: 52, flexShrink: 0 }}>{label}模态</span>
             {['text', 'image', 'audio', 'video', 'pdf'].map(mod => {
-              const on = ((eff.modalities || {})[dir] || []).includes(mod);
+              const cur = (m.modalities || {})[dir] || [];
+              const on = cur.includes(mod);
               return (
                 <span key={mod} className={'chip' + (on ? ' on' : '')} style={{ height: 24, fontSize: 10.5, padding: '0 10px', lineHeight: '22px' }}
-                  onClick={() => {
-                    if (follow) return;
-                    const cur = (eff.modalities || {})[dir] || [];
-                    set('modalities', { ...(eff.modalities || {}), [dir]: cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod] });
-                  }}>{mod}</span>
+                  onClick={() => set('modalities', { ...(m.modalities || {}), [dir]: cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod] })}>{mod}</span>
               );
             })}
           </div>
@@ -423,25 +426,22 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
         {/* 思考强度档位卡片(设计稿:卡片可增删,选中写入 options.reasoningEffort) */}
         <div className="oc-flabel" style={{ marginBottom: 6 }}>思考强度档位 <span className="oc-fhint">选中档位将写入 options.reasoningEffort</span></div>
         <div className="oc-efforts">
-          {(eff.efforts || []).map(e => (
-            <span key={e} className={'oc-effort-card' + (eff.effort === e ? ' on' : '')}
-              style={follow ? { opacity: 0.7 } : undefined}
-              onClick={() => { if (!follow) set('effort', eff.effort === e ? '' : e); }}>
+          {(m.efforts || []).map(e => (
+            <span key={e} className={'oc-effort-card' + (m.effort === e ? ' on' : '')}
+              onClick={() => set('effort', m.effort === e ? '' : e)}>
               <span className="mono">{e}</span>
-              {!follow && (
-                <button className="oc-effort-x" title="删除该档位"
-                  onClick={(ev) => { ev.stopPropagation(); removeEffort(e); }}>
-                  <Icon name="x" size={11} />
-                </button>
-              )}
+              <button className="oc-effort-x" title="删除该档位"
+                onClick={(ev) => { ev.stopPropagation(); removeEffort(e); }}>
+                <Icon name="x" size={11} />
+              </button>
             </span>
           ))}
-          {!follow && !adding && (
+          {!adding && (
             <span className="oc-effort-add" onClick={() => setAdding(true)}>
               <Icon name="plus" size={11} /> 新增档位
             </span>
           )}
-          {!follow && adding && (
+          {adding && (
             <span className="oc-effort-card adding">
               <input autoFocus className="mono" value={newEffort} onChange={e => setNewEffort(e.target.value)}
                 onKeyDown={(ev) => { if (ev.key === 'Enter') commitNewEffort(); if (ev.key === 'Escape') { setNewEffort(''); setAdding(false); } }}
@@ -461,14 +461,32 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
       footer={<>
         {!isNew && <button className="oc-del-model" onClick={onDelete}><Icon name="trash" size={13} /> 删除模型</button>}
         <span style={{ flex: 1 }} />
-        <div className="row" style={{ gap: 8, alignItems: 'center', marginRight: 12 }}>
-          <span className="muted" style={{ fontSize: 12 }}>跟随推荐配置</span>
-          <Toggle on={follow} onChange={setFollow} />
-        </div>
+        <button className="oc-link-btn" style={{ marginRight: 12 }} onClick={applyRecommended}
+          title="把推荐参数填进表单,之后仍可逐项修改">
+          <Icon name="sparkles" size={11} /> 套用推荐参数
+        </button>
         <button className="btn btn-sm" onClick={onClose}>取消</button>
-        <button className="btn btn-sm btn-gold" disabled={!m.id?.trim()} onClick={commitModel}>保存模型</button>
+        <button className="btn btn-sm btn-gold" disabled={!m.id?.trim()} onClick={() => onSave(m)}>保存模型</button>
       </>}>
       {body}
     </Modal>
+  );
+}
+
+/* 数字输入:内部保留原始字符串,只有用户真的输入数字才转 Number。
+   - 值为 0 时显示空(0 对用户没有意义,是"不写入"的哨兵)
+   - 聚焦即全选,直接打字就是替换,不用拿鼠标去点 0 前面 */
+function NumField({ value, onChange, placeholder }) {
+  const [text, setText] = useState(value ? String(value) : '');
+  useEffect(() => { setText(value ? String(value) : ''); }, [value]);
+  return (
+    <input type="text" inputMode="numeric" className="mono" value={text} placeholder={placeholder}
+      onFocus={e => e.target.select()}
+      onChange={e => {
+        const raw = e.target.value.replace(/[^\d]/g, '');
+        setText(raw);
+        onChange(raw === '' ? 0 : Number(raw));
+      }}
+      style={{ width: '100%' }} />
   );
 }

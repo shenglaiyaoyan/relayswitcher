@@ -127,34 +127,69 @@ test('mergeProviderBlock: 注入新 provider 到空配置(真 schema:providers/p
   assert.equal(out.providers.myrelay.models['gpt-6-sol'].modelID, 'gpt-6-sol');
 });
 
-test('mergeProviderBlock: 配置只有旧形态 provider 键时写回旧形态(opencode 1.19 不认 providers 复数键)', () => {
+test('mergeProviderBlock: 旧形态文件新增 provider 统一写 V2 providers', () => {
   const existing = { provider: { zcode: { npm: '@ai-sdk/anthropic', options: { baseURL: 'https://z.example.com/v1' } } } };
-  const pd = { id: 'workbuddy', package: '@ai-sdk/anthropic', name: 'WorkBuddy',
+  const pd = { id: 'workbuddy', package: '@opencode/ai/providers/anthropic', name: 'WorkBuddy',
     settings: { baseURL: 'https://w.example.com/v1', apiKey: 'k' }, models: {} };
   const out = mergeProviderBlock(existing, pd);
-  assert.equal(out.providers, undefined, '旧形态文件不能冒出 providers 键,否则旧版 opencode 直接忽略');
-  assert.ok(out.provider.workbuddy, '新 provider 必须落在 opencode 1.19 读的 provider 键下');
-  assert.equal(out.provider.workbuddy.npm, '@ai-sdk/anthropic');
-  assert.equal(out.provider.workbuddy.options.baseURL, 'https://w.example.com/v1');
-  assert.equal(out.provider.workbuddy.options.apiKey, 'k');
-  assert.equal(out.provider.workbuddy.package, undefined);
-  assert.ok(out.provider.zcode, '原有 provider 块必须保留');
+  assert.ok(out.providers.workbuddy, 'RS 管理的 provider 统一写 V2 providers');
+  assert.equal(out.providers.workbuddy.package, '@opencode/ai/providers/anthropic');
+  assert.equal(out.providers.workbuddy.settings.baseURL, 'https://w.example.com/v1');
+  assert.equal(out.providers.workbuddy.settings.apiKey, 'k');
+  assert.equal(out.providers.workbuddy.npm, undefined);
+  assert.equal(out.providers.workbuddy.options, undefined);
+  assert.ok(out.provider.zcode, '未被编辑的旧 provider 不在本次迁移范围内');
 });
 
-test('mergeProviderBlock: 旧形态文件里新增 provider 的 variants 必须是对象(数组会被 opencode 1.19 判整份配置非法)', () => {
+test('mergeProviderBlock: 新增模型的 variants 统一为 V2 数组', () => {
   const existing = { provider: { zcode: { npm: '@ai-sdk/anthropic', models: {
     'GLM-5.3': { variants: { low: { effort: 'low' }, high: { effort: 'high' } } } } } } };
-  // 新增的 provider 没有读到过的形态记录(variantsShape 缺省),档位来自用户勾选
-  // models 是 RS 模型数组(与 UI 保存时的 payload 同形态),不是写好的 opencode 块
-  const pd = { id: 'accio', package: '@ai-sdk/anthropic', name: 'Accio',
+  const pd = { id: 'accio', package: '@opencode/ai/providers/anthropic', name: 'Accio',
     settings: { baseURL: 'https://a.example.com/v1' },
     models: [{ id: 'claude-opus-4.8', name: 'Opus 4.8', reasoning: true,
       efforts: ['low', 'high', 'max'] }] };
   const out = mergeProviderBlock(existing, pd);
-  assert.ok(out.provider.accio, 'legacy 文件必须写进 provider 键,实际键: ' + Object.keys(out).join(','));
-  const v = out.provider.accio.models['claude-opus-4.8'].variants;
-  assert.equal(Array.isArray(v), false, '旧版 opencode 遇数组 variants 直接拒绝整份配置');
-  assert.deepEqual(Object.keys(v).sort(), ['high', 'low', 'max']);
+  assert.ok(out.providers.accio, '新 provider 必须写 V2 providers,实际键: ' + Object.keys(out));
+  const v = out.providers.accio.models['claude-opus-4.8'].variants;
+  assert.ok(Array.isArray(v), 'V2 variants 必须是数组');
+  assert.deepEqual(v.map(x => x.id), ['low', 'high', 'max']);
+  assert.deepEqual(v[0].settings, { reasoningEffort: 'low' });
+});
+
+test('mergeProviderBlock: 旧 provider 统一迁移为 V2,保留 compatibility 并转换 variants', () => {
+  const existing = { provider: { Pulse: {
+    name: 'pulse', npm: '@opencode/ai/providers/anthropic',
+    options: { baseURL: 'http://127.0.0.1:18790/v1', apiKey: 'k' },
+    models: {
+      'claude-opus-5-5': {
+        name: 'Opus 5.5', modelID: 'claude-opus-5-5',
+        compatibility: { supportsThinkingBlockBinding: false },
+        capabilities: { tools: true, input: ['text', 'image'], output: ['text'] },
+        reasoning: true, attachment: true,
+        settings: { reasoningEffort: 'max' },
+        variants: { high: { effort: 'high' }, xhigh: { effort: 'xhigh' }, max: { effort: 'max' } },
+        limit: { context: 1000000, output: 128000 }
+      }
+    }
+  } } };
+  const rs = providerBlockToRS('Pulse', existing.provider.Pulse, existing);
+  const out = mergeProviderBlock(existing, {
+    id: 'Pulse', package: '@opencode/ai/providers/anthropic', name: 'pulse',
+    settings: { baseURL: 'http://127.0.0.1:18790/v1', apiKey: 'k' }, models: rs.models
+  });
+  assert.ok(out.providers.Pulse, '必须写入 V2 providers,实际键: ' + Object.keys(out));
+  assert.equal(out.provider, undefined, '当前 provider 的旧 V1 块必须迁移,不能混用');
+  const m = out.providers.Pulse.models['claude-opus-5-5'];
+  assert.deepEqual(m.compatibility, { supportsThinkingBlockBinding: false }, 'V2 compatibility 必须保留');
+  assert.equal(m.reasoning, undefined, '不能再混入 V1 reasoning');
+  assert.equal(m.attachment, undefined, '不能再混入 V1 attachment');
+  assert.equal(m.modelID, 'claude-opus-5-5');
+  assert.equal(m.capabilities.tools, true);
+  assert.deepEqual(m.capabilities.input, ['text', 'image']);
+  assert.equal(m.settings.reasoningEffort, 'max');
+  assert.ok(Array.isArray(m.variants), 'variants 必须是 V2 数组');
+  assert.deepEqual(m.variants.map(v => v.id), ['high', 'xhigh', 'max']);
+  assert.deepEqual(m.variants[0].settings, { reasoningEffort: 'high' });
 });
 
 test('mergeProviderBlock: 同 id 覆盖其他保留 + 旧形态 provider 块同步清理', () => {
@@ -224,19 +259,22 @@ test('providerBlockToRS: variants 对象形态(opencode 1.19 及更早)不崩且
   assert.deepEqual(rs.models[0].variantsRaw, block.models['GLM-5.3'].variants);
 });
 
-test('modelsToBlocks: 对象形态 variants 原样写回,档位增删落在对象上', () => {
+test('modelsToBlocks: 对象 variants 迁移为 V2 数组,档位内容保留', () => {
   const [id, block] = Object.entries(modelsToBlocks([{
     id: 'GLM-5.3', name: 'GLM-5.3', reasoning: true, tool_call: true,
     modalities: { input: ['text'], output: ['text'] },
     variantsShape: 'object',
-    variantsRaw: { low: { effort: 'low' }, high: { effort: 'high' } },
-    efforts: ['low', 'max']
+    variantsRaw: { low: { effort: 'low' }, high: { effort: 'high' }, off: { thinking: { type: 'disabled' } } },
+    efforts: ['low', 'off']
   }]))[0];
   assert.equal(id, 'GLM-5.3');
-  assert.equal(Array.isArray(block.variants), false, '对象形态不能被改写成数组');
-  assert.deepEqual(Object.keys(block.variants).sort(), ['low', 'max']);
-  assert.deepEqual(block.variants.low, { effort: 'low' });
-  assert.ok(block.variants.max);
+  assert.ok(Array.isArray(block.variants), '统一 V2 后 variants 必须是数组');
+  assert.deepEqual(block.variants.map(v => v.id), ['low', 'off']);
+  assert.deepEqual(block.variants[0].settings, { reasoningEffort: 'low' });
+  assert.deepEqual(block.variants[1].settings, { thinking: { type: 'disabled' } }, 'off 档的 thinking 配置必须保留');
+  assert.equal(block.reasoning, undefined, '不能混入 V1 reasoning');
+  assert.equal(block.attachment, undefined, '不能混入 V1 attachment');
+  assert.equal(block.capabilities.tools, true);
 });
 
 test('writeOpenCodeConfig: 读自 jsonc 的配置写回 jsonc,不另造 opencode.json', () => {

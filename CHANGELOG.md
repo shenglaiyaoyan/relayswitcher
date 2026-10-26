@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.13.0 (2026-10-26) — OpenCode provider 统一原生 V2,修 compatibility 被忽略
+
+- **根因**:RS 在旧 `provider` 块里混写 V2 的 `modelID` / `capabilities` / `settings` /
+  `compatibility`,却保留 V1 对象 variants。OpenCode 2.1.4 对单个 provider/model
+  不支持 V1/V2 混用,按 V1 解析后忽略全部 V2 字段;`supportsThinkingBlockBinding:false`
+  即使已写入文件也不会生效,继续发送 `thinking.adaptive.block_binding`
+- **统一原生 V2**:保存中的 provider 迁移到 `providers` / `package` / `settings`,
+  同 id 的旧 `provider` 块移除;模型不再输出旧 `reasoning` / `attachment` / `temperature`,
+  variants 统一转为 `{id, settings}` 数组
+- **保真迁移**:已有 `compatibility`、`capabilities`、`modelID`、`settings` 原样保留;
+  旧 variants 的 `effort` 转为 `settings.reasoningEffort`,DeepSeek `off` 档的
+  `thinking:{type:'disabled'}` 不丢,`body` / `headers` 保留
+- **验证**:OpenCode 2.1.4 在独立临时 HOME + 独立端口 28991 的 `debug config` 中,
+  确认 `compatibility.supportsThinkingBlockBinding:false` 已进入生效模型配置;
+  全程未修改用户正在由另一对话维护的真实 opencode 配置
+- 全量单测通过,新增 V2 容器迁移/compatibility/variants/thinking 保留覆盖
+
 ## v1.12.12 (2026-10-26) — 修 opencode 配置带 BOM 时整份读取失败
 
 - **症状**:编辑 Provider 后点「写入 opencode 配置」,报

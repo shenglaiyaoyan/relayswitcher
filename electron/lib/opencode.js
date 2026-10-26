@@ -120,38 +120,28 @@ function writeAuthFile(home, auth) {
 
 function mergeProviderBlock(existing, pd) {
   const out = { ...existing };
-  // 顶层键跟随文件里已有的形态:opencode 1.19 及更早只认 provider(单数),
-  // dev 新版只认 providers(复数)——写错键的块会被整块忽略,表现为「RS 里加了,
-  // opencode 里没有」。只有文件里已有复数键(或同 id 已在复数键下)才写新形态。
-  const hasNew = !!(out.providers && Object.keys(out.providers).length);
-  const hasOld = !!(out.provider && Object.keys(out.provider).length);
-  const legacy = hasOld && !hasNew;
-  // pd.models 两种来源:已写好的 opencode 块(对象,键是模型 id),或 RS 模型数组
-  // (UI 保存时的 payload,元素带 id/efforts)。后者要按文件里已有 provider 的
-  // variants 形态生成——新增 provider 没有自己的形态记录,默认走数组会让旧版
-  // opencode 拒绝整份配置。
-  const hint = fileVariantsShape(existing);
-  const models = Array.isArray(pd.models) ? modelsToBlocks(pd.models, hint) : pd.models;
+  const oldBlock = (out.provider && out.provider[pd.id]) || {};
+  const newBlock = (out.providers && out.providers[pd.id]) || {};
+  // 只迁移正在保存的 provider:以现有块为基础保留未建模字段,再统一写原生 V2。
+  // 不能在旧 provider 下混入 V2 模型字段——OpenCode 会把整个模型当 V1,
+  // 忽略 capabilities/settings/compatibility(包括 supportsThinkingBlockBinding)。
+  const models = Array.isArray(pd.models) ? modelsToBlocks(pd.models) : pd.models;
   const block = {
-    ...(pd.rawExtra || {}), // RS 未建模的块级键原样保留(冲突时 RS 字段赢)
+    ...oldBlock,
+    ...newBlock,
+    ...(pd.rawExtra || {}),
+    package: pd.package,
     name: pd.name,
+    settings: pd.settings || {},
     ...(models && Object.keys(models).length ? { models } : {})
   };
-  if (legacy) {
-    // 旧形态:npm + options。package/settings 是新形态字段名,写进去旧版不读
-    block.npm = pd.package;
-    block.options = pd.settings || {};
-    out.provider = { ...(out.provider || {}), [pd.id]: block };
-  } else {
-    block.package = pd.package;
-    block.settings = pd.settings || {};
-    out.providers = { ...(out.providers || {}), [pd.id]: block };
-    // 同 id 的旧形态块清理,避免双写(新版只读 providers,留着只会让检测读出两份)
-    if (out.provider && Object.prototype.hasOwnProperty.call(out.provider, pd.id)) {
-      const { [pd.id]: _legacy, ...rest } = out.provider;
-      if (Object.keys(rest).length === 0) delete out.provider;
-      else out.provider = rest;
-    }
+  delete block.npm;
+  delete block.options;
+  out.providers = { ...(out.providers || {}), [pd.id]: block };
+  if (out.provider && Object.prototype.hasOwnProperty.call(out.provider, pd.id)) {
+    const { [pd.id]: _legacy, ...rest } = out.provider;
+    if (Object.keys(rest).length === 0) delete out.provider;
+    else out.provider = rest;
   }
   if (pd.defaultModel) out.model = pd.defaultModel;
   return out;
@@ -257,12 +247,12 @@ function fileVariantsShape(existing) {
   return null;
 }
 
-function modelsToBlocks(models, shapeHint) {
+function modelsToBlocks(models) {
   return Object.fromEntries((models || []).filter(m => m && m.id).map(m => {
     const raw = { ...(m.rawExtra || {}) };
     const settings = { ...(m.options || {}) };
-    // 模型自带形态优先(导入的原样写回);没有时跟随文件里已有 provider 的形态
-    const objectShape = m.variantsShape ? m.variantsShape === 'object' : shapeHint === 'object';
+    // 输入形态只用于迁移旧对象 variants;输出统一为原生 V2 数组。
+    const objectShape = m.variantsShape === 'object';
     const rawVariants = m.variantsRaw || (objectShape ? {} : []);
     if (m.effort) {
       settings.reasoningEffort = m.effort;
@@ -273,25 +263,34 @@ function modelsToBlocks(models, shapeHint) {
       }
     } else delete settings.reasoningEffort;
     const wanted = new Set((m.efforts || []).filter(Boolean));
-    let variants;
+    // 统一输出原生 V2 variants 数组。OpenCode 按 provider/model 判定 V1/V2,
+    // 对象 variants 与 V2 capabilities/settings/compatibility 混用会让后者被忽略。
+    const variants = [];
     if (objectShape) {
-      // 旧版 opencode 只认对象形态,改写成数组会被判配置非法——只做档位增删,条目原样保留
-      variants = Object.fromEntries(Object.entries(rawVariants).filter(([k]) => wanted.has(k)));
-      for (const e of wanted) if (!(e in variants)) variants[e] = { effort: e };
+      for (const [id, value] of Object.entries(rawVariants)) {
+        if (!wanted.has(id)) continue;
+        variants.push({
+          id,
+          settings: {
+            ...(value && value.settings ? value.settings : {}),
+            ...(value && value.effort ? { reasoningEffort: value.effort } : {}),
+            ...(value && value.thinking ? { thinking: value.thinking } : {})
+          },
+          ...(value && value.body ? { body: value.body } : {}),
+          ...(value && value.headers ? { headers: value.headers } : {})
+        });
+      }
     } else {
       const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id));
       const fresh = [...wanted].filter(e => !kept.some(v => v.id === e) && e !== m.baseEffort)
         .map(e => ({ id: e, settings: { reasoningEffort: e } }));
-      variants = [...kept, ...fresh];
+      variants.push(...kept, ...fresh);
     }
     return [m.id, {
       ...raw,
       name: m.name || m.id,
-      modelID: m.id,
+      modelID: raw.modelID || m.id,
       ...(m.limit && (m.limit.context || m.limit.output) ? { limit: m.limit } : {}),
-      ...(m.reasoning ? { reasoning: true } : {}),
-      ...(m.attachment ? { attachment: true } : {}),
-      ...(m.temperature ? { temperature: true } : {}),
       capabilities: {
         ...(m.capExtra || {}),
         tools: m.tool_call !== false,
@@ -299,7 +298,7 @@ function modelsToBlocks(models, shapeHint) {
           ? { input: m.modalities.input, output: m.modalities.output } : {})
       },
       ...(Object.keys(settings).length ? { settings } : {}),
-      ...(objectShape ? (Object.keys(variants).length ? { variants } : {}) : (variants.length ? { variants } : {}))
+      ...(variants.length ? { variants } : {})
     }];
   }));
 }

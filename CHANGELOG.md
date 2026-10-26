@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.12.12 (2026-10-26) — 修 opencode 配置带 BOM 时整份读取失败
+
+- **症状**:编辑 Provider 后点「写入 opencode 配置」,报
+  `opencode.json 解析失败: Unexpected token '﻿', "﻿{..." is not valid JSON`——
+  连原来正常的 provider 都写不进去
+- **根因**:`opencode.jsonc` 开头被写入了 UTF-8 BOM(EF BB BF)。Windows 记事本 /
+  PowerShell `Set-Content` 保存 UTF-8 时默认带 BOM,而 `JSON.parse` 会把 BOM 当非法
+  字符,直接拒绝整份配置。实测本机文件 BOM=True,历史备份全部 BOM=False
+- **修复**:`readOpenCodeConfig` 读入后先剥掉 BOM 再解析。写回仍是标准 JSON(无 BOM)
+- 实证:本机真实配置(11KB、7 个 provider)修复前解析失败,修复后完整读出
+  dihuang-zcode / dihuang-workbuddy / dihuang-accio / muse / star / Argon / Pulse
+- 单测 99/99(新增 BOM 场景)
+
 ## v1.12.11 (2026-10-19) — OpenCode 表单四处体验修复(手写站拉模型 / 不再默认推荐 / 回显 / 数字输入)
 
 - **手写的中转站现在也能拉模型**:原来「从 /v1/models 拉取」按钮只在选中站库里的站时才出现,

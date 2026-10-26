@@ -78,6 +78,9 @@ function readOpenCodeConfig(home) {
   const p = configPath(home);
   let raw;
   try { raw = fs.readFileSync(p, 'utf8'); } catch { return {}; }
+  // Windows 编辑器(记事本/PowerShell Set-Content)常给 UTF-8 文件加 BOM。
+  // JSON.parse 会把 BOM 当非法字符直接拒绝整份配置,所以先剥掉。
+  if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
   const stripped = stripJsonComments(raw);
   const hasComments = stripped !== raw;
   try {

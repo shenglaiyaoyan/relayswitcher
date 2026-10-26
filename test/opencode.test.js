@@ -54,6 +54,15 @@ test('resolveFetchTarget: 既没 baseUrl 也没站 → 明确报错而不是静�
   assert.ok(r.error && r.error.includes('Base URL'));
 });
 
+test('readOpenCodeConfig: 文件带 UTF-8 BOM 也能解析(Windows 编辑器常见,JSON.parse 会把它当非法字符)', () => {
+  const home = mkHome();
+  const body = '{\n  // 注释\n  "provider": { "pulse": { "npm": "@ai-sdk/anthropic" } }\n}';
+  fs.writeFileSync(path.join(home, '.config/opencode/opencode.jsonc'),
+    Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(body, 'utf8')]));
+  const cfg = readOpenCodeConfig(home);
+  assert.ok(cfg.provider.pulse, 'BOM 不能导致整份配置解析失败');
+});
+
 test('readOpenCodeConfig: 纯 JSON 正常解析', () => {
   const home = mkHome();
   fs.writeFileSync(path.join(home, '.config/opencode/opencode.json'),

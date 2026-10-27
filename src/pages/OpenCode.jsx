@@ -443,7 +443,7 @@ function ModelDialog({ draft, isNew, onSave, onDelete, onClose }) {
           )}
           {adding && (
             <span className="oc-effort-card adding">
-              <input autoFocus className="mono" value={newEffort} onChange={e => setNewEffort(e.target.value)}
+              <input type="text" autoFocus className="mono" value={newEffort} onChange={e => setNewEffort(e.target.value)}
                 onKeyDown={(ev) => { if (ev.key === 'Enter') commitNewEffort(); if (ev.key === 'Escape') { setNewEffort(''); setAdding(false); } }}
                 onBlur={commitNewEffort} placeholder="ultra" style={{ width: 64, fontSize: 11 }} />
             </span>

@@ -87,7 +87,7 @@
 
 ## 五、视觉与组件边界
 
-- 正常中文/英文 UI 与「编辑 Provider」标题：Inter / Microsoft YaHei，禁止斜体衬线。
+- 正常中文/英文 UI：Inter / Microsoft YaHei。「编辑 Provider」使用 **16px、font-weight 500** 的正常无衬线功能标题，不接近 OpenCode 大标题的字号/字重，禁止斜体衬线。
 - Playfair Display italic 仅用于 `OpenCode` 页面标题；等宽字体仅用于 ID、URL、技术数值。
 - 使用现有颜色、按钮、输入框、Select、Toggle、Confirm、Icon 组件，新增工作区所需的最小 CSS。
 - `OpenCode.jsx` 当前已承载列表、Provider 表单和模型弹窗。实施时按职责拆分列表、整页 Provider 编辑、模型参数编辑及可测的草稿辅助逻辑，避免继续在一个组件里叠加状态。

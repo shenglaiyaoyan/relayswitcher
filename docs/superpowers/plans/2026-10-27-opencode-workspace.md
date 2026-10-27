@@ -142,7 +142,7 @@ export const canLeavePage = () => !guard || guard();
 
 `goto(target)` 在真正改变 page 前调用 `canLeavePage()`。编辑 dirty 时守卫打开「放弃未保存的修改？」Confirm 并返回 false；确认后清草稿，再执行保存下来的目标跳转。Cancel/返回列表使用同一个 Confirm，未修改直接退出。
 
-CSS 按 `designs/byok-opencode/provider-list.png`、`provider-editor.png`、`model-editor.png` 实现工作区，复用 `.side` 等现有全局样式。列表数字和每行模型数 `13px`；功能标题 Inter/Microsoft YaHei，斜体仅用于 OpenCode 大标题。
+CSS 按 `designs/byok-opencode/provider-list.png`、`provider-editor.png`、`model-editor.png` 实现工作区，复用 `.side` 等现有全局样式。列表数字和每行模型数 `13px`；「编辑 Provider」为 Inter/Microsoft YaHei 16px / 500，斜体仅用于 OpenCode 大标题。
 
 - [ ] **Step 4: 运行测试、构建和隔离 UI 验收**
 

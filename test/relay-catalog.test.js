@@ -56,6 +56,22 @@ test('空清单/全非法清单明确报错', () => {
   assert.throws(() => buildRelayCatalog(BASE, ['!!!', '']), /没有可用/);
 });
 
+test('精确 slug 优先继承同模型原生目录：gpt-6.1-terra 不再回退 Astra', () => {
+  const terra = { slug: 'gpt-6.1-terra', display_name: 'GPT-6.1 Terra', context_window: 500000,
+    max_context_window: 872000, default_reasoning_level: 'low',
+    supported_reasoning_levels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ({ effort })),
+    service_tiers: [{ id: 'priority', name: 'Fast', description: '1.5x speed' }] };
+  const base = { models: [BASE.models[0], terra] };
+  const available = base.models.map(m => m.slug);
+  assert.strictEqual(pickTemplate('gpt-6.1-terra', available), 'gpt-6.1-terra');
+  const out = buildRelayCatalog(base, ['gpt-6.1-terra']);
+  assert.strictEqual(out.models[0].context_window, 500000);
+  assert.strictEqual(out.models[0].max_context_window, 872000);
+  assert.strictEqual(out.models[0].default_reasoning_level, 'low');
+  assert.deepStrictEqual(out.models[0].supported_reasoning_levels.map(x => x.effort), ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+  assert.strictEqual(out.models[0].service_tiers[0].id, 'priority');
+});
+
 test('pickTemplate 家族规则独立可测', () => {
   const avail = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.5'];
   assert.strictEqual(pickTemplate('gpt-6.1', avail), 'gpt-6-astra');

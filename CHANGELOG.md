@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.14.1 (2026-10-28) — 跟进 GPT-6.1 Terra 官方目录
+
+- 从 Codex CLI 0.142.5 二进制提取并同步官方 12 模型目录；真实 slug 为 `gpt-6.1-terra`
+- Terra 原生参数保留:500K 软上下文 / 872K 硬顶 / 默认 low / 六档推理 / priority Fast
+- 中转目录按精确 slug 优先继承同模型元数据,不再把 Terra 错配为 Astra;未提供的模型不做加法
+- `gpt-5.6-terra` 的既有退役策略不变;目录提取仍不注入 `base_instructions`
+
 ## v1.14.0 (2026-10-27) — OpenCode 整页 Provider / 模型工作区与性能优化
 
 - **整页统一编辑**:Provider 与模型不再叠加双层弹窗;左侧模型清单、右侧参数,共享草稿一次保存,保留默认模型、协议、推荐参数与原生 V2 写入

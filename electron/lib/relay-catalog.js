@@ -20,6 +20,7 @@ const FAMILY_RULES = [
 const DEFAULT_TEMPLATE = 'gpt-6-astra';
 
 function pickTemplate(slug, availableSlugs) {
+  if (availableSlugs.includes(slug)) return slug;
   for (const r of FAMILY_RULES) {
     if (r.re.test(slug) && availableSlugs.includes(r.tpl)) return r.tpl;
   }

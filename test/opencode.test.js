@@ -46,7 +46,12 @@ test('resolveFetchTarget: 表单 baseUrl 优先于站库(改了地址就用改�
   const r = resolveFetchTarget({ relayId: 'relay-1', baseUrl: 'https://edited.example.com/v1' },
     () => ({ baseUrl: 'https://lib.example.com/v1', apiKey: 'sk-lib' }));
   assert.equal(r.baseUrl, 'https://edited.example.com/v1');
-  assert.equal(r.apiKey, 'sk-lib'); // key 没填时回落到站库
+  assert.equal(r.apiKey, 'sk-lib'); // 旧对象调用保留站库回退；新工作区 IPC 不再传 lookup
+});
+
+test('resolveFetchTarget: 新工作区禁用站库回退，空 Key 不会被历史 relayId 补齐', () => {
+  const r = resolveFetchTarget({ baseUrl: 'https://manual.example.com/v1', apiKey: '' }, null);
+  assert.deepEqual(r, { baseUrl: 'https://manual.example.com/v1', apiKey: '' });
 });
 
 test('resolveFetchTarget: 既没 baseUrl 也没站 → 明确报错而不是静默失败', () => {

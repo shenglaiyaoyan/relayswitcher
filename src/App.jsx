@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Dashboard from './pages/Dashboard.jsx';
 import Accounts from './pages/Accounts.jsx';
 import Relays from './pages/Relays.jsx';
@@ -7,6 +7,7 @@ import Settings from './pages/Settings.jsx';
 import OpenCode from './pages/OpenCode.jsx';
 import { Icon, Spinner } from './components/ui.jsx';
 import TitleBar from './components/TitleBar.jsx';
+import { canLeavePage, handleHashNavigation } from './pages/opencode/navigationGuard.js';
 
 const NAV = [
   { key: 'dash', ico: 'dash', label: 'ChatGPT' },
@@ -32,11 +33,19 @@ const parseHash = () => {
 export default function App() {
   const [page, setPage] = useState(() => (parseHash() || {}).page || 'dash');
   const [pageSubMode, setPageSubMode] = useState(() => (parseHash() || {}).subMode || 'global');
+  const currentHash = useRef(window.location.hash || '#dash');
   useEffect(() => {
-    const onHash = () => {
-      const r = parseHash();
-      if (r) { setPage(r.page); setPageSubMode(r.subMode); }
-    };
+    const onHash = handleHashNavigation({
+      location: window.location,
+      parseHash,
+      currentHash: () => currentHash.current,
+      navigate: route => {
+        currentHash.current = route.hash;
+        window.history.replaceState(null, '', route.hash);
+        setPage(route.page); setPageSubMode(route.subMode);
+      },
+      replaceHash: hash => window.history.replaceState(null, '', hash)
+    });
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -79,12 +88,17 @@ export default function App() {
   // 统一页内跳转:'settings-chatgpt'/'settings-opencode' 直达 Settings 子模式;
   // 同步写回 hash(不触发 hashchange),避免残留旧 hash 让同目标二次跳转失效
   const goto = useCallback((target) => {
-    let p = target, sub = 'global';
-    if (target === 'settings-chatgpt' || target === 'settings-opencode') {
-      p = 'settings'; sub = target.slice('settings-'.length);
-    }
-    setPage(p); setPageSubMode(sub);
-    window.history.replaceState(null, '', '#' + (sub === 'global' ? p : target));
+    const navigate = () => {
+      let p = target, sub = 'global';
+      if (target === 'settings-chatgpt' || target === 'settings-opencode') {
+        p = 'settings'; sub = target.slice('settings-'.length);
+      }
+      setPage(p); setPageSubMode(sub);
+      const hash = '#' + (sub === 'global' ? p : target);
+      currentHash.current = hash;
+      window.history.replaceState(null, '', hash);
+    };
+    if (canLeavePage(navigate)) navigate();
   }, []);
 
   useEffect(() => { refresh().finally(() => setBooted(true)); }, [refresh]);

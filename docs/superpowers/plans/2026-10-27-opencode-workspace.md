@@ -20,7 +20,7 @@
 - Create: `src/pages/opencode/draft.mjs`
 - Test: `test/opencode-draft.test.js`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```js
 const d = await import('../src/pages/opencode/draft.mjs');
@@ -37,12 +37,12 @@ assert.deepEqual(withEffort.efforts, ['xhigh']);
 assert.equal(d.addEffort(withEffort, 'xhigh'), withEffort);
 ```
 
-- [ ] **Step 2: 验证失败**
+- [x] **Step 2: 验证失败**
 
 Run: `node --test test/opencode-draft.test.js`  
 Expected: FAIL，无法找到 `draft.mjs`。
 
-- [ ] **Step 3: 实现纯函数**
+- [x] **Step 3: 实现纯函数**
 
 ```js
 export const newModel = (id = '') => ({
@@ -63,7 +63,7 @@ export const addEffort = (model, raw) => {
 export const providerFetchTarget = ({ baseUrl, apiKey }) => ({ baseUrl: baseUrl.trim(), apiKey: apiKey.trim() });
 ```
 
-- [ ] **Step 4: 验证通过并提交**
+- [x] **Step 4: 验证通过并提交**
 
 Run: `node --test test/opencode-draft.test.js`  
 Expected: 全部通过。
@@ -78,16 +78,16 @@ Expected: 全部通过。
 - Create: `src/pages/opencode/ModelEditor.jsx`
 - Test: `test/opencode-ui.test.js`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 断言 `OpenCode.jsx` 渲染 `editing ? <ProviderEditor … /> : <ProviderList … />`，不包含 `Modal open={!!editing}`；`ProviderEditor.jsx` 有 Base URL / API Key / Provider ID 手动输入和 `{ baseUrl, apiKey }` 拉取目标，不包含站库 Select / `已关联` / `pickRelay`；`ModelEditor.jsx` 的 `newEffort` 输入显式 `type="text"`。
 
-- [ ] **Step 2: 运行 UI 测试确认失败**
+- [x] **Step 2: 运行 UI 测试确认失败**
 
 Run: `node --test test/opencode-ui.test.js`  
 Expected: FAIL，仍使用嵌套 Modal。
 
-- [ ] **Step 3: 实现页面骨架和统一草稿**
+- [x] **Step 3: 实现页面骨架和统一草稿**
 
 `OpenCode` 保留 `ocList/ocSave/ocRemove`、错误 toast、导入、移除确认。进入编辑时保存 baseline；`editing` 是唯一草稿，`dirty = JSON.stringify(editing) !== baseline`。成功保存才退出，失败留在原页。
 
@@ -107,7 +107,7 @@ onFetchModels({ baseUrl: data.baseUrl.trim(), apiKey: data.apiKey.trim() });
 
 底部只有一个「保存并写入 OpenCode 配置」按钮。`ModelEditor` 的每次修改都执行 `setData(d => updateModel(d, index, patch))`，切换左侧模型不新开弹窗、不单独保存。保留默认模型 Select、推荐参数、档位 Enter/blur/Escape 及能力/模态开关。
 
-- [ ] **Step 4: 验证 UI 测试通过**
+- [x] **Step 4: 验证 UI 测试通过**
 
 Run: `node --test test/opencode-ui.test.js test/opencode-draft.test.js`  
 Expected: 全部通过。
@@ -123,16 +123,16 @@ Expected: 全部通过。
 - Modify: `src/styles.css`
 - Test: `test/opencode-ui.test.js`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 测试导航守卫没有注册时允许跳转，有未保存草稿时拒绝并只调用一次提示；源码断言 `OpenCode.jsx` 编辑态注册守卫、放弃确认后才清空；统计数字规则 `font-size: 13px`，`ProviderEditor` 标题无 `playfair`。
 
-- [ ] **Step 2: 验证失败**
+- [x] **Step 2: 验证失败**
 
 Run: `node --test test/opencode-ui.test.js`  
 Expected: FAIL，缺少守卫。
 
-- [ ] **Step 3: 实现离开守卫与 BYOK 样式**
+- [x] **Step 3: 实现离开守卫与 BYOK 样式**
 
 ```js
 let guard = null;
@@ -144,17 +144,19 @@ export const canLeavePage = () => !guard || guard();
 
 CSS 按 `designs/byok-opencode/provider-list.png`、`provider-editor.png`、`model-editor.png` 实现工作区，复用 `.side` 等现有全局样式。列表数字和每行模型数 `13px`；「编辑 Provider」为 Inter/Microsoft YaHei 16px / 500，斜体仅用于 OpenCode 大标题。
 
-- [ ] **Step 4: 运行测试、构建和隔离 UI 验收**
+- [x] **Step 4: 运行测试、构建和隔离 UI 验收**
 
 Run: `node --test test/*.test.js`；`.\node_modules\.bin\vite.cmd build`。  
 Expected: 全部通过。
 
 在 `C:\Windows\Temp\opencode\rs-workspace-ui` 的隔离 HOME 启动 Electron + CDP，不加载真实配置。实际操作列表→新建/编辑→修改连接字段→添加/切换模型→修改参数→未保存取消/确认。断言：无 Provider/模型 Modal、无关联下拉、模型草稿切换保留、保存失败仍留草稿；输入 `xhigh` 不按 Enter 时 color 为 `rgb(245, 245, 244)`；侧栏 DOM 与原有 `App.jsx` 一致。截图后人工检查。
 
-- [ ] **Step 5: 运行 smoke**
+- [x] **Step 5: 运行 smoke**
 
 Run: `.\node_modules\.bin\electron.cmd . --smoke`  
 Expected: `SMOKE RESULT: 39 passed, 0 failed`。
+
+验收记录（2026-10-27）：隔离 Electron + 真实 `ipcRenderer.invoke` 失败注入通过；保存失败保留草稿，直接保存保留待输入档位，能力整格只切换一次。独立普通 Provider 验证干净返回、跨页重进、hash 取消/再次导航/确认。全量单测 112/112、smoke 39/39；代码审查发现的 Important 边界已修复。追加性能验收：GPU 实测 Intel Arc / D3D11、gpu_compositing enabled；局部输入与稳定 flush 降低击键重渲染，滚动区 Paint 从 80 次/90.0ms 降至 53 次/69.7ms。未回车档位切换、保存中编辑冻结与输入中侧栏离开均已实测。
 
 ---
 
@@ -164,7 +166,7 @@ Expected: `SMOKE RESULT: 39 passed, 0 failed`。
 - Modify: `package.json`（下一功能版本）
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: 运行完整验证并审查 diff**
+- [x] **Step 1: 运行完整验证并审查 diff**
 
 Run: `node --test test/*.test.js`、Vite build、smoke。  
 Expected: 全绿。审查仅包含 OpenCode 工作区、必要守卫、样式、测试、文档，绝不混入用户已有 captures 或其他未跟踪文件。

@@ -518,9 +518,9 @@ function registerIpc() {
     try { return { ok: true, config: oc.readOpenCodeConfig(ocHome()) }; } catch (e) { return { ok: false, error: e.message }; }
   });
   ipcMain.handle('rs:oc:fetchModels', (_e, target) => {
-    // 手动填的站(未存进中转站库)也能拉:优先用传入的 baseUrl/apiKey,
-    // 缺了再回落到站库(兼容旧调用只传 relayId 的情况)
-    const r = oc.resolveFetchTarget(target, (id) => store.getRelay(id));
+    // 工作区只使用当前表单值；历史 relayId 也不得回填站库 Key。
+    // resolveFetchTarget 本身保留旧字符串调用的站库兼容，供旧测试/调用使用。
+    const r = oc.resolveFetchTarget(target);
     if (r.error) return { ok: false, error: r.error };
     return fetchRelayModels({ baseUrl: r.baseUrl, apiKey: r.apiKey })
       .then(x => ({ ok: true, models: x.ids }))

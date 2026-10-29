@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>OpenCode 编辑页 C 定稿</title>
+<style>
+body{margin:0;background:#0a0a0a;color:#e8d5b7;font-family:Inter,"Microsoft YaHei",sans-serif;font-size:15px}
+header{position:sticky;top:0;z-index:2;background:#111;border-bottom:1px solid #2a241e;padding:12px 24px;display:flex;gap:14px;align-items:center}
+header a{color:#e8d5b7;text-decoration:none;border:1px solid #a78b71;border-radius:8px;padding:6px 14px}
+section{padding:26px 28px 34px;border-bottom:1px solid #1c1915}
+h2{margin:0 0 6px;font-size:20px}
+ul{margin:0 0 16px;color:#b8a892;line-height:1.8;padding-left:20px}
+img{width:100%;max-width:1500px;display:block;border:1px solid #2a241e;border-radius:10px}
+</style></head><body>
+<header><b>C 定稿：</b><a href="#d">① 深色</a><a href="#l">② 浅色皮肤</a><a href="#b">③ 批量 + 拉取</a></header>
+<section id="d"><h2>① 深色 · 主界面</h2><ul>
+<li>整页不滚动，保存栏贴底；只有表格和右侧抽屉内部滚动</li>
+<li>连接一行，四格点击即可改；API Key 带小眼睛</li>
+<li>表格「能力」列：推 / 附 / 工 / T 四个小点，亮 = 开</li>
+<li>右侧抽屉：模板 · Claude ▾ 菜单、基本、能力、模态、思考档位（往下滚），最底下「删除此模型」</li></ul>
+<img src="C-final-dark.png"></section>
+<section id="l"><h2>② 浅色皮肤 · 同一界面</h2><ul>
+<li>暖白纸色底 + 深铜色强调，侧栏和标题栏一起变浅</li>
+<li>布局、控件完全一样，只换颜色；设置里加「深色 / 浅色」切换</li></ul>
+<img src="C-final-light.png"></section>
+<section id="b"><h2>③ 交互状态：批量模式 + 拉取模型</h2><ul>
+<li>点「批量」后每行出现深色复选框，底部一条：已选 3 个 · 模板 ▾ · 套用 · 取消（此时抽屉收起）</li>
+<li>点「拉取模型」弹出小面板：已添加的灰掉，勾选新的点「加入 2 个」，自动套用模板</li>
+<li>图里为了演示把两个状态画在一起，实际不会同时出现</li></ul>
+<img src="C-final-batch-fetch.png"></section>
+</body></html>

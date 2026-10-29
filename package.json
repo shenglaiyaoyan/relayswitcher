@@ -1,7 +1,7 @@
 {
   "name": "relayswitcher",
   "productName": "RelaySwitcher",
-  "version": "1.14.2",
+  "version": "1.14.3",
   "description": "Codex 账号 × 中转站一键切换器 — OAuth 登录态绑定自建中转,可切换可回滚",
   "author": "RelaySwitcher",
   "license": "MIT",
@@ -11,7 +11,9 @@
     "render": "vite build",
     "start": "electron .",
     "smoke": "vite build && electron . --smoke",
-    "dist": "vite build && electron-builder --win nsis"
+    "dist": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1",
+    "verify:update-config": "node scripts/verify-update-config.cjs",
+    "verify:release": "node scripts/verify-release.cjs"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
@@ -23,6 +25,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
+    "rcedit": "4.0.1",
     "vite": "^5.4.11"
   }
 }

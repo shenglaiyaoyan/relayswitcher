@@ -18,10 +18,12 @@ jobs:
       - name: Import lint (catch missing imports before build)
         run: node lint-imports.js
       - name: Unit tests
-        run: node --test test/catalog.test.js test/buildAuthJson.test.js test/patchProviderBlock.test.js test/catalog-extract.test.js
+        run: node --test test/catalog.test.js test/buildAuthJson.test.js test/patchProviderBlock.test.js test/catalog-extract.test.js test/update-config.test.js
       - name: Build renderer
         run: npx vite build
       - name: Package (dir only, no installer)
         run: npx electron-builder --win --dir
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify packaged auto-update configuration
+        run: npm run verify:update-config

@@ -1,0 +1,4 @@
+provider: github
+owner: shenglaiyaoyan
+repo: relayswitcher
+updaterCacheDirName: relayswitcher-updater

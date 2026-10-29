@@ -50,10 +50,15 @@
 
 ```bash
 npm install
-npm run smoke     # 无窗口自检:临时 CODEX_HOME 全流程演练(23 项断言)
+npm run smoke     # 无窗口自检:临时 CODEX_HOME 全流程演练(39 项断言)
 npm run dev       # 构建前端并启动应用
-npm run dist      # 打 NSIS 安装包 → release/RelaySwitcher-Setup-1.0.0.exe
+npm run dist      # 单测/构建/smoke → unpacked → 补图标 → NSIS → 最终包门禁
+npm run verify:release  # 单独复核最终安装包、更新配置和资产哈希
 ```
+
+正式发布统一使用 `npm run dist`。`build/app-update.yml` 必须复制到安装包的 `resources/app-update.yml`；
+最终安装器解包后须通过包内真实 `electron-updater` 的加载检查。缺文件、错误更新仓库、旧源码或哈希不符均中止发布。
+验收只解包并使用隔离 userData，禁止以安装到临时路径的方式测试 NSIS，以免改写真实快捷方式和卸载记录。
 
 ## 目录
 

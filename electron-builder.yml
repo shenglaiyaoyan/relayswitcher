@@ -13,6 +13,8 @@ files:
 extraResources:
   - from: resources
     to: resources
+  - from: build/app-update.yml
+    to: app-update.yml
 win:
   target: nsis
   icon: build/icon.ico

@@ -70,6 +70,35 @@ test('取消默认模型时只清除指向本 Provider 的全局 model，不动�
   assert.equal(mergeProviderBlock({ ...base, model: 'b/m1' }, { ...pd, defaultModel: 'a/m2' }).model, 'a/m2');
 });
 
+test('思考档位按协议写字段：Anthropic 用 effort，OpenAI Chat/Responses 用 reasoningEffort（实测请求体确认）', async () => {
+  const t = await load();
+  const { modelsToBlocks, mergeProviderBlock, providerBlockToRS, PROVIDER_PACKAGES } = require('../electron/lib/opencode.js');
+  const model = t.applyTemplate({ id: 'claude-opus-5-5', name: 'Opus', options: {} }, t.BUILTIN_TEMPLATES[0], 1);
+  const anth = modelsToBlocks([{ ...model, effort: 'max' }], PROVIDER_PACKAGES.message)['claude-opus-5-5'];
+  assert.deepEqual(anth.settings, { effort: 'max' });
+  assert.ok(anth.variants.every(v => v.settings.effort === v.id && !('reasoningEffort' in v.settings)));
+  for (const pkg of [PROVIDER_PACKAGES.chat, PROVIDER_PACKAGES.responses]) {
+    const b = modelsToBlocks([{ ...model, effort: 'max' }], pkg)['claude-opus-5-5'];
+    assert.deepEqual(b.settings, { reasoningEffort: 'max' });
+    assert.ok(b.variants.every(v => v.settings.reasoningEffort === v.id && !('effort' in v.settings)));
+  }
+  // 旧版 RS 写坏的 Anthropic 配置：读回后重新保存应改正为 effort
+  const broken = { package: PROVIDER_PACKAGES.message, settings: { baseURL: 'https://x/v1' }, models: { 'claude-opus-5-5': {
+    name: 'Opus', modelID: 'claude-opus-5-5', settings: { reasoningEffort: 'max' },
+    variants: [{ id: 'low', settings: { reasoningEffort: 'low' } }, { id: 'max', settings: { reasoningEffort: 'max' } }] } } };
+  const rs = providerBlockToRS('Lovable', broken, {});
+  assert.equal(rs.models[0].effort, 'max');
+  const out = mergeProviderBlock({ providers: { Lovable: broken } }, { id: 'Lovable', package: PROVIDER_PACKAGES.message,
+    name: 'Lovable', settings: { baseURL: 'https://x/v1' }, models: rs.models });
+  const fixed = out.providers.Lovable.models['claude-opus-5-5'];
+  assert.deepEqual(fixed.settings, { effort: 'max' });
+  assert.equal(JSON.stringify(fixed).includes('reasoningEffort'), false);
+  assert.deepEqual(fixed.variants.map(v => v.settings.effort).sort(), ['low', 'max']);
+  // 正确写法 effort 也能读回
+  const good = providerBlockToRS('L', { package: PROVIDER_PACKAGES.message, models: { m: { settings: { effort: 'high' } } } }, {});
+  assert.equal(good.models[0].effort, 'high');
+});
+
 test('token 数显示为 M/K', async () => {
   const t = await load();
   assert.equal(t.fmtTokens(1000000), '1M');

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.16.1 (2026-10-29) — 修复 Anthropic 协议思考档位不生效
+
+- Anthropic Messages 协议的 Provider 改写 `settings.effort`（之前错写 `reasoningEffort`，OpenCode 会忽略，`#max`/`#high` 实际都走网关默认档）
+- OpenAI Chat / Responses 协议仍写 `reasoningEffort`（实测这两种只认它）
+- 读回旧配置两种写法都认；在编辑页重新保存一次即自动改正
+- 依据：用 OpenCode 2.2.1 抓实际请求体验证三种协议
+
 ## v1.16.0 (2026-10-29) — OpenCode 编辑页重做：表格 + 右侧抽屉
 
 - 编辑页整页不滚动、保存栏贴底（修复保存栏下方大片留白）；连接信息收成一行，行内直接修改

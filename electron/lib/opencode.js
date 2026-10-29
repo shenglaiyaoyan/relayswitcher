@@ -125,7 +125,7 @@ function mergeProviderBlock(existing, pd) {
   // 只迁移正在保存的 provider:以现有块为基础保留未建模字段,再统一写原生 V2。
   // 不能在旧 provider 下混入 V2 模型字段——OpenCode 会把整个模型当 V1,
   // 忽略 capabilities/settings/compatibility(包括 supportsThinkingBlockBinding)。
-  const models = Array.isArray(pd.models) ? modelsToBlocks(pd.models) : pd.models;
+  const models = Array.isArray(pd.models) ? modelsToBlocks(pd.models, pd.package) : pd.models;
   const block = {
     ...oldBlock,
     ...newBlock,
@@ -180,7 +180,9 @@ function providerBlockToRS(id, block, cfg) {
   const { baseURL, apiKey, ...settingsExtra } = settings;
   const models = Object.entries(b.models || {}).map(([mid, mm]) => {
     const m = mm || {};
-    const { reasoningEffort, ...restOpts } = m.settings || {};
+    // effort 是 Anthropic 包的字段，reasoningEffort 是 OpenAI 包的字段；两种都认（旧版 RS 曾给 Anthropic 错写 reasoningEffort）。
+    const { reasoningEffort: reEffort, effort: anthEffort, ...restOpts } = m.settings || {};
+    const reasoningEffort = anthEffort || reEffort;
     const { tools, input, output, ...capExtra } = m.capabilities || {};
     const { name, modelID, capabilities, settings: _s, limit, variants,
       reasoning, attachment, tool_call, temperature, ...mExtra } = m;
@@ -248,21 +250,38 @@ function fileVariantsShape(existing) {
   return null;
 }
 
-function modelsToBlocks(models) {
+/** 思考档位字段随包而异（2026-10-29 用 opencode 2.2.1 抓请求体实测）：
+    Anthropic Messages 只认 settings.effort → output_config.effort，忽略 reasoningEffort；
+    OpenAI Chat / Responses 只认 reasoningEffort → reasoning_effort / reasoning.effort，忽略 effort。 */
+function effortKeyFor(pkg) {
+  return /anthropic|\/messages$/.test(pkg || '') ? 'effort' : 'reasoningEffort';
+}
+
+/** 把一组 settings 里的档位字段统一成目标包认的那个，另一个删掉。 */
+function fixEffortKey(settings, key) {
+  const out = { ...(settings || {}) };
+  const value = out.effort || out.reasoningEffort;
+  delete out.effort; delete out.reasoningEffort;
+  if (value) out[key] = value;
+  return out;
+}
+
+function modelsToBlocks(models, pkg) {
+  const key = effortKeyFor(pkg);
   return Object.fromEntries((models || []).filter(m => m && m.id).map(m => {
     const raw = { ...(m.rawExtra || {}) };
-    const settings = { ...(m.options || {}) };
+    const settings = fixEffortKey(m.options, key);
     // 输入形态只用于迁移旧对象 variants;输出统一为原生 V2 数组。
     const objectShape = m.variantsShape === 'object';
     const rawVariants = m.variantsRaw || (objectShape ? {} : []);
     if (m.effort) {
-      settings.reasoningEffort = m.effort;
+      settings[key] = m.effort;
       const v = objectShape ? rawVariants[m.effort] : (rawVariants || []).find(x => x && x.id === m.effort);
       if (v && !objectShape) {
-        Object.assign(settings, v.settings || {});
+        Object.assign(settings, fixEffortKey(v.settings, key));
         if (v.body || raw.body) raw.body = { ...(raw.body || {}), ...(v.body || {}) };
       }
-    } else delete settings.reasoningEffort;
+    } else { delete settings.effort; delete settings.reasoningEffort; }
     const wanted = new Set((m.efforts || []).filter(Boolean));
     // 统一输出原生 V2 variants 数组。OpenCode 按 provider/model 判定 V1/V2,
     // 对象 variants 与 V2 capabilities/settings/compatibility 混用会让后者被忽略。
@@ -273,8 +292,8 @@ function modelsToBlocks(models) {
         variants.push({
           id,
           settings: {
-            ...(value && value.settings ? value.settings : {}),
-            ...(value && value.effort ? { reasoningEffort: value.effort } : {}),
+            ...fixEffortKey(value && value.settings, key),
+            ...(value && value.effort ? { [key]: value.effort } : {}),
             ...(value && value.thinking ? { thinking: value.thinking } : {})
           },
           ...(value && value.body ? { body: value.body } : {}),
@@ -284,13 +303,14 @@ function modelsToBlocks(models) {
       // 迁移时新增的档位(如套用模板)同数组分支一样补成 variant,否则只写出旧对象里已有的档。
       for (const e of wanted) {
         if (!Object.prototype.hasOwnProperty.call(rawVariants, e) && e !== m.baseEffort) {
-          variants.push({ id: e, settings: { reasoningEffort: e } });
+          variants.push({ id: e, settings: { [key]: e } });
         }
       }
     } else {
-      const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id));
+      const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id))
+        .map(v => (v.settings ? { ...v, settings: fixEffortKey(v.settings, key) } : v));
       const fresh = [...wanted].filter(e => !kept.some(v => v.id === e) && e !== m.baseEffort)
-        .map(e => ({ id: e, settings: { reasoningEffort: e } }));
+        .map(e => ({ id: e, settings: { [key]: e } }));
       variants.push(...kept, ...fresh);
     }
     return [m.id, {

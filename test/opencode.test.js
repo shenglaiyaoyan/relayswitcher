@@ -181,7 +181,8 @@ test('mergeProviderBlock: 新增模型的 variants 统一为 V2 数组', () => {
   const v = out.providers.accio.models['claude-opus-4.8'].variants;
   assert.ok(Array.isArray(v), 'V2 variants 必须是数组');
   assert.deepEqual(v.map(x => x.id), ['low', 'high', 'max']);
-  assert.deepEqual(v[0].settings, { reasoningEffort: 'low' });
+  // Anthropic 包只认 effort（2026-10-29 抓请求体实测：reasoningEffort 被忽略）
+  assert.deepEqual(v[0].settings, { effort: 'low' });
 });
 
 test('mergeProviderBlock: 旧 provider 统一迁移为 V2,保留 compatibility 并转换 variants', () => {
@@ -214,10 +215,11 @@ test('mergeProviderBlock: 旧 provider 统一迁移为 V2,保留 compatibility �
   assert.equal(m.modelID, 'claude-opus-5-5');
   assert.equal(m.capabilities.tools, true);
   assert.deepEqual(m.capabilities.input, ['text', 'image']);
-  assert.equal(m.settings.reasoningEffort, 'max');
+  assert.equal(m.settings.effort, 'max');
+  assert.equal(m.settings.reasoningEffort, undefined, 'Anthropic 包不认 reasoningEffort');
   assert.ok(Array.isArray(m.variants), 'variants 必须是 V2 数组');
   assert.deepEqual(m.variants.map(v => v.id), ['high', 'xhigh', 'max']);
-  assert.deepEqual(m.variants[0].settings, { reasoningEffort: 'high' });
+  assert.deepEqual(m.variants[0].settings, { effort: 'high' });
 });
 
 test('mergeProviderBlock: 同 id 覆盖其他保留 + 旧形态 provider 块同步清理', () => {

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.16.2 (2026-10-29) — 修复思考档位删除按钮样式
+
+- 参数抽屉里档位的 × 删除按钮漏了样式，显示成系统默认白色方块；恢复为深色小叉，悬停变红
+- 新增回归测试：编辑页所有按钮必须有自定义背景和边框
+
 ## v1.16.1 (2026-10-29) — 修复 Anthropic 协议思考档位不生效
 
 - Anthropic Messages 协议的 Provider 改写 `settings.effort`（之前错写 `reasoningEffort`，OpenCode 会忽略，`#max`/`#high` 实际都走网关默认档）

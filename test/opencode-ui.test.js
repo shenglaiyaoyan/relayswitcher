@@ -98,6 +98,23 @@ test('参数抽屉：模板菜单即点即套用、存为新模板、已修改�
   assert.match(lib, /恢复内置模板/);
   assert.match(lib, /ocTemplatesSave/);
 });
+test('编辑页每个按钮都有自定义背景和边框，不能露出系统默认白色按钮', () => {
+  const css = read('styles.css');
+  const files = ['ModelEditor.jsx', 'ModelTable.jsx', 'FetchPopover.jsx', 'ProviderEditor.jsx'].map(f => read('pages/opencode/' + f));
+  const classes = new Set();
+  for (const src of files) {
+    for (const m of src.matchAll(/<button[^>]*?className=\{?["'`]([^"'`]+)/g)) classes.add(m[1].trim().split(/\s+/)[0]);
+    assert.doesNotMatch(src, /<button(?![^>]*className)[^>]*>/, '按钮必须带 className');
+  }
+  const covered = c => {
+    const rules = [...css.matchAll(new RegExp('[^}]*\\.' + c.replace(/[-]/g, '\\-') + '\\b[^{]*\\{([^}]*)\\}', 'g'))].map(m => m[1]);
+    return rules.some(r => /background/.test(r)) && rules.some(r => /border\s*:/.test(r));
+  };
+  // .mono 仅用于档位名按钮，由 .oce-effort > button:first-child 负责样式
+  for (const c of classes) if (c !== 'mono') assert.ok(covered(c), `按钮类 .${c} 缺少 background 或 border 样式`);
+  assert.match(css, /\.oce-effort > button:first-child\s*\{[^}]*border:\s*0[^}]*background:\s*none/);
+});
+
 test('未保存编辑离开有确认，Provider 统计数字使用正常字号', () => {
   const source = read('pages/OpenCode.jsx');
   assert.match(source, /setNavigationGuard/);

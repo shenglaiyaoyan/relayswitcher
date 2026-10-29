@@ -587,7 +587,8 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oce-effort > button:first-child i { padding: 0 4px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-style: normal; font-size: 9.5px; font-family: 'Inter','Microsoft YaHei',sans-serif; }
 .oce-effort.on { border-color: var(--accent); background: var(--accent-soft); }
 .oce-effort.on > button:first-child { color: var(--accent-strong); }
-.oce-effort .oce-effort-x { height: 100%; padding: 0 7px; border-radius: 0; }
+.oce-effort .oce-effort-x { display: inline-flex; align-items: center; justify-content: center; height: 100%; padding: 0 8px 0 4px; border: 0; border-radius: 0; background: transparent; color: var(--txt-3); cursor: pointer; }
+.oce-effort .oce-effort-x:hover { color: var(--bad); background: rgba(248, 113, 113, 0.1); }
 .oce-effort-add { display: flex; gap: 8px; margin-top: 10px; }
 .oce-effort-add input { flex: 1; height: 30px; padding: 0 10px; border-radius: 7px; background: var(--input-bg); font-size: 12px; }
 .oce-effort-add .btn { flex-shrink: 0; min-width: 56px; }

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>ChatGPT 页 · 三个方向</title>
+<style>
+body{margin:0;background:#0a0a0a;color:#e8d5b7;font-family:Inter,"Microsoft YaHei",sans-serif;font-size:15px}
+header{position:sticky;top:0;z-index:2;background:#111;border-bottom:1px solid #2a241e;padding:12px 24px;display:flex;gap:14px;align-items:center}
+header a{color:#e8d5b7;text-decoration:none;border:1px solid #a78b71;border-radius:8px;padding:6px 14px}
+section{padding:26px 28px 34px;border-bottom:1px solid #1c1915}
+h2{margin:0 0 6px;font-size:20px}
+ul{margin:0 0 16px;color:#b8a892;line-height:1.8;padding-left:20px}
+img{width:100%;max-width:1500px;display:block;border:1px solid #2a241e;border-radius:10px}
+</style></head><body>
+<header><b>选一个方向：</b><a href="#a">A · 线路图</a><a href="#b">B · 两张列表</a><a href="#c">C · 控制台</a></header>
+<section id="a"><h2>A · 线路图</h2><ul>
+<li>顶部把当前绑定画成一条线：账号 → 中转站 → Codex，一眼看清现在走的是哪条路</li>
+<li>点哪个节点就在下面展开它的选择（图里展开的是账号）</li>
+<li>目录、上下文窗口一行；底部是「立即切换」+ 横向流程进度；最下面一条是上次备份和一键回滚</li></ul>
+<img src="A-route.png"></section>
+<section id="b"><h2>B · 两张列表</h2><ul>
+<li>左边账号、右边中转站，各点一行组成要切换的组合，延迟用小条直观对比</li>
+<li>顶部一行写着「当前绑定」的全部信息；底部操作栏写着「切换到 X × Y」</li>
+<li>小瑕疵：侧栏图标丢了、右上「一键回滚」被挤窄，实现时会修</li></ul>
+<img src="B-lists.png"></section>
+<section id="c"><h2>C · 控制台</h2><ul>
+<li>左边是切换表单（下拉 + 分段选择），下面是竖向的五步流程清单</li>
+<li>右边是「当前状态」明细表 + 最近 3 次备份，每次都能单独回滚</li>
+<li>信息最全、最像传统设置页</li></ul>
+<img src="C-console.png"></section>
+</body></html>

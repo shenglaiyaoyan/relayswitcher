@@ -317,6 +317,7 @@ function normalizeBaseUrl(url) {
 }
 
 /** 解析「拉取模型」的目标:显式 baseUrl 优先(手动填的站也能拉),
+    裸域名自动补 /v1,与保存时的 API 根规则一致,不改传入的表单。
     缺 baseUrl/apiKey 时回落到中转站库。target 可以是 relayId 字符串(兼容旧调用)。 */
 function resolveFetchTarget(target, lookupRelay) {
   const t = typeof target === 'string' ? { relayId: target } : (target || {});
@@ -327,7 +328,7 @@ function resolveFetchTarget(target, lookupRelay) {
   const baseUrl = String(t.baseUrl || (relay && relay.baseUrl) || '').trim();
   const apiKey = t.apiKey || (relay && relay.apiKey) || '';
   if (!baseUrl) return { error: '先填 Base URL,或选一个中转站' };
-  return { baseUrl, apiKey };
+  return { baseUrl: normalizeBaseUrl(baseUrl), apiKey };
 }
 
 function backupOpenCode(home) {

@@ -54,6 +54,29 @@ test('resolveFetchTarget: 新工作区禁用站库回退，空 Key 不会被历�
   assert.deepEqual(r, { baseUrl: 'https://manual.example.com/v1', apiKey: '' });
 });
 
+test('resolveFetchTarget: 裸域名拉模型走 /v1/models，且不改表单或 Key', () => {
+  for (const baseUrl of ['https://dihuang.zeniths.codes', ' https://dihuang.zeniths.codes/ ']) {
+    const target = Object.freeze({ baseUrl, apiKey: 'test-key', protocol: 'message' });
+    const r = resolveFetchTarget(target, () => { throw new Error('不该查站库'); });
+    assert.equal(r.baseUrl.replace(/\/+$/, '') + '/models', 'https://dihuang.zeniths.codes/v1/models');
+    assert.equal(r.apiKey, 'test-key');
+    assert.equal(target.baseUrl, baseUrl);
+  }
+});
+
+test('resolveFetchTarget: 已带 /v1 不重复追加，自定义 API 路径原样保留', () => {
+  for (const baseUrl of [
+    'https://api.example.com/v1',
+    'https://api.example.com/v1/',
+    'https://api.example.com/proxy/v1/',
+    'https://api.example.com/custom-api/'
+  ]) {
+    const r = resolveFetchTarget({ baseUrl, apiKey: '' });
+    assert.equal(r.baseUrl.replace(/\/+$/, '') + '/models', baseUrl.replace(/\/+$/, '') + '/models');
+    assert.equal(r.apiKey, '');
+  }
+});
+
 test('resolveFetchTarget: 既没 baseUrl 也没站 → 明确报错而不是静默失败', () => {
   const r = resolveFetchTarget({}, () => null);
   assert.ok(r.error && r.error.includes('Base URL'));

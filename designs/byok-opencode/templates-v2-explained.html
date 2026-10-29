@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>设计稿 ② ③ 图解</title>
+<style>
+body{margin:0;background:#0a0a0a;color:#e8d5b7;font-family:Inter,"Microsoft YaHei",sans-serif;font-size:15px}
+section{padding:24px 28px 40px}
+h2{margin:0 0 8px;font-weight:600;font-size:20px}
+.lead{color:#b8a892;margin:0 0 16px}
+.wrap{position:relative;max-width:1500px}
+.wrap img{width:100%;display:block;border:1px solid #2a241e;border-radius:10px}
+.pin{position:absolute;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;background:#e8d5b7;color:#0a0a0a;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #0a0a0a,0 0 0 5px #e8d5b7}
+ol{max-width:1500px;margin:18px 0 0;padding-left:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 24px}
+li{display:flex;gap:10px;line-height:1.6}
+li b.n{flex:none;width:26px;height:26px;border-radius:50%;background:#e8d5b7;color:#0a0a0a;display:flex;align-items:center;justify-content:center}
+.flow{max-width:1500px;border:1px solid #2a241e;border-radius:10px;padding:12px 16px;margin:0 0 16px;background:#111;line-height:1.8}
+.box{position:absolute;border:2px solid #f5c76b;border-radius:6px;box-sizing:border-box;pointer-events:none}.box i{position:absolute;left:-2px;top:-24px;font-style:normal;font-weight:700;font-size:13px;background:#f5c76b;color:#0a0a0a;border-radius:4px;padding:1px 7px}</style></head><body>
+
+<section>
+<h2>② Provider 编辑页 —— 解决“拉回 20 个模型要一个个填参数”</h2>
+<div class="flow">你的操作顺序：填好 Base URL 和 API Key → 点 ③“拉取” → 拉回来的模型自动按名字认出是哪一系（Claude / GPT…）→ 加进来的模型参数已经自动填好 → 想统一改几个，就 ⑤ 勾选它们，⑥ 选模板点“套用”。</div>
+<div class="wrap"><img src="editor-batch-template-v2.png">
+<span class="box" style="left:94.9%;top:21.44%;width:2.7%;height:3.68%"><i>1</i></span><span class="box" style="left:18.4%;top:32.24%;width:79.2%;height:3.52%"><i>2</i></span><span class="box" style="left:78.15%;top:27.68%;width:19.45%;height:3.68%"><i>3</i></span><span class="box" style="left:17.65%;top:42.88%;width:21.45%;height:6.08%"><i>4</i></span><span class="box" style="left:17.9%;top:50.08%;width:21.2%;height:28%"><i>5</i></span><span class="box" style="left:17.4%;top:82.4%;width:21.9%;height:8%"><i>6</i></span><span class="box" style="left:40.15%;top:42.88%;width:18.2%;height:3.68%"><i>7</i></span>
+</div>
+<ol>
+<li><b class="n">1</b><span><b>小眼睛</b>：点一下 API Key 显示明文，再点隐藏。</span></li>
+<li><b class="n">2</b><span><b>拉取结果</b>：每个模型后面写着认出的系列，如“gpt-6.1-sol | GPT”；认不出的写“未匹配”，需要你手填或手选模板。</span></li>
+<li><b class="n">3</b><span><b>拉取按钮</b>：用上面填的地址和 Key 拉模型列表（原来就有）。</span></li>
+<li><b class="n">4</b><span><b>搜索 + 筛选</b>：模型多时输入名字找，或点“Claude / GPT / Gemini”只看这一系。</span></li>
+<li><b class="n">5</b><span><b>勾选框</b>：勾上几个模型（图里勾了 3 个）。</span></li>
+<li><b class="n">6</b><span><b>批量套用栏</b>：勾选后出现。选“按名称自动匹配”或指定某个模板，点“套用”，3 个模型的参数一次填好。</span></li>
+<li><b class="n">7</b><span><b>右侧</b>：当前选中那个模型的参数，详细见下面的图 ③。</span></li>
+</ol>
+</section>
+
+<section>
+<h2>③ 单个模型参数 —— 解决“某一个模型想换模板 / 微调”</h2>
+<div class="flow">你的操作顺序：左边点一个模型 → 右上 ① 下拉选模板，点“套用”，下面所有参数被填好 → 哪项不合适直接改（③④⑤⑥都能改）→ 改过的项会标“已修改” → 最后底部统一保存。</div>
+<div class="wrap"><img src="model-template-select-v2.png">
+<span class="box" style="left:71.4%;top:26.88%;width:25.7%;height:4.08%"><i>1</i></span><span class="box" style="left:75.9%;top:30.96%;width:21.2%;height:2%"><i style="top:auto;bottom:-24px;left:auto;right:-2px">2</i></span><span class="box" style="left:70.9%;top:45.6%;width:3.7%;height:2.32%"><i>3</i></span><span class="box" style="left:36.75%;top:57.44%;width:60.1%;height:4.48%"><i>4</i></span><span class="box" style="left:36.75%;top:64.64%;width:41.85%;height:3.68%"><i>5</i></span><span class="box" style="left:36.75%;top:71.2%;width:38.1%;height:3.76%"><i>6</i></span><span class="box" style="left:18.1%;top:55.84%;width:16.6%;height:17.92%"><i>7</i></span>
+</div>
+<ol>
+<li><b class="n">1</b><span><b>参数模板</b>：下拉选模板 → 点“套用”填入；“存为新模板”把这个模型现在的参数存成新模板，下次复用。</span></li>
+<li><b class="n">2</b><span><b>来源说明</b>：告诉你这些参数是从哪个模板来的；之后改模板不会偷偷改这个模型。</span></li>
+<li><b class="n">3</b><span><b>已修改</b>：你手动改过的项（例：最大输出从 128000 改成 64000）会带这个小标记。</span></li>
+<li><b class="n">4</b><span><b>四个开关</b>：推理 / 附件 / 工具 / Temp，套用后仍可随便开关。</span></li>
+<li><b class="n">5</b><span><b>输入 / 输出模态</b>：五个和三个选项一直都在，亮的是选中，点一下切换。</span></li>
+<li><b class="n">6</b><span><b>思考档位</b>：点档位设为默认，× 删除，右边输入框加新档位。</span></li>
+<li><b class="n">7</b><span><b>示意小框</b>：只是演示 ① 下拉展开后长什么样（上面是推荐的，下面是全部模板），实际不会出现在这个位置。</span></li>
+</ol>
+</section>
+</body></html>

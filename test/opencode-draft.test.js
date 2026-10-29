@@ -2,6 +2,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+test('默认模型随 Provider ID / 模型 ID 改名而更新，指向不存在的模型时清空', async () => {
+  const d = await import('../src/pages/opencode/draft.mjs');
+  const models = [{ id: 'claude-opus-5-5' }, { id: 'org/gpt-6' }];
+  const fix = (id, defaultModel) => d.normalizeDefaultModel({ id, models, defaultModel }).defaultModel;
+  assert.equal(fix('lovable', 'lovable/claude-opus-5-5'), 'lovable/claude-opus-5-5');
+  assert.equal(fix('lovable2', 'lovable/claude-opus-5-5'), 'lovable2/claude-opus-5-5');
+  assert.equal(fix('lovable', 'lovable/org/gpt-6'), 'lovable/org/gpt-6');
+  assert.equal(fix('lovable', 'lovable/deleted-model'), '');
+  assert.equal(fix('lovable', ''), '');
+  assert.equal(fix('lovable', 'other/claude-opus-5-5'), 'lovable/claude-opus-5-5');
+  const p = { id: 'x', defaultModel: 'x/a', models: [{ id: 'a' }] };
+  assert.equal(d.renameModelDefault(p, 'a', 'b').defaultModel, 'x/b');
+  assert.equal(d.renameModelDefault(p, 'c', 'b').defaultModel, 'x/a');
+});
+
 test('Provider 草稿手动拉取、模型编辑与新增档位保持纯数据操作', async () => {
   const d = await import('../src/pages/opencode/draft.mjs');
   const p = d.newProvider();

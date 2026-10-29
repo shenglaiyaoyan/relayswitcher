@@ -60,6 +60,16 @@ test('旧对象形态 variants 的导入模型套模板后，新增档位也写�
   assert.equal(new Set(block.variants.map(v => v.id)).size, block.variants.length);
 });
 
+test('取消默认模型时只清除指向本 Provider 的全局 model，不动其它 Provider 的默认', () => {
+  const { mergeProviderBlock } = require('../electron/lib/opencode.js');
+  const base = { providers: { a: { package: 'x', models: {} } } };
+  const pd = { id: 'a', package: 'x', name: 'A', settings: {}, models: [], defaultModel: '', clearDefaultModel: true };
+  assert.equal(mergeProviderBlock({ ...base, model: 'a/m1' }, pd).model, undefined);
+  assert.equal(mergeProviderBlock({ ...base, model: 'a/m1' }, { ...pd, clearDefaultModel: false }).model, 'a/m1');
+  assert.equal(mergeProviderBlock({ ...base, model: 'b/m1' }, pd).model, 'b/m1');
+  assert.equal(mergeProviderBlock({ ...base, model: 'b/m1' }, { ...pd, defaultModel: 'a/m2' }).model, 'a/m2');
+});
+
 test('token 数显示为 M/K', async () => {
   const t = await load();
   assert.equal(t.fmtTokens(1000000), '1M');

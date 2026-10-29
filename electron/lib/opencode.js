@@ -144,6 +144,7 @@ function mergeProviderBlock(existing, pd) {
     else out.provider = rest;
   }
   if (pd.defaultModel) out.model = pd.defaultModel;
+  else if (pd.clearDefaultModel && typeof out.model === 'string' && out.model.startsWith(pd.id + '/')) delete out.model; // 用户明确取消本 Provider 的默认
   return out;
 }
 

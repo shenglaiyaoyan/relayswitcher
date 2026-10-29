@@ -38,12 +38,12 @@ test('OpenCode 输入保持局部渲染，保存/离开前同步完整草稿', (
   assert.match(source, /const isDirty = JSON\.stringify\(draft\) !== baselineRef\.current/);
 });
 
-test('新增档位输入框显式文本类型，标题使用正常功能字号', () => {
+test('新增档位输入框显式文本类型，标题不用衬线斜体', () => {
   const model = read('pages/opencode/ModelEditor.jsx');
   assert.match(model, /<input[^>]*type="text"[^>]*value=\{newEffort\}/);
   const editor = read('pages/opencode/ProviderEditor.jsx');
-  assert.doesNotMatch(editor, /playfair/);
-  assert.match(editor, /className="oc-editor-title"/);
+  assert.doesNotMatch(editor, /playfair/i);
+  assert.match(editor, /className="oce-title"/);
 });
 
 test('API Key 小眼睛切换显示，已保存时提示留空保持不变', () => {
@@ -53,26 +53,51 @@ test('API Key 小眼睛切换显示，已保存时提示留空保持不变', () 
   assert.match(editor, /已保存 · 留空保持不变/);
 });
 
-test('模型模板：拉取自动套用、批量套用、单模型模板选择，移除硬编码推荐参数', () => {
+test('编辑页撑满主区域：整页不滚动，保存栏贴底，只有表格和抽屉内部滚动', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.main:has\(\.oce\)\s*\{[^}]*padding:\s*0[^}]*overflow:\s*hidden/);
+  assert.match(css, /\.oce\s*\{[^}]*flex:\s*1[^}]*min-height:\s*0/);
+  assert.doesNotMatch(css, /calc\(100vh - 108px\)/);
+  assert.match(css, /\.oce-table-body\s*\{[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.oce-drawer-body\s*\{[^}]*overflow-y:\s*auto/);
+});
+
+test('表格 + 抽屉：批量复选框只在批量模式出现，拉取改为弹层，默认模型由抽屉星标设置', () => {
+  const table = read('pages/opencode/ModelTable.jsx');
+  assert.match(table, /\{batch && <input type="checkbox"/);
+  assert.match(table, /className="oce-batch-bar"/);
+  assert.match(table, /按名称自动匹配/);
+  assert.match(table, /className="oce-search"/);
+  for (const col of ['模型 ID', '名称', '模板', '上下文', '输出', '默认档位', '能力']) assert.match(table, new RegExp(col));
+  const pop = read('pages/opencode/FetchPopover.jsx');
+  assert.match(pop, /加入时自动套用匹配模板/);
+  assert.match(pop, /已添加/);
   const source = read('pages/OpenCode.jsx');
   assert.match(source, /applyTemplate\(newModel\(id\)/);
-  assert.match(source, /className="oc-batch-bar"/);
-  assert.match(source, /按名称自动匹配/);
-  assert.match(source, /className="oc-model-search"/);
+  assert.doesNotMatch(source, /oc-fetched-models/);
+  const editor = read('pages/opencode/ProviderEditor.jsx');
+  assert.doesNotMatch(editor, /默认模型/);
+  const model = read('pages/opencode/ModelEditor.jsx');
+  assert.match(model, /设为默认/);
+  assert.match(model, /删除此模型/);
+});
+
+test('参数抽屉：模板菜单即点即套用、存为新模板、已修改标记、全部控件保留', () => {
   const model = read('pages/opencode/ModelEditor.jsx');
   assert.doesNotMatch(model, /套用推荐参数|RECOMMENDED_EFFORTS/);
   assert.match(model, /存为新模板/);
+  assert.match(model, /onChange\(applyTemplate\(model, t\)\)/);
   assert.match(model, /templateDiff\(model\)/);
   assert.match(model, /已修改/);
   for (const mod of ['text', 'image', 'audio', 'video', 'pdf']) assert.match(model, new RegExp(`'${mod}'`));
-  assert.match(model, /新增档位/);
+  for (const cap of ['推理', '附件', '工具', 'Temp']) assert.match(model, new RegExp(cap));
+  assert.match(model, /添加档位/);
   const settings = read('pages/Settings.jsx');
   assert.match(settings, /<TemplateLibrary/);
   const lib = read('pages/opencode/TemplateLibrary.jsx');
   assert.match(lib, /恢复内置模板/);
   assert.match(lib, /ocTemplatesSave/);
 });
-
 test('未保存编辑离开有确认，Provider 统计数字使用正常字号', () => {
   const source = read('pages/OpenCode.jsx');
   assert.match(source, /setNavigationGuard/);
@@ -84,5 +109,4 @@ test('未保存编辑离开有确认，Provider 统计数字使用正常字号',
   const css = read('styles.css');
   assert.match(css, /\.oc-directory-tools[^}]*font-size:\s*13px/);
   assert.match(css, /\.oc-model-count[^}]*font-size:\s*13px/);
-  assert.match(css, /\.oc-editor-title[^}]*font-size:\s*16px[^}]*font-weight:\s*500/);
 });

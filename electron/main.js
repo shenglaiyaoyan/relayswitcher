@@ -495,10 +495,12 @@ function registerIpc() {
         settings: { ...(p.settingsExtra || {}), baseURL: oc.normalizeBaseUrl(p.baseUrl), ...(effKey ? { apiKey: effKey } : {}) }, // 裸域名自动补 /v1(防 404)
         models: p.models,
         ...(p.rawExtra ? { rawExtra: p.rawExtra } : {}),
-        defaultModel: p.defaultModel || null
+        defaultModel: p.defaultModel || null,
+        clearDefaultModel: !!p.clearDefaultModel
       });
       oc.writeOpenCodeConfig(ocHome(), merged);
-      store.saveOpenCodeProvider({ ...p, apiKey: effKey || '' });
+      const { clearDefaultModel: _clear, ...toStore } = p; // 一次性意图，不落盘
+      store.saveOpenCodeProvider({ ...toStore, apiKey: effKey || '' });
       return { ok: true, hasComments: !!cfg._hasComments };
     } catch (e) { return { ok: false, error: e.message }; }
   });

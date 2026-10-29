@@ -9,10 +9,11 @@ export const PROTOCOLS = [
   { value: 'responses', label: 'OpenAI Responses', desc: '@ai-sdk/openai(/v1/responses)' }
 ];
 export const protocolLabel = value => (PROTOCOLS.find(p => p.value === value) || {}).label || value;
+const SHORT = { message: 'Messages', chat: 'Chat', responses: 'Responses' };
 
 export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetching,
-  onFetchModels, onSave, onCancel, registerFlush, registerInputFlush, registerModelInput, getDraft, editingRef, children }) {
-  const models = data.models || [];
+  onFetchModels, onSave, onCancel, registerFlush, registerInputFlush, registerModelInput, getDraft, editingRef,
+  fetchPopover, children }) {
   const [showKey, setShowKey] = useState(false);
   const inputFlushes = useRef(new Map());
   const registerInput = useCallback((field, fn) => {
@@ -31,6 +32,7 @@ export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetc
       if (field.startsWith('model.')) {
         const [, index, key, nested] = field.split('.');
         const model = draft.models[Number(index)];
+        if (!model) return;
         draft = updateModel(draft, Number(index), nested
           ? { [key]: { ...(model[key] || {}), [nested]: value } }
           : { [key]: value });
@@ -44,8 +46,7 @@ export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetc
     return () => registerInputFlush(null);
   }, []);
   const save = () => {
-    const draft = flushInputs();
-    if (!draft.id.trim()) return;
+    flushInputs();
     const next = registerFlush?.() || getDraft();
     editingRef.current = next;
     setData(next);
@@ -63,56 +64,49 @@ export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetc
   };
 
   return (
-    <div className="oc-workspace" aria-busy={busy}>
-      <div className="oc-editor-scroll">
-        <div className="oc-editor-top">
-          <button className="oc-back" onClick={cancel}><Icon name="chevron" size={13} /> 返回 Provider 列表</button>
-          {dirty && <span className="oc-dirty">有未保存的修改</span>}
+    <div className="oce" aria-busy={busy}>
+      <header className="oce-head">
+        <div className="oce-head-main">
+          <button type="button" className="oce-back" onClick={cancel}><Icon name="chevron" size={12} /> Provider 列表</button>
+          <span className="oce-eyebrow">{isNew ? '新建 OpenCode 提供商' : 'OpenCode 提供商'}</span>
+          <DraftTextInput registerFlush={registerInput} field="name" type="text" className="oce-title" value={data.name}
+            onCommit={value => setData(d => ({ ...d, name: value }))} placeholder="显示名称" aria-label="显示名称" />
         </div>
-        <div className="oc-editor-heading">
-          <h1>OpenCode</h1>
-          <div><h2 className="oc-editor-title">{isNew ? '新建 Provider' : '编辑 Provider'}</h2>
-            <p>{data.name || data.id || '手动配置'} · {protocolLabel(data.protocol)}</p></div>
+        <div className="oce-fetch-anchor">
+          <button type="button" className="btn btn-sm oce-fetch" disabled={fetching || busy} onClick={fetchModels}
+            title={data.baseUrl?.trim() ? '用当前 Base URL 与 API Key 拉取 /v1/models' : '先填写 Base URL'}>
+            {fetching ? <Spinner size={11} /> : <Icon name="download" size={13} />} 拉取模型</button>
+          {fetchPopover}
         </div>
+      </header>
 
-        <section className="oc-panel oc-connection">
-          <div className="oc-section-head"><h3>连接与身份</h3><p>全部手动输入，拉取时使用当前 Base URL 与 API Key。</p></div>
-          <div className="oc-connection-grid">
-            <label className="oc-field span-6">Base URL<DraftTextInput registerFlush={registerInput} field="baseUrl" type="text" className="mono" value={data.baseUrl}
-              onCommit={value => setData(d => ({ ...d, baseUrl: value }))} placeholder="https://api.example.com/v1" /></label>
-            <div className="oc-field span-6"><label htmlFor="oc-api-key">API Key</label><span className="oc-field-hint">{isNew ? '随 Provider 保存' : data.apiKey ? '已保存 · 留空保持不变' : '留空 = 保持不变'}</span>
-              <div className="oc-secret">
-                <DraftTextInput id="oc-api-key" registerFlush={registerInput} field="apiKey" type={showKey ? 'text' : 'password'} className="mono" value={data.apiKey}
-                  onCommit={value => setData(d => ({ ...d, apiKey: value }))} placeholder="sk-…" autoComplete="off" spellCheck={false} />
-                <button type="button" className="oc-secret-toggle" onClick={() => setShowKey(v => !v)}
-                  aria-label={showKey ? '隐藏 API Key' : '显示 API Key'} title={showKey ? '隐藏 API Key' : '显示 API Key'}>
-                  <Icon name={showKey ? 'eyeOff' : 'eye'} size={15} /></button>
-              </div></div>
-            <fieldset className="oc-field span-3"><legend>协议类型</legend><div className="oc-protocol">
-              {PROTOCOLS.map(p => <button type="button" key={p.value} className={data.protocol === p.value ? 'on' : ''}
-                title={p.desc} onClick={() => setData(d => ({ ...d, protocol: p.value }))}>{p.value === 'message' ? 'Messages' : p.value === 'chat' ? 'Chat' : 'Responses'}</button>)}
-            </div></fieldset>
-            <label className="oc-field span-3">Provider ID<DraftTextInput registerFlush={registerInput} field="id" type="text" className="mono" value={data.id}
-              onCommit={value => setData(d => ({ ...d, id: value }))} placeholder="my-relay" /></label>
-            <label className="oc-field span-3">显示名称<DraftTextInput registerFlush={registerInput} field="name" type="text" value={data.name}
-              onCommit={value => setData(d => ({ ...d, name: value }))} placeholder="My Relay" /></label>
-            <div className="oc-field span-3"><span className="oc-field-label">模型清单</span>
-              <button className="btn oc-fetch" disabled={fetching}
-                onClick={fetchModels}>
-                {fetching ? <Spinner size={11} /> : <Icon name="refresh" size={11} />} 从 /v1/models 拉取</button></div>
-          </div>
-        </section>
-        {children}
-        <div className="oc-default-model"><label className="oc-field">默认模型
-          <Select value={data.defaultModel || ''} onChange={v => setData(d => ({ ...d, defaultModel: v }))}
-            placeholder="不设默认" emptyText="先在上方添加模型"
-            options={models.filter(m => m.id).map(m => ({ value: `${data.id}/${m.id}`, label: `${data.id}/${m.id}` }))} />
-        </label></div>
+      <div className="oce-conn">
+        <div className="oce-cell oce-cell-protocol"><span className="oce-cell-label">协议</span>
+          <Select value={data.protocol} onChange={v => setData(d => ({ ...d, protocol: v }))}
+            options={PROTOCOLS.map(p => ({ value: p.value, label: SHORT[p.value], desc: p.label }))} /></div>
+        <label className="oce-cell oce-cell-url"><span className="oce-cell-label">Base URL</span>
+          <DraftTextInput registerFlush={registerInput} field="baseUrl" type="text" className="mono" value={data.baseUrl}
+            onCommit={value => setData(d => ({ ...d, baseUrl: value }))} placeholder="https://api.example.com/v1" /></label>
+        <div className="oce-cell oce-cell-key"><label htmlFor="oc-api-key" className="oce-cell-label"
+          title={isNew ? '随 Provider 保存' : data.apiKey ? '已保存 · 留空保持不变' : '留空 = 保持不变'}>API Key</label>
+          <DraftTextInput id="oc-api-key" registerFlush={registerInput} field="apiKey" type={showKey ? 'text' : 'password'} className="mono" value={data.apiKey}
+            onCommit={value => setData(d => ({ ...d, apiKey: value }))} placeholder={isNew ? 'sk-…' : '留空 = 保持不变'} autoComplete="off" spellCheck={false} />
+          <button type="button" className="oce-eye" onClick={() => setShowKey(v => !v)}
+            aria-label={showKey ? '隐藏 API Key' : '显示 API Key'} title={showKey ? '隐藏 API Key' : '显示 API Key'}>
+            <Icon name={showKey ? 'eyeOff' : 'eye'} size={15} /></button></div>
+        <label className="oce-cell oce-cell-id"><span className="oce-cell-label">Provider ID</span>
+          <DraftTextInput registerFlush={registerInput} field="id" type="text" className="mono" value={data.id}
+            onCommit={value => setData(d => ({ ...d, id: value }))} placeholder="my-relay" /></label>
       </div>
-      <footer className="oc-savebar"><p>模型修改会随 Provider 一起保存；离开有修改的页面会先确认。</p>
-        <button className="btn btn-sm" onClick={cancel} disabled={busy}>取消</button>
+
+      <div className="oce-body">{children}</div>
+
+      <footer className="oce-savebar">
+        <p>{dirty ? <><i className="oce-dirty-dot" /> 有未保存的修改</> : '模型修改随 Provider 一起保存'}</p>
+        <button className="btn btn-sm oce-ghost" onClick={cancel} disabled={busy}>取消</button>
         <button className="btn btn-sm btn-gold" disabled={busy} onClick={save}>
-          {busy ? <><Spinner size={11} /> 写入中…</> : '保存并写入 OpenCode 配置'}</button></footer>
+          {busy ? <><Spinner size={11} /> 写入中…</> : '保存并写入 OpenCode 配置'}</button>
+      </footer>
     </div>
   );
 }

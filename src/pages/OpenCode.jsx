@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Icon, Confirm, Empty, Select } from '../components/ui.jsx';
+import { Icon, Confirm, Empty } from '../components/ui.jsx';
 import ProviderEditor, { protocolLabel } from './opencode/ProviderEditor.jsx';
 import ModelEditor from './opencode/ModelEditor.jsx';
-import { newProvider, newModel, updateModel } from './opencode/draft.mjs';
+import ModelTable, { AUTO } from './opencode/ModelTable.jsx';
+import FetchPopover from './opencode/FetchPopover.jsx';
+import { newProvider, newModel, updateModel, normalizeDefaultModel, renameModelDefault } from './opencode/draft.mjs';
 import { providerFetchTarget } from './opencode/draft.mjs';
 import { setNavigationGuard } from './opencode/navigationGuard.js';
-import { applyTemplate, fmtTokens, matchTemplate, resolveTemplates, templateFromModel } from './opencode/templates.mjs';
-
-const AUTO = '__auto__';
-const OTHER = '__other__';
+import { applyTemplate, matchTemplate, resolveTemplates, templateFromModel } from './opencode/templates.mjs';
 
 export default function OpenCode({ toast, goto }) {
   const [providers, setProviders] = useState([]);
@@ -25,7 +24,8 @@ export default function OpenCode({ toast, goto }) {
   const [pendingClose, setPendingClose] = useState(null);
   const [templates, setTemplates] = useState(() => resolveTemplates(null));
   const [query, setQuery] = useState('');
-  const [family, setFamily] = useState('');
+  const [batch, setBatch] = useState(false);
+  const [fetchOpen, setFetchOpen] = useState(false);
   const [checked, setChecked] = useState(() => new Set());
   const [batchTemplate, setBatchTemplate] = useState(AUTO);
   const dirty = !!editing && JSON.stringify(editing) !== baseline;
@@ -87,7 +87,9 @@ export default function OpenCode({ toast, goto }) {
         base.defaultModel = 'my-relay/claude-opus-5-5';
         if (h.includes('demo-dialog')) {
           setRelayModels(['claude-opus-5-5', 'claude-sonnet-5-5', 'gpt-6.1-sol', 'gemini-4-argon', 'deepseek-v4-pro', 'acme-internal-x']);
-          setChecked(new Set(h.includes('batch') ? [0, 1, 2] : []));
+          setBatch(h.includes('batch'));
+          setChecked(new Set(h.includes('batch') ? [0, 2] : []));
+          setFetchOpen(h.includes('fetch'));
         }
         setProviders([{ ...base, protocol: 'chat', relayId: undefined }]);
       }
@@ -98,7 +100,7 @@ export default function OpenCode({ toast, goto }) {
     return () => window.removeEventListener('hashchange', applyDemo);
   }, []);
 
-  const resetListUi = () => { setQuery(''); setFamily(''); setChecked(new Set()); setBatchTemplate(AUTO); };
+  const resetListUi = () => { setQuery(''); setBatch(false); setChecked(new Set()); setBatchTemplate(AUTO); setFetchOpen(false); };
   const openAdd = () => { sessionRef.current++; resetListUi(); const p = newProvider(); setRelayModels(null); setIsNew(true); setEditing(p); setBaseline(JSON.stringify(p)); setSelectedModel(0); };
   const openEdit = p => { sessionRef.current++; resetListUi(); setRelayModels(null); setIsNew(false); setEditing(p); setBaseline(JSON.stringify(p)); setSelectedModel(0); };
   const close = () => {
@@ -130,7 +132,10 @@ export default function OpenCode({ toast, goto }) {
     setBusy(true);
     try {
       const source = currentDraft();
-      const payload = { ...source, models: (source.models || []).filter(m => m.id?.trim()) };
+      if (!source.id?.trim()) { toast('请先填写 Provider ID', 'warn'); return; }
+      const base = JSON.parse(baselineRef.current || '{}');
+      const payload = normalizeDefaultModel({ ...source, models: (source.models || []).filter(m => m.id?.trim()) });
+      if (!payload.defaultModel && (base.defaultModel || source.defaultModel)) payload.clearDefaultModel = true;
       const r = await window.rs.ocSave(payload);
       if (sessionRef.current !== session) return;
       if (r.ok) {
@@ -160,7 +165,7 @@ export default function OpenCode({ toast, goto }) {
     try {
       const r = await window.rs.ocFetchModels(providerFetchTarget(editingRef.current));
       if (sessionRef.current !== session) return;
-      if (r.ok) setRelayModels(r.models); else toast(r.error, 'warn');
+      if (r.ok) { setRelayModels(r.models); setFetchOpen(true); } else toast(r.error, 'warn');
     } catch (e) {
       if (sessionRef.current === session) toast(e.message, 'warn');
     } finally {
@@ -168,22 +173,31 @@ export default function OpenCode({ toast, goto }) {
     }
   };
 
-  const toggleModel = id => {
+  const addModels = ids => {
     const draft = currentDraft();
-    const index = draft.models.findIndex(m => m.id === id);
-    const matched = matchTemplate(templates, id);
-    const added = matched ? applyTemplate(newModel(id), matched) : newModel(id);
-    const models = index >= 0 ? draft.models.filter((_, i) => i !== index) : [...draft.models, added];
-    if (index >= 0) setChecked(new Set());
-    setEditing({ ...draft, models });
-    setSelectedModel(index >= 0 ? 0 : draft.models.length);
+    const known = new Set(draft.models.map(m => m.id));
+    const added = ids.filter(id => !known.has(id)).map(id => {
+      const matched = matchTemplate(templates, id);
+      return matched ? applyTemplate(newModel(id), matched) : newModel(id);
+    });
+    if (!added.length) return;
+    setEditing({ ...draft, models: [...draft.models, ...added] });
+    setFetchOpen(false);
+    if (!batch) setSelectedModel(draft.models.length);
+    toast(`已加入 ${added.length} 个模型` + (added.some(m => !m.template) ? '，未匹配模板的请手动填写参数' : '，已套用匹配模板'), 'ok');
   };
-
-  const toggleChecked = i => setChecked(prev => {
-    const next = new Set(prev);
-    if (next.has(i)) next.delete(i); else next.add(i);
-    return next;
-  });
+  const addManual = () => {
+    const draft = currentDraft();
+    setEditing({ ...draft, models: [...draft.models, newModel()] });
+    setBatch(false); setChecked(new Set());
+    setSelectedModel(draft.models.length);
+  };
+  const toggleBatch = () => {
+    currentDraft();
+    setChecked(new Set());
+    setSelectedModel(-1);
+    setBatch(b => !b);
+  };
   const applyBatch = () => {
     const draft = currentDraft();
     let applied = 0, skipped = 0;
@@ -200,70 +214,45 @@ export default function OpenCode({ toast, goto }) {
   };
 
   if (editing && !demoRows) {
-    const model = editing.models[selectedModel];
+    const model = batch ? null : editing.models[selectedModel];
+    const defaultModelId = editing.defaultModel && editing.id && editing.defaultModel.startsWith(editing.id + '/')
+      ? editing.defaultModel.slice(editing.id.length + 1) : '';
     const rows = editing.models.map((m, i) => ({ m, i, t: m.template
       ? templates.find(x => x.id === m.template.id) || { id: m.template.id, name: m.template.name }
       : matchTemplate(templates, m.id) }));
-    const families = [];
-    for (const { t } of rows) if (t && !families.some(f => f.id === t.id)) families.push({ id: t.id, name: t.name });
-    if (rows.some(r => !r.t)) families.push({ id: OTHER, name: '其他' });
     const q = query.trim().toLowerCase();
-    const visibleModels = rows.filter(({ m, t }) =>
-      (!family || (family === OTHER ? !t : t?.id === family)) &&
-      (!q || (m.id || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q)));
-    const hiddenChecked = [...checked].filter(i => !visibleModels.some(r => r.i === i)).length;
+    const visibleRows = rows.filter(({ m }) =>
+      !q || (m.id || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q));
+    const fetchPopover = fetchOpen && relayModels ? <FetchPopover ids={relayModels}
+      existing={new Set(editing.models.map(m => m.id))} templates={templates}
+      onAdd={addModels} onClose={() => setFetchOpen(false)} /> : null;
     return <ProviderEditor data={editing} setData={setEditing} isNew={isNew} dirty={dirty} busy={busy}
-      fetching={fetching} relayModels={relayModels} onFetchModels={fetchModels} onSave={save}
+      fetching={fetching} onFetchModels={fetchModels} onSave={save} fetchPopover={fetchPopover}
       registerFlush={() => flushEffortRef.current?.(editingRef.current)}
       registerInputFlush={fn => { flushInputsRef.current = fn || (() => {}); }}
       registerModelInput={fn => { providerInputRef.current = fn; }}
       getDraft={() => editingRef.current} editingRef={editingRef}
       onCancel={() => requestClose()}>
-      <section className="oc-panel oc-model-workspace">
-        <div className="oc-model-sidebar"><div className="oc-section-head"><h3>模型清单 <span>{editing.models.length}</span></h3>
-          <button className="oc-add-model" onClick={() => { currentDraft(); setEditing(d => ({ ...d, models: [...d.models, newModel()] })); setSelectedModel(editing.models.length); }}><Icon name="plus" size={11} /> 添加模型</button></div>
-          {fetching && <div className="oc-fetch-status"><Icon name="refresh" size={11} /> 拉取模型中…</div>}
-          {!fetching && relayModels?.length > 0 && <div className="oc-fetched-models">
-            <p className="oc-fetched-hint">点选加入；加入时自动套用匹配模板</p>
-            {relayModels.map(id => {
-              const t = matchTemplate(templates, id);
-              return <button type="button" key={id} className={'chip oc-fetched-chip' + (editing.models.some(m => m.id === id) ? ' on' : '')} onClick={() => toggleModel(id)}>
-                <span className="mono">{id}</span><span className={'oc-chip-tag' + (t ? '' : ' none')}>{t ? t.name : '未匹配'}</span></button>;
-            })}</div>}
-          {editing.models.length > 0 && <div className="oc-model-filter">
-            <label className="oc-model-search"><Icon name="search" size={13} />
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索模型 ID 或名称" /></label>
-            <div className="oc-family-chips">{[{ id: '', name: '全部' }, ...families].map(f =>
-              <button type="button" key={f.id} className={'chip' + (family === f.id ? ' on' : '')} onClick={() => { setFamily(f.id); setChecked(new Set()); }}>{f.name}</button>)}</div>
-          </div>}
-          {visibleModels.map(({ m, i, t }) => <div key={i} className={'oc-model-row' + (i === selectedModel ? ' on' : '')}>
-            <input type="checkbox" className="oc-model-check" aria-label={`选择 ${m.id || '未命名模型'}`} checked={checked.has(i)} onChange={() => toggleChecked(i)} />
-            <button type="button" className={'oc-model-choice' + (i === selectedModel ? ' on' : '')} onClick={() => { currentDraft(); setSelectedModel(i); }}>
-              <span className="oc-model-choice-top"><span className="mono">{m.id || '(未命名)'}</span>
-                <span className={'oc-chip-tag' + (t ? '' : ' none')}>{t ? t.name : '未匹配'}</span></span>
-              <small>{m.name || '未设置名称'}{m.limit?.context ? ` · ${fmtTokens(m.limit.context)} ctx` : ''}{m.limit?.output ? ` · ${fmtTokens(m.limit.output)} out` : ''}{m.effort ? ` · ${m.effort}` : ''}</small></button>
-          </div>)}
-          {editing.models.length > 0 && !visibleModels.length && <p className="oc-empty-models">没有符合筛选的模型。</p>}
-          {!editing.models.length && <p className="oc-empty-models">手动添加模型，或填写连接信息后拉取。</p>}
-          {checked.size > 0 && <div className="oc-batch-bar">
-            <div className="oc-batch-head"><b>已选 {checked.size} 个模型{hiddenChecked ? `（${hiddenChecked} 个未显示）` : ''}</b>
-              <button type="button" className="oc-link-btn" onClick={() => setChecked(new Set())}>取消选择</button></div>
-            <div className="oc-batch-actions">
-              <Select value={batchTemplate} onChange={setBatchTemplate} options={[
-                { value: AUTO, label: '按名称自动匹配' }, ...templates.map(t => ({ value: t.id, label: t.name }))]} />
-              <button type="button" className="btn btn-sm btn-gold" disabled={busy} onClick={applyBatch}>套用</button>
-            </div>
-            <p>覆盖所选模型的上下文、输出、能力开关、模态和档位；之后仍可逐个修改。</p>
-          </div>}
-        </div>
-        {model ? <ModelEditor key={selectedModel} model={model} modelIndex={selectedModel} busy={busy}
+      <div className={'oce-split' + (model ? ' with-drawer' : '')}>
+        <ModelTable rows={visibleRows} total={editing.models.length} query={query} setQuery={setQuery}
+          batch={batch} onToggleBatch={toggleBatch} checked={checked} setChecked={setChecked}
+          selected={model ? selectedModel : -1} onSelect={i => { currentDraft(); setSelectedModel(i); }}
+          onAddManual={addManual} defaultModelId={defaultModelId} templates={templates}
+          batchTemplate={batchTemplate} setBatchTemplate={setBatchTemplate} onApplyBatch={applyBatch} busy={busy} />
+        {model && <ModelEditor key={selectedModel} model={model} modelIndex={selectedModel} busy={busy}
           registerFlush={fn => { flushEffortRef.current = fn; }}
           registerInput={(field, fn) => providerInputRef.current?.(field, fn)}
-          onChange={patch => setEditing(d => updateModel(d, selectedModel, patch))}
+          onChange={patch => setEditing(d => {
+            const next = updateModel(d, selectedModel, patch);
+            return patch.id !== undefined ? renameModelDefault(next, d.models[selectedModel]?.id, patch.id) : next;
+          })}
           onDelete={() => { currentDraft(); setConfirmDeleteModel(selectedModel); }}
-          templates={templates} onSaveAsTemplate={saveAsTemplate} /> :
-          <div className="oc-no-model"><Empty icon="layers" title="先添加一个模型" hint="参数将在同一页面编辑，随 Provider 统一保存。" /></div>}
-      </section>
+          onClose={() => { currentDraft(); setSelectedModel(-1); }}
+          isDefault={!!model.id && model.id === defaultModelId}
+          onToggleDefault={() => setEditing(d => ({ ...d,
+            defaultModel: model.id === defaultModelId ? '' : `${d.id}/${model.id}` }))}
+          templates={templates} onSaveAsTemplate={saveAsTemplate} />}
+      </div>
       <Confirm open={!!pendingClose} danger title="放弃未保存的修改"
         message="Provider 或模型参数尚未保存，确定放弃本次修改吗？"
         confirmLabel="放弃修改" onCancel={() => setPendingClose(null)} onConfirm={() => {
@@ -272,7 +261,7 @@ export default function OpenCode({ toast, goto }) {
       <Confirm open={confirmDeleteModel !== null} danger title="删除模型" message="从当前 Provider 草稿删除这个模型？最终保存前仍可取消。"
         confirmLabel="删除" onCancel={() => setConfirmDeleteModel(null)} onConfirm={() => {
           setEditing(d => ({ ...d, models: d.models.filter((_, i) => i !== confirmDeleteModel) })); setChecked(new Set());
-          setSelectedModel(0); setConfirmDeleteModel(null);
+          setSelectedModel(-1); setConfirmDeleteModel(null);
         }} />
     </ProviderEditor>;
   }

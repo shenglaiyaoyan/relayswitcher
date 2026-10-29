@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Icon, Spinner, Toggle, Modal, Field, fmtK } from '../components/ui.jsx';
+import TemplateLibrary from './opencode/TemplateLibrary.jsx';
 
 // mode 拆分(v1.12 导航重构):'chatgpt' = 六张 ChatGPT/Codex 专属卡;'global'(默认)= 桌面集成 + 关于更新;
-// 'opencode' = 占位(Task 4 填充)。hash 路由 #settings-chatgpt / #settings-opencode 直达。
+// 'opencode' = 模型模板库。hash 路由 #settings-chatgpt / #settings-opencode 直达。
 export default function Settings({ state, refresh, toast, mode = 'global' }) {
   const { settings, catalogBundled, status } = state;
   const chatgptMode = mode === 'chatgpt';
@@ -342,11 +343,8 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
         </div>
       </div>}
 
-      {/* OpenCode 专属设置占位:Task 4 填充 */}
-      {opencodeMode && <div className="card" style={{ marginBottom: 16 }}>
-        <div className="klabel"><Icon name="bolt" size={12} style={{ color: 'var(--gold)' }} /> OpenCode 设置</div>
-        <div className="muted" style={{ padding: 32, textAlign: 'center' }}>OpenCode 配置路径与备份策略将在此配置 — 当前请在主页面管理 Provider</div>
-      </div>}
+      {/* OpenCode 专属设置:模型模板库 */}
+      {opencodeMode && <TemplateLibrary toast={toast} />}
 
       {/* 关于与更新(design-with-your-model 路径:superdesign 额度用尽,按设计系统 tokens 手工对齐)— 全局设置 */}
       {!chatgptMode && !opencodeMode && <div className="card" style={{ marginTop: 14, borderColor: 'rgba(167, 139, 113, 0.3)' }}>

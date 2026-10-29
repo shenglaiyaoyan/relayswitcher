@@ -240,6 +240,17 @@ function createStore(userDataDir) {
       save();
     },
 
+    /* 模型模板:null = 未自定义(前端回退内置模板);只存 RS store,不写 opencode 配置 */
+    getOpenCodeTemplates() {
+      return Array.isArray(data.opencodeTemplates) ? data.opencodeTemplates : null;
+    },
+
+    saveOpenCodeTemplates(list) {
+      if (!Array.isArray(list)) throw new Error('模板列表必须是数组');
+      data.opencodeTemplates = list;
+      save();
+    },
+
     getSettings() { return { ...data.settings }; },
     saveSettings(s) { data.settings = { ...data.settings, ...s }; save(); return this.getSettings(); }
   };

@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('rs', {
   ocSave: (p) => ipcRenderer.invoke('rs:oc:save', p),
   ocRemove: (id) => ipcRenderer.invoke('rs:oc:remove', id),
   ocReadConfig: () => ipcRenderer.invoke('rs:oc:readConfig'),
+  ocTemplatesGet: () => ipcRenderer.invoke('rs:oc:templates:get'),
+  ocTemplatesSave: (list) => ipcRenderer.invoke('rs:oc:templates:save', list),
   ocFetchModels: (relayId) => ipcRenderer.invoke('rs:oc:fetchModels', relayId),
   onUpdateEvent: (cb) => {
     const h = (_e, data) => cb(data);

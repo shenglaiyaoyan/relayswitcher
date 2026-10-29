@@ -514,6 +514,10 @@ function registerIpc() {
       return { ok: true };
     } catch (e) { return { ok: false, error: e.message }; }
   });
+  ipcMain.handle('rs:oc:templates:get', () => store.getOpenCodeTemplates());
+  ipcMain.handle('rs:oc:templates:save', (_e, list) => {
+    try { store.saveOpenCodeTemplates(list); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
+  });
   ipcMain.handle('rs:oc:readConfig', () => {
     try { return { ok: true, config: oc.readOpenCodeConfig(ocHome()) }; } catch (e) { return { ok: false, error: e.message }; }
   });
@@ -814,11 +818,16 @@ app.whenReady().then(() => {
     win.webContents.once('did-finish-load', async () => {
       try {
         await new Promise(r => setTimeout(r, 1500));
-        const outDir = path.join(app.getAppPath(), 'designs', 'captures');
+        const outDir = process.env.RS_CAPTURE_DIR || path.join(app.getAppPath(), 'designs', 'captures');
         fs.mkdirSync(outDir, { recursive: true });
-        for (const p of ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready', 'opencode', 'opencode-demo-new', 'opencode-demo-rows', 'opencode-demo-dialog']) {
+        const pages = process.env.RS_CAPTURE_PAGES ? process.env.RS_CAPTURE_PAGES.split(',') : null;
+        for (const p of pages || ['dash', 'dash-demo-warn', 'dash-demo-modal', 'relays', 'backups', 'settings', 'settings-demo-update', 'settings-demo-update-retry', 'settings-demo-update-ready', 'opencode', 'opencode-demo-new', 'opencode-demo-rows', 'opencode-demo-dialog']) {
           await win.webContents.executeJavaScript(`location.hash = '${p}'`);
           await new Promise(r => setTimeout(r, 900));
+          if (p.includes('bottom')) {
+            await win.webContents.executeJavaScript(`document.querySelectorAll('*').forEach(e => { if (e.scrollHeight > e.clientHeight + 20) e.scrollTop = e.scrollHeight; })`);
+            await new Promise(r => setTimeout(r, 300));
+          }
           const img = await win.webContents.capturePage();
           fs.writeFileSync(path.join(outDir, `page-${p}.png`), img.toPNG());
           console.log('captured:', p);

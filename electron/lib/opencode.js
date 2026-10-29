@@ -280,6 +280,12 @@ function modelsToBlocks(models) {
           ...(value && value.headers ? { headers: value.headers } : {})
         });
       }
+      // 迁移时新增的档位(如套用模板)同数组分支一样补成 variant,否则只写出旧对象里已有的档。
+      for (const e of wanted) {
+        if (!Object.prototype.hasOwnProperty.call(rawVariants, e) && e !== m.baseEffort) {
+          variants.push({ id: e, settings: { reasoningEffort: e } });
+        }
+      }
     } else {
       const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id));
       const fresh = [...wanted].filter(e => !kept.some(v => v.id === e) && e !== m.baseEffort)

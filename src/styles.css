@@ -442,6 +442,78 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oc-default-model .rs-select { margin-top: 6px; }
 .oc-savebar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0; min-height: 66px; padding: 12px 26px; border-top: 1px solid var(--line); background: #10100f; }
 .oc-savebar p { flex: 1; margin: 0; color: var(--txt-3); font-size: 10px; }
+.span-4 { grid-column: span 4; }.span-8 { grid-column: span 8; }
+
+/* API Key 显示切换 */
+.oc-secret { position: relative; margin-top: 6px; }
+.oc-secret input { height: 35px; padding: 8px 40px 8px 11px; font-size: 12px; }
+.oc-secret-toggle { position: absolute; top: 50%; right: 6px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--txt-3); transform: translateY(-50%); }
+.oc-secret-toggle:hover { color: var(--gold-hover); background: rgba(167,139,113,.1); }
+.oc-field > label { color: var(--txt-2); }
+
+/* 模型模板：标签 / 搜索筛选 / 批量 */
+.oc-fetched-models:has(.oc-fetched-chip) { max-height: 190px; overflow-y: auto; }
+.oc-fetched-models .oc-fetched-chip { padding: 3px 4px 3px 7px; font-size: 10px; }
+.oc-auto-badge { padding: 2px 7px; font-size: 9.5px; color: var(--gold-light); border-color: rgba(167,139,113,.35); }
+.oc-fetched-hint { width: 100%; margin: 0 0 2px; color: var(--txt-3); font-size: 10px; }
+.oc-fetched-chip { display: inline-flex; align-items: center; gap: 6px; }
+.oc-chip-tag { flex-shrink: 0; padding: 1px 6px; border: 1px solid rgba(167,139,113,.35); border-radius: 5px; color: var(--gold-light); font-size: 9.5px; font-family: 'Inter','Microsoft YaHei',sans-serif; }
+.oc-chip-tag.none { border-style: dashed; border-color: var(--line); color: var(--txt-3); }
+.oc-model-filter { display: grid; gap: 8px; padding: 10px 10px 4px; }
+.oc-model-search { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--txt-3); }
+.oc-model-search input { flex: 1; min-width: 0; height: 30px; padding: 0; border: 0; background: transparent; font-size: 11.5px; box-shadow: none; }
+.oc-family-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.oc-family-chips .chip { padding: 3px 9px; font-size: 10px; background: transparent; }
+.oc-model-row { display: flex; align-items: center; gap: 2px; padding-left: 10px; }
+.oc-model-row .oc-model-choice { flex: 1; min-width: 0; width: auto; margin: 4px 8px 4px 4px; }
+.oc-model-check { flex-shrink: 0; width: 15px; height: 15px; margin: 0; accent-color: var(--gold); cursor: pointer; }
+.oc-model-choice-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.oc-batch-bar { position: sticky; bottom: 0; display: grid; gap: 8px; margin: 8px; padding: 11px; border: 1px solid rgba(167,139,113,.4); border-radius: 10px; background: #14120f; }
+.oc-batch-head { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; }
+.oc-batch-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; }
+.oc-batch-bar p { margin: 0; color: var(--txt-3); font-size: 9.5px; line-height: 1.5; }
+
+/* 模型参数：模板行 + 已修改 */
+.oc-template-row { display: flex; align-items: center; gap: 9px; padding: 13px 16px 0; }
+.oc-template-row .oc-field-label { margin: 0; white-space: nowrap; }
+.oc-template-select { flex: 1; max-width: 340px; min-width: 160px; }
+.oc-auto-badge { white-space: nowrap; }
+.oc-template-source { margin: 7px 16px 0; color: var(--txt-3); font-size: 10px; }
+.oc-modified { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 0 6px; border: 1px solid rgba(167,139,113,.4); border-radius: 5px; color: var(--gold-light); font-size: 9px; font-weight: 400; vertical-align: 1px; }
+.oc-modified::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+
+/* 模板库 */
+.oc-template-lib { display: grid; gap: 14px; }
+.oc-lib-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.oc-lib-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.oc-lib-head p { margin: 5px 0 0; color: var(--txt-3); font-size: 11.5px; }
+.oc-lib-tools { display: flex; gap: 8px; flex-shrink: 0; }
+.oc-lib-body { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 14px; align-items: start; }
+.oc-lib-list, .oc-lib-editor { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.015); overflow: hidden; }
+.oc-lib-list-head { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.oc-lib-list-head span { color: var(--txt-3); font-size: 10.5px; }
+.oc-lib-item { display: grid; gap: 6px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--txt-1); text-align: left; }
+.oc-lib-item:hover { background: rgba(167,139,113,.04); }
+.oc-lib-item.on { background: rgba(167,139,113,.08); box-shadow: inset 2px 0 var(--gold); }
+.oc-lib-item-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
+.oc-lib-item-sub { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 8px; color: var(--txt-3); font-size: 10px; }
+.oc-lib-caps { display: inline-flex; gap: 3px; }
+.oc-lib-caps i { padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--txt-3); font-style: normal; font-size: 9px; opacity: .55; }
+.oc-lib-caps i.on { border-color: rgba(167,139,113,.45); color: var(--gold-light); opacity: 1; }
+.oc-lib-editor-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.oc-lib-editor-head small { color: var(--gold); font-size: 10px; }
+.oc-lib-editor-head h3 { margin: 2px 0 0; font-size: 16px; font-weight: 600; }
+.oc-lib-editor section { border-bottom: 1px solid var(--line); padding-top: 12px; }
+.oc-lib-editor section:last-child { border-bottom: 0; padding-bottom: 14px; }
+.oc-lib-editor h4 { margin: 0 16px; font-size: 12px; font-weight: 600; }
+.oc-lib-editor h4 .oc-field-hint { float: none; margin-left: 8px; }
+.oc-lib-editor section > .oc-param-grid { padding-top: 10px; }
+.oc-lib-editor section > .oc-cap-grid { padding-top: 10px; }
+.oc-lib-editor .oc-efforts { padding: 10px 16px 0; }
+.oc-lib-hits { margin: -4px 16px 12px; color: var(--txt-3); font-size: 10px; }
+.oc-effort-new { display: inline-flex; align-items: center; gap: 6px; }
+.oc-effort-new input { width: 110px; height: 30px; padding: 5px 9px; font-size: 11px; }
+.oc-lib-savebar { position: sticky; bottom: 0; border: 1px solid var(--line); border-radius: 12px; }
 @media(max-width:1180px) {
   .oc-provider-header,.oc-provider-row { grid-template-columns: minmax(150px,1fr) 135px 75px 130px; }
   .oc-provider-header span:nth-child(4),.oc-provider-default { display: none; }

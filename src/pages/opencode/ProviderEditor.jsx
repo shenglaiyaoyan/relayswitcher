@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon, Spinner, Select } from '../../components/ui.jsx';
 import { providerFetchTarget, updateModel } from './draft.mjs';
 import { DraftTextInput } from './fields.jsx';
@@ -13,6 +13,7 @@ export const protocolLabel = value => (PROTOCOLS.find(p => p.value === value) ||
 export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetching,
   onFetchModels, onSave, onCancel, registerFlush, registerInputFlush, registerModelInput, getDraft, editingRef, children }) {
   const models = data.models || [];
+  const [showKey, setShowKey] = useState(false);
   const inputFlushes = useRef(new Map());
   const registerInput = useCallback((field, fn) => {
     if (fn) inputFlushes.current.set(field, fn);
@@ -79,8 +80,14 @@ export default function ProviderEditor({ data, setData, isNew, dirty, busy, fetc
           <div className="oc-connection-grid">
             <label className="oc-field span-6">Base URL<DraftTextInput registerFlush={registerInput} field="baseUrl" type="text" className="mono" value={data.baseUrl}
               onCommit={value => setData(d => ({ ...d, baseUrl: value }))} placeholder="https://api.example.com/v1" /></label>
-            <label className="oc-field span-6">API Key<span className="oc-field-hint">{isNew ? '随 Provider 保存' : '留空 = 保持不变'}</span>
-              <DraftTextInput registerFlush={registerInput} field="apiKey" type="password" className="mono" value={data.apiKey} onCommit={value => setData(d => ({ ...d, apiKey: value }))} placeholder="sk-…" /></label>
+            <div className="oc-field span-6"><label htmlFor="oc-api-key">API Key</label><span className="oc-field-hint">{isNew ? '随 Provider 保存' : data.apiKey ? '已保存 · 留空保持不变' : '留空 = 保持不变'}</span>
+              <div className="oc-secret">
+                <DraftTextInput id="oc-api-key" registerFlush={registerInput} field="apiKey" type={showKey ? 'text' : 'password'} className="mono" value={data.apiKey}
+                  onCommit={value => setData(d => ({ ...d, apiKey: value }))} placeholder="sk-…" autoComplete="off" spellCheck={false} />
+                <button type="button" className="oc-secret-toggle" onClick={() => setShowKey(v => !v)}
+                  aria-label={showKey ? '隐藏 API Key' : '显示 API Key'} title={showKey ? '隐藏 API Key' : '显示 API Key'}>
+                  <Icon name={showKey ? 'eyeOff' : 'eye'} size={15} /></button>
+              </div></div>
             <fieldset className="oc-field span-3"><legend>协议类型</legend><div className="oc-protocol">
               {PROTOCOLS.map(p => <button type="button" key={p.value} className={data.protocol === p.value ? 'on' : ''}
                 title={p.desc} onClick={() => setData(d => ({ ...d, protocol: p.value }))}>{p.value === 'message' ? 'Messages' : p.value === 'chat' ? 'Chat' : 'Responses'}</button>)}

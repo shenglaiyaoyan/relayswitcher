@@ -807,6 +807,9 @@ app.whenReady().then(() => {
   if (isDev) win.loadURL('http://localhost:5173');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.once('ready-to-show', () => win.show());
+  // 显示时不降频(切回不卡帧);缩进托盘后降频,避免看不见的窗口继续占用 CPU/GPU
+  win.on('hide', () => win.webContents.setBackgroundThrottling(true));
+  win.on('show', () => win.webContents.setBackgroundThrottling(false));
   // electron-updater 初始化(打包环境生效;事件转发与旧 {ev,info} 格式兼容)
   autoUpdate.initAutoUpdater(win);
   // 托盘常驻 + 关窗最小化 + 开机自启(US-08;默认关窗进托盘,托盘右键退出)

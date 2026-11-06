@@ -4,7 +4,7 @@ import ProviderEditor, { protocolLabel } from './opencode/ProviderEditor.jsx';
 import ModelEditor from './opencode/ModelEditor.jsx';
 import ModelTable, { AUTO } from './opencode/ModelTable.jsx';
 import FetchPopover from './opencode/FetchPopover.jsx';
-import { newProvider, newModel, updateModel, normalizeDefaultModel, renameModelDefault } from './opencode/draft.mjs';
+import { newProvider, newModel, updateModel, normalizeDefaultModel, renameModelDefault, tidyModelNames, syncModelNamePatch } from './opencode/draft.mjs';
 import { providerFetchTarget } from './opencode/draft.mjs';
 import { setNavigationGuard } from './opencode/navigationGuard.js';
 import { applyTemplate, matchTemplate, resolveTemplates, templateFromModel } from './opencode/templates.mjs';
@@ -81,7 +81,7 @@ export default function OpenCode({ toast, goto }) {
         base.models = [
           { ...opus, limit: { ...opus.limit, output: 64000 } },
           applyTemplate({ ...newModel('claude-sonnet-5-5'), name: 'Sonnet 5.5' }, builtins[0], Date.now()),
-          applyTemplate({ ...newModel('gpt-6.1-sol'), name: 'GPT 6.1 Sol' }, builtins[1], Date.now()),
+          { ...newModel('gpt-6.1-sol'), name: 'gpt-6.1-sol' },
           { ...newModel('acme-internal-x'), name: 'Internal X' }
         ];
         base.defaultModel = 'my-relay/claude-opus-5-5';
@@ -198,6 +198,13 @@ export default function OpenCode({ toast, goto }) {
     setSelectedModel(-1);
     setBatch(b => !b);
   };
+  const tidyNames = () => {
+    const draft = currentDraft();
+    const result = tidyModelNames(draft.models);
+    if (!result.count) return toast('所有模型的名称已经是整理过的，无需重复操作', 'ok');
+    setEditing({ ...draft, models: result.models });
+    toast(`已整理 ${result.count} 个模型的显示名`, 'ok');
+  };
   const applyBatch = () => {
     const draft = currentDraft();
     let applied = 0, skipped = 0;
@@ -237,14 +244,15 @@ export default function OpenCode({ toast, goto }) {
         <ModelTable rows={visibleRows} total={editing.models.length} query={query} setQuery={setQuery}
           batch={batch} onToggleBatch={toggleBatch} checked={checked} setChecked={setChecked}
           selected={model ? selectedModel : -1} onSelect={i => { currentDraft(); setSelectedModel(i); }}
-          onAddManual={addManual} defaultModelId={defaultModelId} templates={templates}
+          onAddManual={addManual} onTidyNames={tidyNames} defaultModelId={defaultModelId} templates={templates}
           batchTemplate={batchTemplate} setBatchTemplate={setBatchTemplate} onApplyBatch={applyBatch} busy={busy} />
         {model && <ModelEditor key={selectedModel} model={model} modelIndex={selectedModel} busy={busy}
           registerFlush={fn => { flushEffortRef.current = fn; }}
           registerInput={(field, fn) => providerInputRef.current?.(field, fn)}
           onChange={patch => setEditing(d => {
-            const next = updateModel(d, selectedModel, patch);
-            return patch.id !== undefined ? renameModelDefault(next, d.models[selectedModel]?.id, patch.id) : next;
+            const merged = syncModelNamePatch(d.models[selectedModel], patch);
+            const next = updateModel(d, selectedModel, merged);
+            return merged.id !== undefined ? renameModelDefault(next, d.models[selectedModel]?.id, merged.id) : next;
           })}
           onDelete={() => { currentDraft(); setConfirmDeleteModel(selectedModel); }}
           onClose={() => { currentDraft(); setSelectedModel(-1); }}

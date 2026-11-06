@@ -66,6 +66,7 @@ test('表格 + 抽屉：批量复选框只在批量模式出现，拉取改为�
   const table = read('pages/opencode/ModelTable.jsx');
   assert.match(table, /\{batch && <input type="checkbox"/);
   assert.match(table, /className="oce-batch-bar"/);
+  assert.match(table, /className="oce-tidy-btn"/);
   assert.match(table, /按名称自动匹配/);
   assert.match(table, /className="oce-search"/);
   for (const col of ['模型 ID', '名称', '模板', '上下文', '输出', '默认档位', '能力']) assert.match(table, new RegExp(col));

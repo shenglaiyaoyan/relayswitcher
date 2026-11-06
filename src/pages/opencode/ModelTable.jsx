@@ -6,7 +6,7 @@ export const AUTO = '__auto__';
 const CAPS = [['reasoning', '推', '推理'], ['attachment', '附', '附件'], ['tool_call', '工', '工具'], ['temperature', 'T', 'Temp']];
 
 export default function ModelTable({ rows, total, query, setQuery, batch, onToggleBatch, checked, setChecked,
-  selected, onSelect, onAddManual, defaultModelId, templates, batchTemplate, setBatchTemplate, onApplyBatch, busy }) {
+  selected, onSelect, onAddManual, onTidyNames, defaultModelId, templates, batchTemplate, setBatchTemplate, onApplyBatch, busy }) {
   const toggle = i => setChecked(prev => {
     const next = new Set(prev);
     if (next.has(i)) next.delete(i); else next.add(i);
@@ -23,6 +23,8 @@ export default function ModelTable({ rows, total, query, setQuery, batch, onTogg
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索模型 ID 或名称" /></label>
         <span className="oce-spacer" />
         <span className="oce-muted">{total} 个模型</span>
+        {rows.some(({ m }) => !m.name || m.name === m.id) && <button type="button" className="oce-tidy-btn" onClick={onTidyNames} disabled={busy} title="把显示名还是 ID 的模型整理成可读名称">
+          整理名称</button>}
         <button type="button" className={'oce-text-btn' + (batch ? ' on' : '')} onClick={onToggleBatch} disabled={!total}>
           {batch ? '退出批量' : '批量'}</button>
         <button type="button" className="oce-text-btn" onClick={onAddManual}><Icon name="plus" size={11} /> 手动添加</button>

@@ -499,6 +499,9 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oce-text-btn:hover:not(:disabled) { color: var(--accent-strong); background: var(--hover); }
 .oce-text-btn.on { color: var(--accent-strong); background: var(--accent-soft); }
 .oce-text-btn:disabled { opacity: .45; cursor: default; }
+.oce-tidy-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--glass); color: var(--txt-2); font-size: 12px; cursor: pointer; }
+.oce-tidy-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--line-bright); color: var(--txt-1); }
+.oce-tidy-btn:disabled { opacity: .45; cursor: default; }
 
 .oce-grid { display: grid; grid-template-columns: minmax(150px, 1.5fr) minmax(110px, 1.2fr) 92px 64px 64px 78px 104px; align-items: center; gap: 12px; padding: 0 20px; }
 .oce-grid.batch { grid-template-columns: 18px minmax(150px, 1.5fr) minmax(110px, 1.2fr) 92px 64px 64px 78px 104px; }

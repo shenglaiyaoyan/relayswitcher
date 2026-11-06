@@ -1,5 +1,7 @@
+import { prettifyModelName } from './prettify-model-name.mjs';
+
 export const newModel = (id = '') => ({
-  id, name: id, limit: { context: 0, output: 0 },
+  id, name: prettifyModelName(id) || id, limit: { context: 0, output: 0 },
   reasoning: false, attachment: false, tool_call: true, temperature: false,
   modalities: { input: ['text'], output: ['text'] },
   efforts: [], effort: '', options: {}
@@ -41,3 +43,27 @@ export const renameModelDefault = (provider, oldId, newId) => {
 export const providerFetchTarget = ({ baseUrl, apiKey }) => ({
   baseUrl: baseUrl.trim(), apiKey: apiKey.trim()
 });
+
+/** 整理显示名：只改名称为空或等于 ID 的模型；用户自定义名称不动。 */
+export const tidyModelNames = models => {
+  let count = 0;
+  const result = models.map(m => {
+    if (!m.id || (m.name && m.name !== m.id && m.name !== prettifyModelName(m.id))) return m;
+    const name = prettifyModelName(m.id) || m.id;
+    if (name === m.name) return m;
+    count++;
+    return { ...m, name };
+  });
+  return { models: result, count };
+};
+
+/** 改模型 ID 时自动更新名称：空、等于旧 ID 或等于旧美化名时跟着变；用户改过的不动。 */
+export const syncModelNamePatch = (model, patch) => {
+  if (patch.id === undefined) return patch;
+  const oldId = model.id || '', newId = patch.id || '';
+  const oldName = model.name || '', oldPretty = prettifyModelName(oldId);
+  const shouldSync = !oldName || oldName === oldId || oldName === oldPretty;
+  if (!shouldSync || patch.name !== undefined) return patch;
+  const newName = prettifyModelName(newId);
+  return { ...patch, name: newName };
+};

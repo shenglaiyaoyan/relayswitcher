@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #0a0a0a; --gold: #a78b71; --gold-hover: #e8d5b7;
+  --txt-1: #f5f5f4; --txt-2: #a8a29e; --txt-3: #78716c;
+  --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+  --line: rgba(255,255,255,.1); --line-bright: rgba(255,255,255,.22); --line-soft: rgba(255,255,255,.06);
+  --surface: #10100f; --surface-2: rgba(255,255,255,.025);
+  --accent: var(--gold); --accent-strong: var(--gold-hover);
+  --accent-soft: rgba(167,139,113,.14); --accent-line: rgba(167,139,113,.42);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg); background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px); background-size: 32px 32px;
+  color: var(--txt-1); font-family: 'Inter','Microsoft YaHei',sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased;
+  padding: 34px 40px 40px; width: 1880px; overflow: hidden;
+}
+h1 { font-family: 'Playfair Display',serif; font-style: italic; font-weight: 600; font-size: 26px; color: var(--gold-hover); }
+.sub { color: var(--txt-3); font-size: 13px; margin: 6px 0 22px; }
+.now { display: flex; gap: 22px; align-items: center; margin-bottom: 30px; }
+.now .tag { color: var(--txt-2); font-size: 13px; width: 120px; line-height: 1.5; }
+.grid { display: grid; grid-template-columns: 110px repeat(3, 520px); gap: 14px 28px; align-items: center; }
+.col-h { padding-bottom: 4px; }
+.col-h b { display: block; font-size: 16px; font-weight: 600; color: var(--txt-1); }
+.col-h b em { font-style: normal; color: var(--gold); margin-right: 8px; font-family: 'JetBrains Mono',monospace; }
+.col-h span { display: block; color: var(--txt-3); font-size: 12px; margin-top: 4px; }
+.col-h.rec b::after { content: '推荐'; margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11px; font-weight: 500; vertical-align: 2px; }
+.row-h { color: var(--txt-2); font-size: 12.5px; line-height: 1.5; }
+.row-h small { display: block; color: var(--txt-3); font-size: 11px; }
+
+.card { padding: 15px 18px 16px; border: 1px solid var(--line); border-radius: 12px; background: #0f0f0e; width: 520px; }
+.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.head h3 { font-size: 13px; font-weight: 600; }
+.head span { color: var(--txt-3); font-size: 11.5px; }
+.head span.bad { color: rgba(248,113,113,.85); }
+ol { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); }
+
+/* 现在：实心亮绿圆 */
+.cur li { position: relative; display: grid; justify-items: center; gap: 8px; color: var(--txt-3); font-size: 11.5px; text-align: center; }
+.cur li::before { content: ''; position: absolute; top: 6px; left: calc(-50% + 9px); right: calc(50% + 9px); height: 1px; background: var(--accent-line); }
+.cur li:first-child::before { display: none; }
+.cur li i { width: 13px; height: 13px; border-radius: 50%; background: var(--ok); }
+.cur li { color: var(--txt-1); }
+
+/* A：细环 + 金色勾 */
+.a li { position: relative; display: grid; justify-items: center; gap: 8px; color: var(--txt-3); font-size: 11.5px; text-align: center; }
+.a li::before { content: ''; position: absolute; top: 8px; left: calc(-50% + 13px); right: calc(50% + 13px); height: 1px; background: var(--line); }
+.a li:first-child::before { display: none; }
+.a i { width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--line-bright); background: var(--surface); display: grid; place-items: center; }
+.a svg { width: 9px; height: 9px; }
+.a .done { color: var(--txt-1); }
+.a .done i { border-color: var(--accent-line); background: var(--accent-soft); }
+.a .done svg { stroke: var(--gold-hover); }
+.a .done::before, .a .active::before, .a .warn::before, .a .error::before { background: var(--accent-line); }
+.a .active { color: var(--accent-strong); }
+.a .active i { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.a .active i::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--gold-hover); }
+.a .warn { color: var(--warn); }
+.a .warn i { border-color: rgba(251,191,36,.55); background: rgba(251,191,36,.1); }
+.a .warn svg { stroke: var(--warn); }
+.a .error { color: var(--bad); }
+.a .error i { border-color: rgba(248,113,113,.55); background: rgba(248,113,113,.1); }
+.a .error svg { stroke: var(--bad); }
+
+/* B：分段进度条 */
+.b ol { gap: 6px; }
+.b li { display: grid; gap: 4px; color: var(--txt-3); font-size: 11.5px; white-space: nowrap; }
+.b li::before { content: ''; height: 3px; border-radius: 2px; background: var(--line); margin-bottom: 5px; }
+.b li em { display: block; font-style: normal; font-family: 'JetBrains Mono',monospace; font-size: 10px; letter-spacing: .06em; color: var(--txt-3); }
+.b .done { color: var(--txt-1); }
+.b .done::before { background: var(--gold); }
+.b .done em { color: var(--gold); }
+.b .active { color: var(--accent-strong); }
+.b .active::before { background: linear-gradient(90deg, var(--gold-hover) 0 45%, var(--line) 45%); }
+.b .active em { color: var(--gold-hover); }
+.b .warn { color: var(--warn); }
+.b .warn::before { background: rgba(251,191,36,.75); }
+.b .warn em { color: var(--warn); }
+.b .error { color: var(--bad); }
+.b .error::before { background: rgba(248,113,113,.85); }
+.b .error em { color: var(--bad); }
+
+/* C：编号圆标 */
+.c li { position: relative; display: grid; justify-items: center; gap: 8px; color: var(--txt-3); font-size: 11.5px; text-align: center; }
+.c li::before { content: ''; position: absolute; top: 10px; left: calc(-50% + 15px); right: calc(50% + 15px); height: 1px; background: var(--line); }
+.c li:first-child::before { display: none; }
+.c i { width: 21px; height: 21px; border-radius: 50%; border: 1px solid var(--line-bright); display: grid; place-items: center; font-style: normal; font-family: 'JetBrains Mono',monospace; font-size: 10.5px; color: var(--txt-3); background: var(--surface); }
+.c svg { width: 10px; height: 10px; }
+.c .done { color: var(--txt-1); }
+.c .done i { background: var(--gold); border-color: var(--gold); }
+.c .done svg { stroke: #0a0a0a; }
+.c .done::before, .c .active::before, .c .warn::before, .c .error::before { background: var(--accent-line); }
+.c .active { color: var(--accent-strong); }
+.c .active i { border-color: var(--gold); color: var(--gold-hover); box-shadow: 0 0 0 3px var(--accent-soft); }
+.c .warn { color: var(--warn); }
+.c .warn i { border-color: rgba(251,191,36,.6); color: var(--warn); }
+.c .warn svg { stroke: var(--warn); }
+.c .error { color: var(--bad); }
+.c .error i { border-color: rgba(248,113,113,.6); color: var(--bad); }
+.c .error svg { stroke: var(--bad); }
+svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<h1>切换流程 · 节点样式</h1>
+<p class="sub">去掉荧光绿。完成用金色，只有出问题时才用黄 / 红。每个方向都画了 4 种状态。</p>
+
+<div class="now"><div class="tag">现在<br><small style="color:var(--txt-3)">实心亮绿圆</small></div><div class="card" id="current"></div></div>
+
+<div class="grid" id="grid">
+  <div></div>
+  <div class="col-h rec"><b><em>A</em>细环 + 金色勾</b><span>保持现在的布局，节点变小变细，完成时是浅金色勾</span></div>
+  <div class="col-h"><b><em>B</em>分段进度条</b><span>节点换成五段细进度条，文字左对齐，带 01–05 编号</span></div>
+  <div class="col-h"><b><em>C</em>编号圆标</b><span>圆里写步骤号，完成时变成实心金底黑勾</span></div>
+</div>
+
+<script>
+const LABELS = ['备份当前配置', '写入登录态', '流量指向中转站', '部署模型目录', '校验'];
+const ROWS = [
+  { name: '完成', note: '全部成功', states: ['done','done','done','done','done'], head: '完成 · 重启 Codex 客户端后生效' },
+  { name: '执行中', note: '正在第 3 步', states: ['done','done','active','idle','idle'], head: '执行中…' },
+  { name: '目录回落', note: '第 4 步非致命失败', states: ['done','done','done','warn','done'], head: '完成 · 重启 Codex 客户端后生效' },
+  { name: '失败', note: '第 2 步出错，已中止', states: ['done','error','idle','idle','idle'], head: '已中止 · 已自动回滚或可从备份恢复', bad: true }
+];
+const ICON = {
+  done: '<svg viewBox="0 0 10 10"><path d="M2 5.3 4.1 7.3 8 2.9"/></svg>',
+  warn: '<svg viewBox="0 0 10 10"><path d="M5 2.2v3.6M5 7.9v.01"/></svg>',
+  error: '<svg viewBox="0 0 10 10"><path d="M2.8 2.8l4.4 4.4M7.2 2.8 2.8 7.2"/></svg>'
+};
+const head = r => `<div class="head"><h3>切换流程</h3><span class="${r.bad ? 'bad' : ''}">${r.head}</span></div>`;
+const variant = {
+  a: r => r.states.map((s, i) => `<li class="${s}"><i>${ICON[s] || ''}</i>${LABELS[i]}</li>`).join(''),
+  b: r => r.states.map((s, i) => `<li class="${s}"><span><em>0${i + 1}</em>${LABELS[i]}</span></li>`).join(''),
+  c: r => r.states.map((s, i) => `<li class="${s}"><i>${ICON[s] || (i + 1)}</i>${LABELS[i]}</li>`).join('')
+};
+document.getElementById('current').innerHTML = head(ROWS[0]) + '<ol class="cur">' + LABELS.map(l => `<li><i></i>${l}</li>`).join('') + '</ol>';
+const grid = document.getElementById('grid');
+for (const r of ROWS) {
+  grid.insertAdjacentHTML('beforeend', `<div class="row-h">${r.name}<small>${r.note}</small></div>`);
+  for (const k of ['a', 'b', 'c']) grid.insertAdjacentHTML('beforeend', `<div class="card ${k}">${head(r)}<ol>${variant[k](r)}</ol></div>`);
+}
+</script>
+</body>
+</html>

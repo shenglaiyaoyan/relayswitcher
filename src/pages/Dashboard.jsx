@@ -4,6 +4,11 @@ import { STAGES, stageStates } from './chatgpt/pipeline.mjs';
 
 const CTX_PRESETS = [272000, 372000, 872000];
 const MAIN_STEPS = new Set(['备份当前配置', '流量指向中转站', '目录生成', '校验完成']);
+const STEP_ICON = {
+  done: <Icon name="check" size={9} />,
+  warn: <Icon name="bang" size={9} />,
+  error: <Icon name="x" size={9} />
+};
 
 const lifeStr = (ms) => {
   if (ms == null) return '—';
@@ -91,6 +96,9 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
         setDemoState(DEMO_STATE); setBackups(DEMO_BACKUPS); setAccountId('a1'); setRelayId('r1'); setCtx(372000);
         if (h.includes('progress')) setLog([{ name: '竞品工具检测', ok: true, detail: '未发现' }, { name: '目录生成', ok: true, detail: '官方目录' },
           { name: '备份当前配置', ok: true, detail: '快照 20261029-101010' }, { name: '写入登录态 auth.json', ok: true }, { name: '流量指向中转站', ok: false, detail: '示例失败' }]);
+        if (h.includes('flowok')) { setDone('ok'); setLog([{ name: '目录生成', ok: false, detail: '回落官方目录' }, { name: '备份当前配置', ok: true },
+          { name: '写入登录态 auth.json', ok: true }, { name: '流量指向中转站', ok: true }, { name: '校验完成', ok: true }]); }
+        if (h.includes('running')) { setSwitching(true); setLog([{ name: '目录生成', ok: true }, { name: '备份当前配置', ok: true }, { name: '写入登录态 auth.json', ok: true }]); }
         if (h.includes('logopen')) setShowLog(true);
       }
     };
@@ -242,7 +250,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
               <div className="cg-flow-head"><h3>切换流程</h3>
                 <span>{switching ? '执行中…' : done === 'ok' ? '完成 · 重启 Codex 客户端后生效' : done === 'bad' ? '已中止 · 已自动回滚或可从备份恢复' : '空闲 · 等待执行'}</span></div>
               <ol className="cg-steps">
-                {STAGES.map((s, i) => <li key={s.key} className={'cg-step ' + states[i]}><i />{s.label}</li>)}
+                {STAGES.map((s, i) => <li key={s.key} className={'cg-step ' + states[i]}><i>{STEP_ICON[states[i]]}</i>{s.label}</li>)}
               </ol>
               {log.length > 0 && <div className="cg-log">
                 <button className="cg-text-btn" onClick={() => setShowLog(v => !v)}>

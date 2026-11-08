@@ -37,6 +37,23 @@ test('ChatGPT 页：控制台两栏，去掉步骤编号和终端日志框，目
   for (const t of ['帮我关闭并切换', '仍要切换', '我去手动退出', 'detectRivals', 'restoreBackup', '一键回滚']) assert.match(page, new RegExp(t));
 });
 
+test('切换流程节点：细环 + 金色勾，完成态不用荧光绿，done/warn/error 各有图标', () => {
+  const css = read('styles.css');
+  const page = read('pages/Dashboard.jsx');
+  const rule = sel => (css.match(new RegExp(sel.replace(/[.>]/g, m => '\\' + m).replace(/ /g, '\\s*') + '\\s*\\{([^}]*)\\}')) || [])[1] || '';
+  const node = rule('.cg-step > i');
+  assert.match(node, /width:\s*17px/);
+  assert.match(node, /place-items:\s*center/);
+  const done = rule('.cg-step.done > i');
+  assert.doesNotMatch(done, /--ok/);
+  assert.match(done, /--accent-soft/);
+  assert.match(rule('.cg-step.active > i::after'), /border-radius:\s*50%/);
+  assert.match(page, /STEP_ICON/);
+  for (const [state, icon] of [['done', 'check'], ['warn', 'bang'], ['error', 'x']])
+    assert.match(page, new RegExp(`${state}:\\s*<Icon name="${icon}"`));
+  assert.match(read('components/ui.jsx'), /bang:/);
+});
+
 test('ChatGPT 页每个按钮都有自定义背景和边框', () => {
   const css = read('styles.css');
   const src = read('pages/Dashboard.jsx');

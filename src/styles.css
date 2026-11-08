@@ -672,17 +672,19 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .cg-flow-head span { color: var(--txt-3); font-size: 11.5px; }
 .cg-steps { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; }
 .cg-step { position: relative; display: grid; justify-items: center; gap: 8px; color: var(--txt-3); font-size: 11.5px; text-align: center; }
-.cg-step::before { content: ''; position: absolute; top: 6px; left: calc(-50% + 9px); right: calc(50% + 9px); height: 1px; background: var(--line); }
+.cg-step::before { content: ''; position: absolute; top: 8px; left: calc(-50% + 13px); right: calc(50% + 13px); height: 1px; background: var(--line); }
 .cg-step:first-child::before { display: none; }
-.cg-step > i { width: 13px; height: 13px; border: 1.5px solid var(--line-bright); border-radius: 50%; background: var(--surface); }
+.cg-step > i { width: 17px; height: 17px; display: grid; place-items: center; border: 1px solid var(--line-bright); border-radius: 50%; background: var(--surface); }
+.cg-step > i svg { stroke-width: 4.2; }
 .cg-step.active { color: var(--accent-strong); }
 .cg-step.active > i { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cg-step.active > i::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-strong); }
 .cg-step.done { color: var(--txt-1); }
-.cg-step.done > i { border-color: var(--ok); background: var(--ok); }
-.cg-step.done::before, .cg-step.active::before { background: var(--accent-line); }
-.cg-step.warn > i { border-color: var(--warn); background: var(--warn); }
+.cg-step.done > i { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-strong); }
+.cg-step.done::before, .cg-step.active::before, .cg-step.warn::before, .cg-step.error::before { background: var(--accent-line); }
+.cg-step.warn > i { border-color: rgba(251, 191, 36, .55); background: rgba(251, 191, 36, .1); color: var(--warn); }
 .cg-step.warn { color: var(--warn); }
-.cg-step.error > i { border-color: var(--bad); background: var(--bad); }
+.cg-step.error > i { border-color: rgba(248, 113, 113, .55); background: rgba(248, 113, 113, .1); color: var(--bad); }
 .cg-step.error { color: var(--bad); }
 .cg-log { margin-top: 12px; }
 .cg-log ul { max-height: 150px; margin: 6px 0 0; padding: 8px 10px; overflow-y: auto; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--input-bg); list-style: none; font-size: 11.5px; }

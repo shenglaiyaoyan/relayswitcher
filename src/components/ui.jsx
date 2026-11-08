@@ -14,6 +14,7 @@ const ICONS = {
   refresh: <><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4v3.5H16" /></>,
   check: <path d="M5 13l4 4L19 7" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,
+  bang: <path d="M12 5v8.5M12 18.5v.01" />,
   chevron: <path d="M6 9.5l6 6 6-6" />,
   download: <><path d="M12 4v10" /><path d="M8 10.5l4 4 4-4" /><path d="M5 19.5h14" /></>,
   undo: <><path d="M9 14.5L4.5 10 9 5.5" /><path d="M4.5 10h9a6 6 0 0 1 0 12H10" /></>,

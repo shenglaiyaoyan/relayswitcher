@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Icon, Select, Spinner, Modal, Confirm, fmtK, planLabel } from '../components/ui.jsx';
+import { Icon, Select, Spinner, Modal, Confirm, Toggle, fmtK, planLabel } from '../components/ui.jsx';
 import { STAGES, stageStates } from './chatgpt/pipeline.mjs';
 
 const CTX_PRESETS = [272000, 372000, 872000];
@@ -26,13 +26,15 @@ const DEMO_STATE = {
   accounts: [{ id: 'a1', label: 'a***7@outlook.com', plan: 'free' }, { id: 'a2', label: 'b***2@gmail.com', plan: 'plus' }],
   relays: [{ id: 'r1', name: 'DIHUANG2API·Workbuddy', baseUrl: 'https://dihuang.zeniths.codes/v1', lastTest: { ok: true, ms: 411, count: 18 } },
     { id: 'r2', name: 'Local Gateway', baseUrl: 'http://127.0.0.1:18790/v1', lastTest: { ok: true, ms: 12 } }],
-  settings: { contextWindow: 372000 },
+  settings: { contextWindow: 372000, compatMode: true },
   catalogCounts: { official: 11 },
   status: { home: 'C:\\Users\\me\\.codex', hasTokens: true, authExists: true, model: 'gpt-6.1-sol', catalog: true, contextWindow: 372000,
     baseUrl: 'https://dihuang.zeniths.codes/v1', tokenLife: { accessTokenMs: DEMO_NOW + 9.2 * 86400000, idTokenMs: DEMO_NOW - 3600000 } }
 };
 DEMO_STATE.status.activeAccount = { ...DEMO_STATE.accounts[0], email: 'a***7@outlook.com' };
 DEMO_STATE.status.activeRelay = DEMO_STATE.relays[0];
+DEMO_STATE.status.compat = { active: true, port: 18767, running: true, relayId: 'r1', requests: 41, rewritten: 6, error: '' };
+DEMO_STATE.status.relayBaseUrl = DEMO_STATE.relays[0].baseUrl;
 const DEMO_BACKUPS = [
   { id: '20261018-224656_switch', reason: 'switch', files: ['auth.json', 'config.toml'] },
   { id: '20261018-221307_manual', reason: 'manual', files: ['auth.json', 'config.toml'] },
@@ -53,6 +55,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
   const [relayId, setRelayId] = useState('');
   const [catalogChoice, setCatalogChoice] = useState('official'); // 官方目录 / 中转目录(v1.8.0:切换即切目录)
   const [ctx, setCtx] = useState(872000);
+  const [compat, setCompat] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [done, setDone] = useState(null); // 'ok' | 'bad'
   const [codexWarn, setCodexWarn] = useState(null);
@@ -67,6 +70,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
   // 从当前状态同步默认值
   useEffect(() => {
     setCtx(status.contextWindow || settings.contextWindow || 872000);
+    setCompat(status.compat ? !!status.compat.active : !!settings.compatMode);
   }, []); // eslint-disable-line
 
   useEffect(() => {
@@ -94,6 +98,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
       if (h.includes('demo-modal')) setCodexWarn({ pids: ['4012', '4013'] });
       if (h.includes('filled')) {
         setDemoState(DEMO_STATE); setBackups(DEMO_BACKUPS); setAccountId('a1'); setRelayId('r1'); setCtx(372000);
+        setCompat(!h.includes('compatpending'));
         if (h.includes('progress')) setLog([{ name: '竞品工具检测', ok: true, detail: '未发现' }, { name: '目录生成', ok: true, detail: '官方目录' },
           { name: '备份当前配置', ok: true, detail: '快照 20261029-101010' }, { name: '写入登录态 auth.json', ok: true }, { name: '流量指向中转站', ok: false, detail: '示例失败' }]);
         if (h.includes('flowok')) { setDone('ok'); setLog([{ name: '目录生成', ok: false, detail: '回落官方目录' }, { name: '备份当前配置', ok: true },
@@ -153,7 +158,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
     if (!accountId || !relayId || switching) return;
     setSwitching(true); setDone(null); setLog([]); setShowLog(false);
     try {
-      const r = await window.rs.doSwitch({ accountId, relayId, catalogChoice, contextWindow: Number(ctx) || null });
+      const r = await window.rs.doSwitch({ accountId, relayId, catalogChoice, contextWindow: Number(ctx) || null, compat });
       setDone(r.ok ? 'ok' : 'bad');
       if (r.ok) toast('切换完成 — 重启 Codex 客户端后生效', 'ok');
       else { toast('切换失败: ' + r.error, 'bad'); setShowLog(true); }
@@ -182,6 +187,8 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
   const ctxIsPreset = CTX_PRESETS.includes(Number(ctx));
   const stateLabel = switching ? '切换中' : done === 'ok' ? '已完成' : done === 'bad' ? '已中止' : '等待新配置';
   const wired = !!(status.activeAccount && status.activeRelay);
+  const cx = status.compat || { active: false };
+  const compatPending = wired && compat !== !!cx.active;
 
   return (
     <div className="cg">
@@ -240,11 +247,19 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
                   <input type="text" inputMode="numeric" className="mono" value={ctxIsPreset ? '' : ctx} placeholder="自定义" disabled={switching}
                     onChange={e => setCtx(e.target.value.replace(/[^\d]/g, ''))} aria-label="自定义上下文窗口（tokens）" /><span>tokens</span></label>
               </div>
+              <span className="cg-flabel">兼容模式</span>
+              <div className="cg-compat">
+                <Toggle on={compat} onChange={setCompat} disabled={switching} />
+                <b>修复桌面版 call_id 报错</b>
+                <small>经本机代理把桌面版的页面记录改成普通消息再转给中转站。开启后 RelaySwitcher 需保持运行。</small>
+              </div>
             </div>
             <button className={'cg-go' + (switching ? ' switching' : '')} disabled={switching || !accounts.length || !relays.length} onClick={doSwitch}>
               {switching ? <><Spinner size={14} /> 切换中…</> : <><Icon name="relay" size={15} /> 立即切换</>}
             </button>
-            <p className="cg-go-hint">自动备份当前配置，完成后可回滚</p>
+            {compatPending
+              ? <p className="cg-go-hint pending">兼容模式改动需重新切换才生效</p>
+              : <p className="cg-go-hint">自动备份当前配置，完成后可回滚</p>}
 
             <div className="cg-flow">
               <div className="cg-flow-head"><h3>切换流程</h3>
@@ -299,8 +314,16 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
             <StatusRow label="中转站" onClick={() => goto('relays')} title="管理中转站">
               <div className="cg-stack">
                 <span>{status.activeRelay ? status.activeRelay.name : (status.baseUrl ? '未入库的中转站' : '未指向')}</span>
-                <span className="mono cg-muted cg-ellipsis" title={status.baseUrl}>{status.baseUrl || '—'}</span>
+                <span className="mono cg-muted cg-ellipsis" title={status.relayBaseUrl}>{status.relayBaseUrl || '—'}</span>
               </div>
+            </StatusRow>
+            <StatusRow label="兼容模式">
+              {cx.active
+                ? <><span className={'cg-dot' + (cx.running ? ' ok' : ' bad')} /><span>{cx.running ? '运行中' : '未运行'}</span>
+                  <span className="mono cg-muted">127.0.0.1:{cx.port}</span>
+                  {cx.running ? <span className="cg-tag">已改写 {cx.rewritten} 条</span>
+                    : cx.error ? <span className="cg-warn cg-ellipsis" title={cx.error}>{cx.error}</span> : null}</>
+                : <span className="cg-muted">关闭 · 直连中转</span>}
             </StatusRow>
             <StatusRow label="延迟">
               {lt ? <><span className={'cg-dot' + (lt.ok ? ' ok' : ' bad')} /><span className="mono">{lt.ok ? lt.ms + ' ms' : '不通'}</span>

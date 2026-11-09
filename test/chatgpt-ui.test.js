@@ -54,6 +54,20 @@ test('切换流程节点：细环 + 金色勾，完成态不用荧光绿，done/
   assert.match(read('components/ui.jsx'), /bang:/);
 });
 
+test('ChatGPT 页兼容模式：开关随切换提交、改动待生效提示、状态行显示代理运行情况', () => {
+  const page = read('pages/Dashboard.jsx');
+  assert.match(page, /<span className="cg-flabel">兼容模式<\/span>/);
+  assert.match(page, /<Toggle on=\{compat\} onChange=\{setCompat\} disabled=\{switching\} \/>/);
+  assert.match(page, /doSwitch\(\{ accountId, relayId, catalogChoice, contextWindow: Number\(ctx\) \|\| null, compat \}\)/);
+  assert.match(page, /兼容模式改动需重新切换才生效/);
+  assert.match(page, /关闭 · 直连中转/);
+  assert.match(page, /已改写 \{cx\.rewritten\} 条/);
+  assert.match(page, /status\.relayBaseUrl/);
+  const css = read('styles.css');
+  assert.match(css, /\.cg-compat\s*\{/);
+  assert.match(css, /\.cg-go-hint\.pending\s*\{/);
+});
+
 test('ChatGPT 页每个按钮都有自定义背景和边框', () => {
   const css = read('styles.css');
   const src = read('pages/Dashboard.jsx');

@@ -665,6 +665,10 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .cg-go:disabled { opacity: .55; cursor: default; }
 .cg-go.switching { opacity: .85; }
 .cg-go-hint { margin: 6px 0 0; color: var(--txt-3); font-size: 11.5px; text-align: center; }
+.cg-go-hint.pending { color: var(--accent-strong); }
+.cg-compat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 12px; min-height: 36px; }
+.cg-compat b { font-size: 12.5px; font-weight: 500; color: var(--txt-1); }
+.cg-compat small { grid-column: 2; color: var(--txt-3); font-size: 11.5px; line-height: 1.5; }
 
 .cg-flow { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
 .cg-flow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }

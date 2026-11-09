@@ -50,7 +50,7 @@ Codex 桌面版 0.167 的 Page 功能在每轮对话开头插入 `codex_apps_ope
 - 替换为 `{type:"message", role:"user", content:[…]}`：
   - `output` 是字符串 → 一个 `input_text`；
   - `output` 是数组 → `input_text`/`output_text`/`text` 转成 `input_text`，`input_image`、`input_file` 原样保留，其它部分 `JSON.stringify` 成 `input_text`；
-  - 有 `name` 时在第一个文本前加 `[<name>]` 和换行；没有任何内容时给一个空 `input_text`。
+  - 有 `name` 时在第一个文本前加 `[<name>]` 和换行，没有文本部分时单独补一条 `[<name>]`；既没有内容也没有 `name` 时给一个空 `input_text`。
 - 丢弃原条目的 `id`、`name`、`namespace`、`internal_chat_message_metadata_passthrough`。其余条目和字段不动，顺序不变。
 
 ## 界面

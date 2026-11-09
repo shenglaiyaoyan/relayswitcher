@@ -83,6 +83,23 @@ test('SSE 分块透传：上游写出第一块时客户端就能读到', async t
   assert.match(rest, /second/);
 });
 
+test('去掉 Electron net.fetch 会拒绝的浏览器头（sec-fetch-*、origin、cookie2），Codex 自己的头原样保留', async t => {
+  const upstream = http.createServer((req, res) => { req.resume(); req.on('end', () => sse(req, res)); });
+  const upPort = await listen(upstream);
+  let forwarded = null;
+  const recordingFetch = (url, init) => { forwarded = init.headers; return fetch(url, init); };
+  const proxy = createCompatProxy({ port: 0, resolveTarget: () => `http://127.0.0.1:${upPort}/v1`, fetchImpl: recordingFetch });
+  await proxy.start();
+  t.after(async () => { await proxy.stop(); upstream.closeAllConnections(); upstream.close(); });
+  await (await fetch(`http://127.0.0.1:${proxy.port}/responses`, { method: 'POST', body: JSON.stringify({ input: [USER] }), headers: {
+    'content-type': 'application/json', origin: 'http://localhost', cookie2: 'a', 'sec-fetch-dest': 'empty',
+    'session-id': 's1', 'x-codex-turn-metadata': '{"turn":1}', originator: 'Codex Desktop' } })).text();
+  for (const k of ['sec-fetch-mode', 'sec-fetch-dest', 'origin', 'cookie2']) assert.equal(forwarded[k], undefined, k);
+  assert.equal(forwarded['session-id'], 's1');
+  assert.equal(forwarded['x-codex-turn-metadata'], '{"turn":1}');
+  assert.equal(forwarded.originator, 'Codex Desktop');
+});
+
 test('GET 带查询串透传；上游不可达 502；目标中转站不存在 503', async t => {
   const { seen, base, setTarget } = await setup(t, (_req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"data":[]}'); });
   const models = await fetch(base + '/models?client_version=1');

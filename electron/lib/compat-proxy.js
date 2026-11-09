@@ -4,9 +4,11 @@ const http = require('http');
 const zlib = require('zlib');
 const { rewriteOrphanToolOutputs } = require('./compat-rewrite');
 
-// accept-encoding 交给上游 fetch 自己协商:它会解压响应,原样转发会让上游回不支持的编码
+// accept-encoding 交给上游 fetch 自己协商:它会解压响应,原样转发会让上游回不支持的编码。
+// origin/cookie2/sec-fetch-* 是浏览器上下文头,Electron net.fetch 遇到会直接报
+// ERR_INVALID_ARGUMENT/ERR_FAILED(2026-11-09 实测),转发给 API 中转也没有意义
 const STRIP_REQUEST = new Set(['host', 'connection', 'content-length', 'transfer-encoding', 'keep-alive',
-  'upgrade', 'te', 'trailer', 'expect', 'accept-encoding']);
+  'upgrade', 'te', 'trailer', 'expect', 'accept-encoding', 'origin', 'cookie2']);
 // fetch 已解压响应正文,content-encoding/content-length 不再成立
 const STRIP_RESPONSE = new Set(['connection', 'content-length', 'transfer-encoding', 'keep-alive', 'upgrade',
   'te', 'trailer', 'content-encoding']);
@@ -44,7 +46,7 @@ function createCompatProxy({ port, resolveTarget, fetchImpl, stats = { requests:
     let body = Buffer.concat(chunks);
     const headers = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (!STRIP_REQUEST.has(key) && !key.startsWith('proxy-')) headers[key] = value;
+      if (!STRIP_REQUEST.has(key) && !key.startsWith('proxy-') && !key.startsWith('sec-fetch-')) headers[key] = value;
     }
 
     if (req.method === 'POST' && REWRITE_PATH.test(req.url.split('?')[0]) && body.length) {

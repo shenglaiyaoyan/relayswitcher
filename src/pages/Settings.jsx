@@ -124,6 +124,8 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
   };
 
   const save = async () => {
+    const port = Number(form.compatPort) || 18767;
+    if (port < 1024 || port > 65535) { toast('兼容代理端口需在 1024–65535 之间', 'bad'); return; }
     setSaving(true);
     try {
       await window.rs.saveSettings({
@@ -132,7 +134,7 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
         catalogEnabled: form.catalogEnabled, fastMode: form.fastMode,
         pruneLocalProviders: !!form.pruneLocalProviders,
         closeToTray: form.closeToTray !== false, openAtLogin: !!form.openAtLogin,
-        contextWindow: Number(form.contextWindow) || 872000
+        contextWindow: Number(form.contextWindow) || 872000, compatPort: port
       });
       toast('设置已保存', 'ok');
       await refresh();
@@ -161,6 +163,13 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="klabel"><Icon name="relay" size={12} /> Provider 标识 <small>{'写入 config.toml 的 [model_providers.<id>]'}</small></div>
         <input type="text" value={form.providerId} onChange={e => setForm({ ...form, providerId: e.target.value })} />
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="klabel"><Icon name="relay" size={12} /> 兼容代理端口 <small>兼容模式下 Codex 连接 127.0.0.1 的这个端口</small></div>
+        <input type="text" inputMode="numeric" className="mono" value={form.compatPort ?? ''}
+               onChange={e => setForm({ ...form, compatPort: e.target.value.replace(/[^\d]/g, '') })} />
+        <div className="muted" style={{ marginTop: 7 }}>改端口后需重新切换才生效</div>
       </div>
       </>}
 

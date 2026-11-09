@@ -79,3 +79,11 @@ test('ChatGPT 页每个按钮都有自定义背景和边框', () => {
     assert.ok(rules.some(r => /background/.test(r)) && rules.some(r => /border\s*:/.test(r)), `按钮类 .${c} 缺少 background 或 border`);
   }
 });
+
+test('设置 · ChatGPT：兼容代理端口可改，保存前校验范围', () => {
+  const s = read('pages/Settings.jsx');
+  assert.match(s, /兼容代理端口/);
+  assert.match(s, /改端口后需重新切换才生效/);
+  assert.match(s, /compatPort: port/);
+  assert.match(s, /port < 1024 \|\| port > 65535/);
+});

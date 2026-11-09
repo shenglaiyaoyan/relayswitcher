@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../dist/assets/index-DKlmfbsY.css" />
+<style>
+  html, body { height: auto; overflow: visible; }
+  body { padding: 30px 34px 36px; width: 1560px; }
+  .wrap { display: flex; gap: 34px; align-items: flex-start; }
+  .page { width: 1060px; flex-shrink: 0; }
+  .mk-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 24px; color: var(--gold-hover); margin-bottom: 4px; }
+  .mk-sub { color: var(--txt-3); font-size: 12.5px; margin-bottom: 18px; }
+  .mk-new { position: relative; outline: 1.5px dashed rgba(232, 213, 183, .75); outline-offset: 5px; border-radius: 6px; }
+  .mk-badge { position: absolute; top: -17px; left: -19px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a;
+    font: 700 11.5px/20px 'Inter', sans-serif; text-align: center; box-shadow: 0 0 0 3px #0a0a0a; z-index: 3; }
+  .cg-srow.mk-new { outline-offset: 0; margin-top: 8px; margin-bottom: 4px; }
+  .compat { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; min-height: 36px; }
+  .compat b { font-weight: 500; font-size: 12.5px; color: var(--txt-1); }
+  .compat small { grid-column: 2; color: var(--txt-3); font-size: 11.5px; line-height: 1.5; }
+  .notes { width: 400px; padding-top: 58px; }
+  .note { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; margin-bottom: 18px; font-size: 13px; line-height: 1.65; color: var(--txt-2); }
+  .note i { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a; font: 700 12px/22px 'Inter', sans-serif; text-align: center; font-style: normal; }
+  .note b { display: block; color: var(--txt-1); font-size: 14px; margin-bottom: 2px; }
+  .note code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--gold-hover); }
+  .note.plain i { background: transparent; border: 1px solid var(--accent-line); color: var(--accent-strong); }
+  .sep { border-top: 1px solid var(--line-soft); margin: 6px 0 18px; }
+</style>
+</head>
+<body>
+<div class="mk-title">ChatGPT 页 · 兼容模式</div>
+<div class="mk-sub">虚线框和编号是新增内容。图中状态：已开启兼容模式并完成切换。</div>
+<div class="wrap">
+<div class="page">
+<div class="cg">
+  <header class="cg-head">
+    <div><h1>ChatGPT</h1><p>绑定登录态与流量出口，配置将在备份后写入 Codex。</p></div>
+  </header>
+  <div class="cg-grid">
+    <div class="cg-col">
+      <section class="cg-card cg-switch">
+        <div class="cg-card-head"><div><h2>切换</h2><p>选择新的账号与出口，校验通过后生效</p></div><span class="cg-pill ok">已完成</span></div>
+        <div class="cg-form">
+          <span class="cg-flabel">账号</span>
+          <div><div class="rs-select"><button type="button" class="rs-select-btn"><span class="rs-select-label">a***7@outlook.com · Free</span></button></div></div>
+          <span class="cg-flabel">中转站</span>
+          <div><div class="rs-select"><button type="button" class="rs-select-btn"><span class="rs-select-label">IKun · 320 ms<span class="rs-select-desc">https://api.ikun.example/v1</span></span></button></div></div>
+          <span class="cg-flabel">模型目录</span>
+          <div class="cg-seg"><button type="button" class="cg-seg-btn on">官方目录 · 12 模型</button><button type="button" class="cg-seg-btn">中转目录 · 7 模型</button></div>
+          <span class="cg-flabel">上下文窗口</span>
+          <div class="cg-ctx"><div class="cg-seg"><button type="button" class="cg-seg-btn">272K</button><button type="button" class="cg-seg-btn on">372K</button><button type="button" class="cg-seg-btn">872K</button></div>
+            <label class="cg-ctx-custom"><input type="text" class="mono" placeholder="自定义" /><span>tokens</span></label></div>
+          <span class="cg-flabel">兼容模式</span>
+          <div class="compat mk-new"><span class="mk-badge">1</span>
+            <div class="switch-toggle on"></div><b>修复桌面版 call_id 报错</b>
+            <small>经本机代理把桌面版的页面记录改成普通消息再转给中转站。开启后 RelaySwitcher 需保持运行。</small>
+          </div>
+        </div>
+        <button class="cg-go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg> 立即切换</button>
+        <p class="cg-go-hint">自动备份当前配置，完成后可回滚</p>
+        <div class="cg-flow">
+          <div class="cg-flow-head"><h3>切换流程</h3><span>完成 · 重启 Codex 客户端后生效</span></div>
+          <ol class="cg-steps">
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>备份当前配置</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>写入登录态</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>流量指向中转站</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>部署模型目录</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>校验</li>
+          </ol>
+        </div>
+      </section>
+    </div>
+    <section class="cg-card cg-status">
+      <div class="cg-card-head"><h2>当前状态</h2><span class="cg-pill ok"><i></i>已绑定</span></div>
+      <div class="cg-sgroup"><h3>登录态</h3>
+        <div class="cg-srow"><span class="cg-slabel">账号</span><div class="cg-svalue"><span class="cg-dot ok"></span><span class="mono cg-ellipsis">a***7@outlook.com</span><span class="cg-tag">OAuth 正常</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">计划</span><div class="cg-svalue">Free</div></div>
+      </div>
+      <div class="cg-sgroup"><h3>流量出口</h3>
+        <div class="cg-srow"><span class="cg-slabel">中转站</span><div class="cg-svalue"><div class="cg-stack"><span>IKun</span><span class="mono cg-muted cg-ellipsis">https://api.ikun.example/v1</span></div></div></div>
+        <div class="cg-srow mk-new"><span class="mk-badge">2</span><span class="cg-slabel">兼容模式</span>
+          <div class="cg-svalue"><span class="cg-dot ok"></span><span>运行中</span><span class="mono cg-muted">127.0.0.1:18767</span><span class="cg-tag">已改写 6 条</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">延迟</span><div class="cg-svalue"><span class="cg-dot ok"></span><span class="mono">320 ms</span><span class="cg-meter"><i style="width:68%"></i></span></div></div>
+      </div>
+      <div class="cg-sgroup"><h3>Codex</h3>
+        <div class="cg-srow"><span class="cg-slabel">模型</span><div class="cg-svalue"><span class="mono">gpt-6.1-sol</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">目录</span><div class="cg-svalue"><span>已部署</span><span class="cg-tag">目录已接管</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">窗口</span><div class="cg-svalue"><span class="mono">372K</span></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+
+<div class="notes">
+  <div class="note"><i>1</i><div><b>兼容模式开关</b>和「模型目录」一样属于切换选项：打开后点「立即切换」才写进 Codex 配置，并按原流程先备份。开关和当前生效状态不一致时，按钮下方会提示「兼容模式改动需重新切换才生效」。</div></div>
+  <div class="note"><i>2</i><div><b>状态行</b>显示本机代理是否在运行、端口，以及累计改写了几条记录。关闭时显示「关闭 · 直连中转」。中转站那一行仍显示真实中转地址。</div></div>
+  <div class="sep"></div>
+  <div class="note plain"><i>·</i><div><b>只改一种记录</b>缺 <code>call_id</code> 的工具结果改成普通用户消息，其余请求、响应原样转发，流式输出不受影响。</div></div>
+  <div class="note plain"><i>·</i><div><b>退出提醒</b>兼容模式生效时从托盘点「退出」，会先弹窗确认，因为退出后 Codex 会连不上。</div></div>
+  <div class="note plain"><i>·</i><div><b>端口</b>默认 <code>18767</code>，被占用时切换会失败并提示。设置页可以改端口。</div></div>
+</div>
+</div>
+</body>
+</html>

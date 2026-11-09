@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.18.0 (2026-11-09) — 兼容模式
+
+- 修复 Codex 桌面版报 `function_call_output requires call_id on HTTP requests; continuation via previous_response_id is only supported on Responses WebSocket v2`：桌面版 0.167 的 Page 功能会在每轮对话前插入两条缺 `call_id` 的工具结果，Sub2API 系中转在请求里没有工具调用时整单拒绝，新对话第一条消息必报错
+- ChatGPT 页新增「兼容模式」开关：开启并切换后，Codex 经 RelaySwitcher 本机代理（默认 `127.0.0.1:18767`）访问中转站，代理只把缺 `call_id` 的工具结果改成普通用户消息，其余请求、响应原样转发，流式输出不受影响
+- 当前状态新增「兼容模式」行，显示代理是否运行、端口和已改写条数；开关改动未生效时按钮下方提示需重新切换
+- 设置 · ChatGPT 可改兼容代理端口；兼容模式生效时从托盘退出会先确认，因为退出后 Codex 会连不上中转站
+- 实测：同一条带页面记录的请求，直连中转 400，经兼容代理 200 并正常回复
+
 ## v1.17.3 (2026-11-08) — 切换流程节点换成细环金色勾
 
 - ChatGPT 页「切换流程」五个节点去掉荧光绿实心圆，改为 17px 细环：完成是浅金底加金色勾，执行中是金环加中心金点，未执行是暗环

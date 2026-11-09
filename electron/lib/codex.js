@@ -410,6 +410,7 @@ function applySwitch(opts) {
   let wroteAnything = false;
   const configPath = path.join(home, 'config.toml');
   const authPath = path.join(home, 'auth.json');
+  const providerBaseUrl = opts.baseUrlOverride || opts.relay.baseUrl;
 
   try {
     fs.mkdirSync(home, { recursive: true });
@@ -489,7 +490,7 @@ function applySwitch(opts) {
     }
 
     const r = patchProviderBlock(text, opts.providerId, {
-      name: opts.relay.name, baseUrl: opts.relay.baseUrl, apiKey: opts.relay.apiKey
+      name: opts.relay.name, baseUrl: providerBaseUrl, apiKey: opts.relay.apiKey
     }, {
       pruneLocalProviders: !!opts.pruneLocalProviders,
       // 清场默认开启:旧 codex 会话锁定出生时的 provider,残留远端老路由会让它
@@ -512,7 +513,8 @@ function applySwitch(opts) {
     writeFileSyncSafe(authPath, newAuth);
     if (catalogContent) writeFileSyncSafe(path.join(home, opts.catalogFileName), catalogContent);
     step('写入登录态 auth.json', true, 'account_id=' + (opts.account.tokens.account_id || '?') + ',未知字段已保留');
-    step('流量指向中转站', true, opts.relay.baseUrl);
+    step('流量指向中转站', true, opts.baseUrlOverride
+      ? `经本机兼容代理 ${opts.baseUrlOverride} → ${opts.relay.baseUrl}` : opts.relay.baseUrl);
 
     // 6. 写后复查:读回重解析;失败则自动恢复备份
     const cfgBack = readConfigText(configPath);
@@ -520,7 +522,7 @@ function applySwitch(opts) {
     JSON.parse(fs.readFileSync(authPath, 'utf8'));
     const cfgObj = TOML.parse(cfgBack.text);
     const prov = (cfgObj.model_providers || {})[opts.providerId];
-    if (cfgObj.model_provider !== opts.providerId || !prov || prov.base_url !== opts.relay.baseUrl) {
+    if (cfgObj.model_provider !== opts.providerId || !prov || prov.base_url !== providerBaseUrl) {
       throw new Error('校验失败: provider 指向不正确');
     }
     step('校验完成', true, '写后复查通过,绑定生效');

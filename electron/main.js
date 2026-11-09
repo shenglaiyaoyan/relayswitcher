@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, net } = require('electron');
+const { app, BrowserWindow, ipcMain, net, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { createStore } = require('./lib/store');
@@ -12,12 +12,25 @@ const { mergeCustomModels } = require('./lib/catalog-merge');
 const { buildRelayCatalog } = require('./lib/relay-catalog');
 const { applyCatalogPatch } = require('./lib/catalog-patch');
 const oc = require('./lib/opencode');
+const { createCompatManager, compatBaseUrl, DEFAULT_COMPAT_PORT } = require('./lib/compat-manager');
 
 const isDev = !!process.env.VITE_DEV;
 const SMOKE = process.argv.includes('--smoke');
 
 let win = null;
 let store = null;
+let compat = null;
+
+function notifyStateChanged() {
+  if (win && !win.isDestroyed()) win.webContents.send('rs:state-changed');
+}
+// 兼容代理每改写一次都会触发,合并成每 1.5 秒最多刷新一次状态
+let notifyTimer = null;
+function notifyStateChangedSoon() {
+  if (notifyTimer) return;
+  notifyTimer = setTimeout(() => { notifyTimer = null; notifyStateChanged(); }, 1500);
+  notifyTimer.unref?.();
+}
 
 function resourcesDir() {
   // 打包后: process.resourcesPath/resources;开发: <project>/resources
@@ -35,7 +48,10 @@ function getState() {
   const status = codex.getStatus(codexHome());
   const relays = store.listRelays();
   // 状态里附带匹配:当前 base_url 对应哪个中转站、account_id 对应哪个账号
-  const activeRelay = relays.find(r => r.baseUrl === status.baseUrl) || null;
+  const compatInfo = compat ? compat.info(status) : { active: false };
+  // 兼容模式下 base_url 是本机地址,按 compatRelayId 找回真实中转站
+  const activeRelay = relays.find(r => r.baseUrl === status.baseUrl)
+    || (compatInfo.relayId ? relays.find(r => r.id === compatInfo.relayId) : null) || null;
   const accounts = store.listAccounts();
   const activeAccount = accounts.find(a => a.accountId && a.accountId === status.accountId) || null;
   // token 剩余寿命(从 auth.json 的 JWT exp 解出)
@@ -60,7 +76,8 @@ function getState() {
   return {
     accounts, relays,
     settings: store.getSettings(),
-    status: { ...status, activeRelay, activeAccount },
+    status: { ...status, activeRelay, activeAccount, compat: compatInfo,
+      relayBaseUrl: compatInfo.active && activeRelay ? activeRelay.baseUrl : status.baseUrl },
     catalogBundled: fs.existsSync(path.join(resourcesDir(), 'model-catalog.json')),
     catalogCounts: { official: catalogOfficialCount() }
   };
@@ -244,7 +261,17 @@ async function doSwitch(opts, event) {
   const cur = codex.getStatus(codexHome());
   const model = cur.model && slugs.has(cur.model) ? cur.model : catObj.models[0].slug;
 
-  return codex.applySwitch({
+  const compatPort = Number(s.compatPort) || DEFAULT_COMPAT_PORT;
+  if (opts.compat) {
+    const ens = await compat.ensure(compatPort);
+    if (!ens.ok) {
+      sendStep('兼容代理', false, ens.error);
+      return { ok: false, error: ens.error };
+    }
+    sendStep('兼容代理', true, `127.0.0.1:${compatPort} → ${relay.baseUrl}`);
+  }
+
+  const result = codex.applySwitch({
     home: codexHome(),
     account, relay,
     model,
@@ -254,8 +281,12 @@ async function doSwitch(opts, event) {
     catalogContent,
     catalogFileName: s.catalogFileName,
     pruneLocalProviders: !!s.pruneLocalProviders,
+    baseUrlOverride: opts.compat ? compatBaseUrl(compatPort) : null,
     onStep: (name, ok, detail) => sendStep(name, ok, detail)
   });
+  if (result.ok) store.saveSettings({ compatMode: !!opts.compat, compatRelayId: opts.compat ? relay.id : s.compatRelayId });
+  await compat.sync(codex.getStatus(codexHome()));
+  return result;
 }
 
 /* ---------------- 自动更新 (纯 API 检测,无 npm 依赖,仅手动触发) ---------------- */
@@ -458,7 +489,11 @@ function registerIpc() {
     return { ok: true, account: a };
   });
   ipcMain.handle('rs:listBackups', () => codex.listBackups(codexHome()));
-  ipcMain.handle('rs:restoreBackup', (_e, id) => ({ restored: codex.restoreBackup(codexHome(), id) }));
+  ipcMain.handle('rs:restoreBackup', async (_e, id) => {
+    const restored = codex.restoreBackup(codexHome(), id);
+    await compat.sync(codex.getStatus(codexHome()));
+    return { restored };
+  });
   ipcMain.handle('rs:saveSettings', (_e, s) => { store.saveSettings(s); applyOpenAtLogin(); return getState(); });
   // ---- OpenCode provider 管理(rs:oc:*):Task 1 纯函数 + store ----
   // 显式传 home 双保险(opencode.js 无参时已兜底 os.homedir())
@@ -683,6 +718,43 @@ async function smoke() {
   check('坏目录切换未污染现有配置(仍为原生目录部署的 gpt-native)', cfgAfterBad.model === 'gpt-native');
   const catStill = JSON.parse(fs.readFileSync(P('relayswitcher-model-catalog.json'), 'utf8'));
   check('已部署目录未被坏文件覆盖(仍为原生形态,不含 base_instructions)', catStill.models[0].slug === 'gpt-native' && catStill.models.every(m => !('base_instructions' in m)));
+  // ---- 场景 F:兼容模式 —— 本机代理改写缺 call_id 的页面记录,经 Electron net.fetch 转发到本地假中转 ----
+  const http = require('http');
+  let relaySeen = null;
+  const fakeRelay = http.createServer((req, res) => {
+    const parts = [];
+    req.on('data', c => parts.push(c));
+    req.on('end', () => {
+      relaySeen = { url: req.url, auth: req.headers.authorization, json: JSON.parse(Buffer.concat(parts).toString('utf8') || '{}') };
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end('data: {"type":"response.completed"}\n\n');
+    });
+  });
+  await new Promise(r => fakeRelay.listen(0, '127.0.0.1', r));
+  const smokeCompat = createCompatManager({
+    getSettings: () => ({ compatMode: true, compatRelayId: 'smoke-relay' }),
+    getRelay: () => ({ id: 'smoke-relay', baseUrl: `http://127.0.0.1:${fakeRelay.address().port}/v1` }),
+    fetchImpl: (url, init) => net.fetch(url, init)
+  });
+  const ens = await smokeCompat.ensure(0);
+  check('兼容代理启动', ens.ok && ens.port > 0);
+  const rCompat = codex.applySwitch(switchOpts({ baseUrlOverride: compatBaseUrl(ens.port) }));
+  const cfgCompat = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
+  check('兼容模式切换成功,base_url 指向本机代理', rCompat.ok && cfgCompat.model_providers['codex_local_access'].base_url === compatBaseUrl(ens.port));
+  const viaProxy = await net.fetch(compatBaseUrl(ens.port) + '/responses', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer sk-smoke' },
+    body: JSON.stringify({ model: 'gpt-6-astra', input: [
+      { type: 'function_call_output', id: 'fco_1', name: 'codex_apps_open_page', namespace: 'agent', output: '{"page_id":null}' },
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'hi' }] }] })
+  });
+  const sseText = await viaProxy.text();
+  check('代理把响应流原样带回', viaProxy.status === 200 && sseText.includes('response.completed'));
+  check('中转收到改写后的请求(缺 call_id 的记录变成 user 消息)', !!relaySeen && relaySeen.url === '/v1/responses'
+    && relaySeen.json.input[0].type === 'message' && relaySeen.json.input[0].role === 'user');
+  check('Authorization 原样转发', !!relaySeen && relaySeen.auth === 'Bearer sk-smoke');
+  await smokeCompat.stop();
+  fakeRelay.close();
+
   fs.rmSync(home, { recursive: true, force: true });
   console.log(`\nSMOKE RESULT: ${pass} passed, ${fail} failed`);
   app.exit(fail ? 1 : 0);
@@ -695,6 +767,20 @@ function showMainWin() {
   if (win && !win.isDestroyed()) { win.show(); win.focus(); }
 }
 
+/** 兼容代理在运行时,退出会让 Codex 连不上中转站,先确认 */
+function requestQuit() {
+  if (compat && compat.isServing()) {
+    const options = {
+      type: 'warning', buttons: ['取消', '仍要退出'], defaultId: 0, cancelId: 0, title: 'RelaySwitcher',
+      message: '兼容模式正在使用', detail: '退出后 Codex 将连不上中转站，直到再次打开 RelaySwitcher。'
+    };
+    const choice = win && !win.isDestroyed() ? dialog.showMessageBoxSync(win, options) : dialog.showMessageBoxSync(options);
+    if (choice !== 1) return false;
+  }
+  app.quit();
+  return true;
+}
+
 function createTray(iconPath) {
   try {
     const { Tray, Menu, nativeImage } = require('electron');
@@ -704,7 +790,7 @@ function createTray(iconPath) {
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: '显示主窗口', click: showMainWin },
       { type: 'separator' },
-      { label: '退出', click: () => app.quit() }
+      { label: '退出', click: () => requestQuit() }
     ]));
     tray.on('click', showMainWin);
   } catch (e) { console.error('[tray] 创建失败(不阻塞):', e.message); tray = null; }
@@ -719,6 +805,12 @@ function applyOpenAtLogin() {
 app.whenReady().then(() => {
   store = createStore(app.getPath('userData'));
   store.load();
+  compat = createCompatManager({
+    getSettings: () => store.getSettings(),
+    getRelay: id => store.getRelay(id),
+    fetchImpl: (url, init) => net.fetch(url, init),
+    onRewrite: () => notifyStateChangedSoon()
+  });
   registerIpc();
 
   if (SMOKE) {
@@ -739,10 +831,10 @@ app.whenReady().then(() => {
     return;
   }
 
+  // 兼容模式:上次退出时 Codex 仍指向本机代理,启动即恢复监听
+  compat.sync(codex.getStatus(codexHome())).catch(e => console.error('[compat] 启动同步失败:', e.message));
+
   // ---- 自动化(US-06):一切用户不该手点的都后台静默做 ----
-  const notifyStateChanged = () => {
-    if (win && !win.isDestroyed()) win.webContents.send('rs:state-changed');
-  };
   // token 自动保养(修正策略:只救快死的)— 启动 30s 首查 + 每 6 小时巡检,
   // 仅刷新 access_token 剩余 <24h 的账号。不做高频全量刷:每次成功刷新都会轮换
   // refresh_token(旧的作废),共享池账号会互相踢出且加速触发渠道风控;
@@ -816,7 +908,9 @@ app.whenReady().then(() => {
   applyOpenAtLogin();
   createTray(iconPath);
   win.on('close', (e) => {
-    if (!app.quitting && store.getSettings().closeToTray !== false) { e.preventDefault(); win.hide(); }
+    if (app.quitting) return;
+    if (store.getSettings().closeToTray !== false) { e.preventDefault(); win.hide(); return; }
+    if (compat && compat.isServing()) { e.preventDefault(); requestQuit(); }
   });
   // --capture 模式:完整 IPC 环境下自动截各页(设计管线用,如 #relays/#backups/#settings)
   if (process.argv.includes('--capture')) {

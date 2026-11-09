@@ -22,7 +22,10 @@ function createStore(userDataDir) {
     pruneLocalProviders: false,
     catalogMode: 'builtin',
     closeToTray: true,
-    openAtLogin: false
+    openAtLogin: false,
+    compatMode: false,
+    compatPort: 18767,
+    compatRelayId: ''
   }, customModels: []};
 
   function load() {

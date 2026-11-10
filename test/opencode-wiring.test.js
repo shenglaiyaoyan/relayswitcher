@@ -10,5 +10,5 @@ test('OpenCode 列表每次从配置文件生成，保存时 Key 留空保持不
   assert.match(list, /oc\.listProvidersFromConfig\(cfg, store\.listOpenCodeProviders\(\)\)/);
   assert.match(list, /store\.deleteOpenCodeProvider\(id\)/);
   const save = main.slice(main.indexOf("ipcMain.handle('rs:oc:save'"), main.indexOf("ipcMain.handle('rs:oc:remove'"));
-  assert.match(save, /oc\.resolveSaveKey\(\{ id: p\.id, typed: p\.apiKey, relayKey, cfg \}\)/);
+  assert.match(save, /oc\.resolveSaveKey\(\{ id: p\.originalId \|\| p\.id, typed: p\.apiKey, relayKey, cfg \}\)/);
 });

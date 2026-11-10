@@ -134,7 +134,8 @@ export default function OpenCode({ toast, goto }) {
       const source = currentDraft();
       if (!source.id?.trim()) { toast('请先填写 Provider ID', 'warn'); return; }
       const base = JSON.parse(baselineRef.current || '{}');
-      const payload = normalizeDefaultModel({ ...source, models: (source.models || []).filter(m => m.id?.trim()) });
+      // 带上编辑前的 ID：ID 改了按改名保存，而不是另存一个新 Provider
+      const payload = normalizeDefaultModel({ ...source, models: (source.models || []).filter(m => m.id?.trim()), originalId: base.id || '' });
       if (!payload.defaultModel && (base.defaultModel || source.defaultModel)) payload.clearDefaultModel = true;
       const r = await window.rs.ocSave(payload);
       if (sessionRef.current !== session) return;

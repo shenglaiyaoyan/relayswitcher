@@ -517,8 +517,9 @@ function registerIpc() {
       // apiKey:用户填了用填的;留空 → 关联中转站的 Key → 配置里已有的 Key(留空 = 保持不变)。
       // 真 schema(v1.12.6)key 存 provider.settings,不再写 auth.json
       const relayKey = p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null;
-      const effKey = oc.resolveSaveKey({ id: p.id, typed: p.apiKey, relayKey, cfg });
-      const merged = oc.mergeProviderBlock(cfg, {
+      // 改 ID 时已有 Key 在原 ID 下
+      const effKey = oc.resolveSaveKey({ id: p.originalId || p.id, typed: p.apiKey, relayKey, cfg });
+      const merged = oc.saveProviderToConfig(cfg, {
         id: p.id,
         package: oc.PROVIDER_PACKAGES[p.protocol] || p.pkg || oc.PROVIDER_PACKAGES.chat,
         name: p.name || p.id,
@@ -527,11 +528,20 @@ function registerIpc() {
         ...(p.rawExtra ? { rawExtra: p.rawExtra } : {}),
         defaultModel: p.defaultModel || null,
         clearDefaultModel: !!p.clearDefaultModel
-      });
+      }, p.originalId || '');
       oc.writeOpenCodeConfig(ocHome(), merged);
-      const { clearDefaultModel: _clear, ...toStore } = p; // 一次性意图，不落盘
+      const renamed = !!p.originalId && p.originalId !== p.id;
+      if (renamed) {
+        // auth.json 损坏时不挡保存:RS 的 Key 写在 settings 里,这里只是顺手迁移 OpenCode 自己存的条目
+        try {
+          const r = oc.renameAuthEntry(oc.readAuthFile(ocHome()), p.originalId, p.id);
+          if (r.changed) oc.writeAuthFile(ocHome(), r.auth);
+        } catch (e) { console.error('[oc] auth.json 改名跳过:', e.message); }
+        store.deleteOpenCodeProvider(p.originalId);
+      }
+      const { clearDefaultModel: _clear, originalId: _orig, ...toStore } = p; // 一次性意图，不落盘
       store.saveOpenCodeProvider({ ...toStore, apiKey: effKey || '' });
-      return { ok: true, hasComments: !!cfg._hasComments };
+      return { ok: true, hasComments: !!cfg._hasComments, renamed };
     } catch (e) { return { ok: false, error: e.message }; }
   });
   ipcMain.handle('rs:oc:remove', (_e, id) => {

@@ -357,6 +357,37 @@ function modelsToBlocks(models, pkg) {
   }));
 }
 
+/** 保存一个 Provider。originalId = 编辑前的 ID(新建为空)。
+    ID 变了按改名处理:以旧块为底写到新 ID(保留 RS 没建模的字段),再摘掉旧块 ——
+    之前只按新 ID 合并,旧块原样留着,改 ID 等于复制出一个新 Provider(2026-11-10 用户实测)。
+    新 ID 已被别的 Provider 占用时报错,不覆盖。 */
+function saveProviderToConfig(cfg, pd, originalId) {
+  const blockOf = id => (cfg.providers && cfg.providers[id]) || (cfg.provider && cfg.provider[id]) || null;
+  const renaming = !!originalId && originalId !== pd.id;
+  if ((renaming || !originalId) && blockOf(pd.id)) throw new Error(`Provider ID「${pd.id}」已存在，换一个 ID`);
+  if (!renaming) return mergeProviderBlock(cfg, pd);
+  const oldBlock = blockOf(originalId);
+  const base = removeProviderBlock(cfg, originalId);
+  const seeded = oldBlock ? { ...base, providers: { ...(base.providers || {}), [pd.id]: oldBlock } } : base;
+  const out = mergeProviderBlock(seeded, pd);
+  // 保持原来的位置(OpenCode 按配置顺序列 Provider)
+  const order = Object.keys(cfg.providers || {});
+  if (order.includes(originalId)) {
+    const keys = [...order.map(k => (k === originalId ? pd.id : k)).filter(k => k in out.providers),
+      ...Object.keys(out.providers).filter(k => !order.includes(k) && k !== pd.id)];
+    out.providers = Object.fromEntries(keys.map(k => [k, out.providers[k]]));
+  }
+  return out;
+}
+
+/** OpenCode auth.json 里以旧 ID 存的 Key 跟着改名;新 ID 已有条目时不覆盖 */
+function renameAuthEntry(auth, oldId, newId) {
+  if (!auth || !oldId || oldId === newId || !Object.prototype.hasOwnProperty.call(auth, oldId)
+    || Object.prototype.hasOwnProperty.call(auth, newId)) return { auth, changed: false };
+  const { [oldId]: entry, ...rest } = auth;
+  return { auth: { ...rest, [newId]: entry }, changed: true };
+}
+
 /** 编辑器以配置文件为准(2026-11-10):从文件读出的 Provider 只叠加 RS 自己的元数据 ——
     关联的中转站、模型套用的模板来源,以及「不支持推理」时没写进配置的档位。 */
 function mergeRsMeta(fromFile, stored) {
@@ -455,5 +486,6 @@ module.exports = {
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
   providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl, resolveFetchTarget,
-  mergeRsMeta, listProvidersFromConfig, resolveSaveKey, backupOpenCode, stripJsonComments
+  mergeRsMeta, listProvidersFromConfig, resolveSaveKey, saveProviderToConfig, renameAuthEntry,
+  backupOpenCode, stripJsonComments
 };

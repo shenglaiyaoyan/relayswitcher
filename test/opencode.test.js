@@ -402,7 +402,7 @@ test('providerBlockToRS: 真 schema 全字段反解析(variants/capabilities/set
   assert.equal(m.tool_call, true);
   assert.deepEqual(m.modalities, { input: ['text'], output: ['text'] });
   assert.equal(m.effort, 'minimal');                                // 基础档
-  assert.deepEqual(m.efforts, ['minimal', 'high', 'xhigh']);       // 基础档 + variants
+  assert.deepEqual(m.efforts, ['high', 'xhigh', 'minimal']);       // variants 按文件顺序,只在 settings 的基础档追加末尾
   assert.deepEqual(m.variantsRaw.map(v => v.id), ['high', 'xhigh']);
   assert.equal(m.baseEffort, 'minimal');                           // 基础档标记(写回不合成 variant)
   assert.deepEqual(m.options, { temperature: 1.0 });               // reasoningEffort 拆出,其余保留

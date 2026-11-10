@@ -171,6 +171,13 @@ function removeProviderBlock(existing, providerId) {
    之外的键进 settingsExtra,模型条目未知键(cost/body/compatibility…)进
    各模型的 rawExtra —— 写回时全部原样合回 */
 
+/* 推理/温度三态(2026-11-10):'unset' = 不写入配置,交给 OpenCode 默认;'yes'/'no' = 写入声明。
+   旧草稿里的布尔值兼容:true 视为支持,false 视为未设置(旧版 RS 的 false 只是默认值,不代表不支持)。 */
+const TRI_STATES = new Set(['unset', 'yes', 'no']);
+const triState = v => (TRI_STATES.has(v) ? v : v === true ? 'yes' : 'unset');
+const boolToTri = v => (v === true ? 'yes' : v === false ? 'no' : 'unset');
+const sameList = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => x === b[i]);
+
 function providerBlockToRS(id, block, cfg) {
   const b = block || {};
   const pkg = b.package || b.npm || PROVIDER_PACKAGES.chat;
@@ -183,9 +190,12 @@ function providerBlockToRS(id, block, cfg) {
     // effort 是 Anthropic 包的字段，reasoningEffort 是 OpenAI 包的字段；两种都认（旧版 RS 曾给 Anthropic 错写 reasoningEffort）。
     const { reasoningEffort: reEffort, effort: anthEffort, ...restOpts } = m.settings || {};
     const reasoningEffort = anthEffort || reEffort;
-    const { tools, input, output, ...capExtra } = m.capabilities || {};
+    const { tools, input, output, reasoning: capReasoning, temperature: capTemperature, ...capExtra } = m.capabilities || {};
     const { name, modelID, capabilities, settings: _s, limit, variants,
       reasoning, attachment, tool_call, temperature, ...mExtra } = m;
+    const reasoningRaw = capReasoning && typeof capReasoning === 'object' ? capReasoning : null;
+    const reasoningState = reasoningRaw ? boolToTri(reasoningRaw.supported) : boolToTri(reasoning);
+    const temperatureState = typeof capTemperature === 'boolean' ? boolToTri(capTemperature) : boolToTri(temperature);
     const rawExtra = {
       ...mExtra,
       ...(modelID && modelID !== mid ? { modelID } : {}) // modelID 与键名不同时保真
@@ -197,19 +207,23 @@ function providerBlockToRS(id, block, cfg) {
     const variantIds = variantsShape === 'object'
       ? Object.keys(variants)
       : (variants || []).map(v => v && v.id).filter(Boolean);
-    const efforts = [...new Set([reasoningEffort, ...variantIds].filter(Boolean))];
+    // 档位顺序就是 OpenCode 显示的顺序:跟随文件里的 variants;默认档只写在 settings 里时追加到末尾
+    const efforts = [...new Set([...variantIds, reasoningEffort].filter(Boolean))];
     return {
       id: mid,
       name: name || mid,
       limit: limit || { context: 0, output: 0 },
-      reasoning: !!reasoning, attachment: !!attachment,
+      reasoning: reasoningState,
       tool_call: tools === undefined ? true : !!tools,
-      temperature: !!temperature,
+      temperature: temperatureState,
       modalities: { input: input || ['text'], output: output || ['text'] },
       ...(Object.keys(capExtra).length ? { capExtra } : {}),
+      ...(reasoningRaw ? { reasoningRaw } : {}),
       effort: reasoningEffort || '',
-      baseEffort: reasoningEffort || '', // 基础档:写回时不合成为 variant(它就是 base settings)
+      // 基础档:只写在 settings、不是 variant 的默认档,写回时不合成为 variant
+      baseEffort: reasoningEffort && !variantIds.includes(reasoningEffort) ? reasoningEffort : '',
       efforts,
+      effortsAtLoad: [...efforts],
       variantsShape,
       variantsRaw: variants || (variantsShape === 'object' ? {} : []),
       options: restOpts,
@@ -282,36 +296,47 @@ function modelsToBlocks(models, pkg) {
         if (v.body || raw.body) raw.body = { ...(raw.body || {}), ...(v.body || {}) };
       }
     } else { delete settings.effort; delete settings.reasoningEffort; }
-    const wanted = new Set((m.efforts || []).filter(Boolean));
-    // 统一输出原生 V2 variants 数组。OpenCode 按 provider/model 判定 V1/V2,
-    // 对象 variants 与 V2 capabilities/settings/compatibility 混用会让后者被忽略。
+    const efforts = [...new Set((m.efforts || []).filter(Boolean))];
+    const reasoning = triState(m.reasoning);
+    const temperature = triState(m.temperature);
+    // 统一输出原生 V2 variants 数组,严格按 efforts 顺序(OpenCode 按文件顺序显示档位)。
+    // OpenCode 按 provider/model 判定 V1/V2,对象 variants 与 V2 capabilities/settings/compatibility 混用会让后者被忽略。
     const variants = [];
-    if (objectShape) {
-      for (const [id, value] of Object.entries(rawVariants)) {
-        if (!wanted.has(id)) continue;
-        variants.push({
-          id,
-          settings: {
-            ...fixEffortKey(value && value.settings, key),
-            ...(value && value.effort ? { [key]: value.effort } : {}),
-            ...(value && value.thinking ? { thinking: value.thinking } : {})
-          },
-          ...(value && value.body ? { body: value.body } : {}),
-          ...(value && value.headers ? { headers: value.headers } : {})
-        });
-      }
-      // 迁移时新增的档位(如套用模板)同数组分支一样补成 variant,否则只写出旧对象里已有的档。
-      for (const e of wanted) {
-        if (!Object.prototype.hasOwnProperty.call(rawVariants, e) && e !== m.baseEffort) {
-          variants.push({ id: e, settings: { [key]: e } });
+    for (const e of efforts) {
+      if (objectShape) {
+        if (Object.prototype.hasOwnProperty.call(rawVariants, e)) {
+          const value = rawVariants[e];
+          variants.push({
+            id: e,
+            settings: {
+              ...fixEffortKey(value && value.settings, key),
+              ...(value && value.effort ? { [key]: value.effort } : {}),
+              ...(value && value.thinking ? { thinking: value.thinking } : {})
+            },
+            ...(value && value.body ? { body: value.body } : {}),
+            ...(value && value.headers ? { headers: value.headers } : {})
+          });
+          continue;
         }
+      } else {
+        const v = (rawVariants || []).find(x => x && x.id === e);
+        if (v) { variants.push(v.settings ? { ...v, settings: fixEffortKey(v.settings, key) } : v); continue; }
       }
-    } else {
-      const kept = (rawVariants || []).filter(v => v && v.id && wanted.has(v.id))
-        .map(v => (v.settings ? { ...v, settings: fixEffortKey(v.settings, key) } : v));
-      const fresh = [...wanted].filter(e => !kept.some(v => v.id === e) && e !== m.baseEffort)
-        .map(e => ({ id: e, settings: { [key]: e } }));
-      variants.push(...kept, ...fresh);
+      if (e !== m.baseEffort) variants.push({ id: e, settings: { [key]: e } });
+    }
+    let reasoningCap = null;
+    if (reasoning === 'yes') {
+      const r = m.reasoningRaw;
+      if (r && r.supported === true && sameList(efforts, m.effortsAtLoad)) reasoningCap = r;
+      else {
+        const { supported: _sup, effort: _eff, ...rest } = r || {};
+        reasoningCap = { ...rest, supported: true, ...(efforts.length ? { effort: efforts } : {}) };
+      }
+    } else if (reasoning === 'no') {
+      reasoningCap = m.reasoningRaw && m.reasoningRaw.supported === false ? m.reasoningRaw : { supported: false };
+      // 不支持推理:档位留在 RS 里,不写进配置
+      delete settings.effort; delete settings.reasoningEffort;
+      variants.length = 0;
     }
     return [m.id, {
       ...raw,
@@ -322,12 +347,46 @@ function modelsToBlocks(models, pkg) {
         ...(m.capExtra || {}),
         tools: m.tool_call !== false,
         ...((m.modalities && (m.modalities.input?.length || m.modalities.output?.length))
-          ? { input: m.modalities.input, output: m.modalities.output } : {})
+          ? { input: m.modalities.input, output: m.modalities.output } : {}),
+        ...(temperature !== 'unset' ? { temperature: temperature === 'yes' } : {}),
+        ...(reasoningCap ? { reasoning: reasoningCap } : {})
       },
       ...(Object.keys(settings).length ? { settings } : {}),
       ...(variants.length ? { variants } : {})
     }];
   }));
+}
+
+/** 编辑器以配置文件为准(2026-11-10):从文件读出的 Provider 只叠加 RS 自己的元数据 ——
+    关联的中转站、模型套用的模板来源,以及「不支持推理」时没写进配置的档位。 */
+function mergeRsMeta(fromFile, stored) {
+  if (!stored) return fromFile;
+  const byId = new Map((stored.models || []).filter(m => m && m.id).map(m => [m.id, m]));
+  const models = (fromFile.models || []).map(m => {
+    const s = byId.get(m.id);
+    if (!s) return m;
+    const out = { ...m };
+    if (s.template) out.template = s.template;
+    if (m.reasoning === 'no' && !(m.efforts || []).length && (s.efforts || []).length) {
+      out.efforts = [...s.efforts];
+      out.effort = s.effort || '';
+      out.effortsAtLoad = [...s.efforts];
+    }
+    return out;
+  });
+  return { ...fromFile, ...(stored.relayId ? { relayId: stored.relayId } : {}), models };
+}
+
+/** 保存时用哪个 Key:输入框 > 关联中转站 > 配置文件里已有的 Key。输入框留空 = 保持不变。 */
+function resolveSaveKey({ id, typed, relayKey, cfg }) {
+  const t = typeof typed === 'string' ? typed.trim() : '';
+  if (t) return t;
+  if (relayKey) return relayKey;
+  const c = cfg || {};
+  const fromV2 = c.providers && c.providers[id] && c.providers[id].settings && c.providers[id].settings.apiKey;
+  const legacy = c.provider && c.provider[id];
+  const fromV1 = legacy && ((legacy.options && legacy.options.apiKey) || (legacy.settings && legacy.settings.apiKey));
+  return fromV2 || fromV1 || null;
 }
 
 /** baseURL 防呆:opencode 三种协议包都把 baseURL 当完整 API 根(anthropic 包只追加
@@ -381,5 +440,5 @@ module.exports = {
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
   providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl, resolveFetchTarget,
-  backupOpenCode, stripJsonComments
+  mergeRsMeta, resolveSaveKey, backupOpenCode, stripJsonComments
 };

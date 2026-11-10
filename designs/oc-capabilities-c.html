@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../dist/assets/index-D4HzdQah.css" />
+<style>
+  html, body { height: auto; overflow: visible; }
+  body { padding: 30px 34px 40px; width: 1640px; }
+  .mk-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 25px; color: var(--gold-hover); }
+  .mk-sub { color: var(--txt-2); font-size: 13px; margin: 6px 0 22px; line-height: 1.6; }
+  .wrap { display: grid; grid-template-columns: 548px 1fr; gap: 34px; align-items: start; }
+  .drawer { border: 1px solid var(--line); border-radius: 12px; }
+  .drawer .oce-drawer { border-left: 0; border-radius: 12px; }
+  .drawer .oce-drawer-body { overflow: visible; }
+  .mk-num { width: 20px; height: 20px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a; font: 700 11.5px/20px 'Inter', sans-serif; text-align: center; font-style: normal; display: inline-block; flex-shrink: 0; }
+  .mk-new { position: relative; outline: 1.5px dashed rgba(232, 213, 183, .7); outline-offset: 5px; border-radius: 6px; }
+  .mk-new > .mk-num { position: absolute; top: -16px; left: -18px; z-index: 3; box-shadow: 0 0 0 3px var(--surface); }
+  .hint { margin: 2px 0 0 74px; color: var(--txt-3); font-size: 11px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { height: 26px; padding: 0 11px; border: 0; border-left: 1px solid var(--line); background: var(--input-bg); color: var(--txt-3); font: inherit; font-size: 11.5px; }
+  .seg button:first-child { border-left: 0; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent-strong); }
+  .cap-rows { display: grid; gap: 9px; }
+  .cap-row { display: grid; grid-template-columns: 64px auto 1fr; align-items: center; gap: 10px; font-size: 12px; color: var(--txt-1); }
+  .cap-row > small { color: var(--txt-3); font-size: 10.5px; }
+
+  /* 档位：左侧 6 点把手 */
+  .oce-effort > .grip { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 100%; margin-left: 2px; color: var(--txt-3); cursor: grab; }
+  .oce-effort > .grip svg { display: block; }
+  .oce-effort > button.mono { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 6px 0 2px; border: 0; background: none;
+    color: var(--txt-2); font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; cursor: pointer; }
+  .oce-effort > button.mono i { padding: 0 4px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-style: normal; font-size: 9.5px; font-family: 'Inter', 'Microsoft YaHei', sans-serif; }
+  .oce-effort.on > button.mono { color: var(--accent-strong); }
+  .oce-effort.hover { border-color: var(--line-bright); }
+  .oce-effort.hover > .grip { color: var(--accent-strong); background: var(--hover); }
+  .oce-effort.ghost { border-style: dashed; border-color: var(--line-bright); background: transparent; padding: 0 12px; }
+  .oce-effort.ghost span { color: var(--txt-3); font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: .6; }
+  .drop-bar { align-self: center; width: 2px; height: 26px; border-radius: 2px; background: var(--gold-hover); box-shadow: 0 0 8px rgba(232, 213, 183, .6); }
+  .drop-wrap { position: relative; display: inline-flex; align-items: center; height: 28px; }
+  .oce-effort.lifted { position: absolute; right: 8px; top: -26px; white-space: nowrap; border-color: var(--accent); background: #1d1914;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .55); transform: rotate(-3deg); }
+  .oce-effort.lifted > .grip { color: var(--accent-strong); cursor: grabbing; }
+  .dim .oce-effort { opacity: .35; }
+
+  .notes { display: grid; gap: 20px; }
+  .panel { padding: 16px 18px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .panel h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 14px; color: var(--txt-1); }
+  .panel > p { margin: 0 0 14px; color: var(--txt-3); font-size: 12px; line-height: 1.6; }
+  .zoom { zoom: 1.75; }
+  .zrow { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .zrow > span { color: var(--txt-3); font-size: 10.5px; }
+  .zrow .oce-efforts { align-items: center; }
+  .callout { color: var(--accent-strong); font-size: 10px; margin-left: 6px; }
+  .states { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .state { padding: 12px; border: 1px solid var(--line-soft); border-radius: 9px; }
+  .state b { display: block; font-size: 12.5px; color: var(--txt-1); margin-bottom: 8px; }
+  .state small { display: block; margin-top: 8px; color: var(--txt-3); font-size: 11px; line-height: 1.55; }
+  .state .mono { font-size: 10.5px; color: var(--gold-hover); }
+  .state .oce-efforts { gap: 4px; }
+  .state .oce-effort { height: 24px; }
+  .state .oce-effort > .grip { width: 14px; }
+  .state .oce-effort-x { padding: 0 6px 0 2px; }
+</style>
+</head>
+<body>
+<div class="mk-title">方案 C · 推理并入思考档位（定稿）</div>
+<div class="mk-sub">左边是打开一个模型时的抽屉，演示数据来自你现在的配置：推理、Temp 都没写，5 个档位，默认 high。右边是放大图和推理的三种状态。</div>
+
+<div class="wrap">
+  <div class="drawer"><aside class="oce-drawer" id="drawer"></aside></div>
+  <div class="notes">
+    <div class="panel">
+      <h3><i class="mk-num">2</i>拖动把手（放大 1.75 倍）</h3>
+      <p>每个档位最左边的 6 个点就是把手。按住把手拖到新位置松开，OpenCode 里的档位就按这个顺序显示。点档位名设为默认、点 × 删除，和现在一样。</p>
+      <div class="zoom" id="zoom"></div>
+    </div>
+    <div class="panel">
+      <h3>推理的三种状态</h3>
+      <p>切换「推理」时，下面的档位跟着变；配置里写什么也标在每格下面。</p>
+      <div class="states" id="states"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const efforts = ['low', 'medium', 'high', 'xhigh', 'max'];
+const gripSvg = '<svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1.15"/><circle cx="6" cy="2" r="1.15"/><circle cx="2" cy="6" r="1.15"/><circle cx="6" cy="6" r="1.15"/><circle cx="2" cy="10" r="1.15"/><circle cx="6" cy="10" r="1.15"/></svg>';
+const chip = (e, cls = '') => `<span class="oce-effort${e === 'high' ? ' on' : ''}${cls ? ' ' + cls : ''}"><span class="grip" title="拖动调整顺序">${gripSvg}</span><button type="button" class="mono">${e}${e === 'high' ? '<i>默认</i>' : ''}</button><button type="button" class="oce-effort-x">×</button></span>`;
+const chips = (list, extraCls = '') => `<div class="oce-efforts${extraCls}">${list.map(e => chip(e)).join('')}</div>`;
+const seg = on => `<span class="seg">${['未设置', '支持', '不支持'].map(o => `<button type="button" class="${o === on ? 'on' : ''}">${o}</button>`).join('')}</span>`;
+const mod = (on) => ['text', 'image', 'audio', 'video', 'pdf'].map(m => `<button type="button" class="oce-chip${on.includes(m) ? ' on' : ''}">${m}</button>`).join('');
+
+document.getElementById('drawer').innerHTML = `
+  <div class="oce-drawer-head"><div class="oce-drawer-title"><b>Claude Opus 5.5</b><span class="mono">claude-opus-5-5</span></div>
+    <span class="oce-menu"><button type="button" class="oce-menu-btn">模板 · Claude ⌄</button></span><button type="button" class="oce-icon-btn">☆</button><button type="button" class="oce-icon-btn">×</button></div>
+  <div class="oce-drawer-body"><p class="oce-source">来自 Claude 模板 · 11-10 18:20 · 之后的修改只属于此模型</p>
+    <section class="oce-sec"><h4>基本</h4><div class="oce-fields">
+      <label class="oce-field full">模型 ID<input type="text" class="mono" value="claude-opus-5-5"></label>
+      <label class="oce-field">上下文<input type="text" class="mono" value="1000000"></label>
+      <label class="oce-field">最大输出<input type="text" class="mono" value="128000"></label></div></section>
+    <section class="oce-sec"><h4>能力</h4><div class="cap-rows">
+      <div class="cap-row"><span>工具调用</span><div class="switch-toggle on"></div><small>写入 tools</small></div>
+      <div class="cap-row"><span>温度参数</span>${seg('未设置')}<small>未设置 = 不写入</small></div></div></section>
+    <section class="oce-sec"><h4>模态</h4>
+      <div class="oce-modality"><span>输入</span><div class="oce-chips">${mod(['text', 'image', 'pdf'])}</div></div>
+      <div class="hint mk-new" style="display:inline-block"><i class="mk-num">1</i>勾选 image / pdf 即可传附件</div>
+      <div class="oce-modality" style="margin-top:8px"><span>输出</span><div class="oce-chips">${mod(['text'])}</div></div></section>
+    <section class="oce-sec"><h4>推理与思考档位<small>拖动排序 · 点击设为默认 · × 删除</small></h4>
+      <div class="cap-row" style="margin-bottom:12px"><span>推理</span>${seg('未设置')}<small>选「支持」会把档位一并声明给 OpenCode</small></div>
+      <div class="mk-new" style="display:inline-block"><i class="mk-num">2</i>${chips(efforts)}</div>
+      <div class="oce-effort-add"><input type="text" class="mono" placeholder="添加档位，如 ultra"><button type="button" class="btn btn-sm">添加</button></div></section>
+  </div>`;
+
+document.getElementById('zoom').innerHTML = `
+  <div class="zrow"><span>平时</span>${chips(efforts)}</div>
+  <div class="zrow"><span>鼠标移到把手</span><div class="oce-efforts">${efforts.map(e => chip(e, e === 'max' ? 'hover' : '')).join('')}<span class="callout">← 把手变亮，光标变成抓手</span></div></div>
+  <div class="zrow" style="margin-top:22px"><span>拖动中</span><div class="oce-efforts">${['low', 'medium', 'high'].map(e => chip(e)).join('')}<span class="oce-effort ghost"><span>max</span></span>${chip('xhigh')}<span class="drop-wrap"><span class="drop-bar"></span>${chip('max', 'lifted')}</span></div></div>
+  <div class="zrow"><span></span><span class="callout" style="margin-left:0">虚框 = 原来的位置，金色竖线 = 松手后的位置</span></div>
+  <div class="zrow"><span>松手后</span>${chips(['low', 'medium', 'high', 'xhigh', 'max'])}</div>`;
+
+document.getElementById('states').innerHTML = [
+  ['未设置', '', '只写档位：<span class="mono">variants</span> + <span class="mono">settings.effort</span>。不写推理声明，和现在一样。'],
+  ['支持', '', '档位照写，另外写 <span class="mono">capabilities.reasoning: {supported: true, effort: [档位]}</span>，顺序和这里一致。'],
+  ['不支持', ' dim', '写 <span class="mono">capabilities.reasoning: {supported: false}</span>，档位变灰、不写入。改回「支持」时档位还在。']
+].map(([s, cls, note]) => `<div class="state"><b>${s}</b>${seg(s)}<div style="height:10px"></div>${chips(['low', 'high', 'max'], cls)}<small>${note}</small></div>`).join('');
+</script>
+</body>
+</html>

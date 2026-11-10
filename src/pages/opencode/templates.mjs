@@ -1,18 +1,19 @@
 const ALL = ['low', 'medium', 'high', 'xhigh', 'max'];
+// 推理/温度三态:'unset' 不写入配置(交给 OpenCode 默认),'yes'/'no' 写入声明
 const tpl = (id, name, patterns, context, output, efforts, effort, caps, input) => ({
   id, name, builtin: true, patterns, limit: { context, output },
-  reasoning: true, attachment: caps.attachment ?? true, tool_call: true, temperature: caps.temperature ?? true,
+  reasoning: 'yes', tool_call: true, temperature: caps.temperature ?? 'unset',
   modalities: { input, output: ['text'] }, efforts, effort
 });
 
 // models.dev 2026-10 核对；Gemini 输出按用户口径 128000。全部可在设置页修改。
 export const BUILTIN_TEMPLATES = [
-  tpl('builtin-claude', 'Claude', ['claude-*'], 1000000, 128000, ALL, 'high', { temperature: false }, ['text', 'image', 'pdf']),
-  tpl('builtin-gpt', 'GPT', ['gpt-*'], 872000, 128000, ALL, 'high', { temperature: false }, ['text', 'image', 'pdf']),
+  tpl('builtin-claude', 'Claude', ['claude-*'], 1000000, 128000, ALL, 'high', { temperature: 'no' }, ['text', 'image', 'pdf']),
+  tpl('builtin-gpt', 'GPT', ['gpt-*'], 872000, 128000, ALL, 'high', { temperature: 'no' }, ['text', 'image', 'pdf']),
   tpl('builtin-gemini', 'Gemini', ['gemini-*'], 1000000, 128000, ['low', 'medium', 'high'], 'high', {}, ['text', 'image', 'video', 'audio', 'pdf']),
-  tpl('builtin-deepseek', 'DeepSeek', ['deepseek-*'], 1048576, 393216, ['low', 'high', 'max'], 'high', { attachment: false }, ['text']),
-  tpl('builtin-glm', 'GLM', ['glm-*'], 1000000, 131072, ['low', 'high', 'max'], 'high', { attachment: false }, ['text']),
-  tpl('builtin-kimi', 'Kimi', ['kimi-*'], 1048576, 1048576, ['low', 'high', 'max'], 'high', { temperature: false }, ['text', 'image', 'video']),
+  tpl('builtin-deepseek', 'DeepSeek', ['deepseek-*'], 1048576, 393216, ['low', 'high', 'max'], 'high', {}, ['text']),
+  tpl('builtin-glm', 'GLM', ['glm-*'], 1000000, 131072, ['low', 'high', 'max'], 'high', {}, ['text']),
+  tpl('builtin-kimi', 'Kimi', ['kimi-*'], 1048576, 1048576, ['low', 'high', 'max'], 'high', { temperature: 'no' }, ['text', 'image', 'video']),
   tpl('builtin-qwen', 'Qwen', ['qwen*'], 1000000, 131072, ['low', 'medium', 'xhigh'], 'medium', {}, ['text', 'image', 'video', 'pdf']),
   tpl('builtin-grok', 'Grok', ['grok-*'], 500000, 500000, ['low', 'medium', 'high', 'xhigh'], 'high', {}, ['text', 'image', 'pdf']),
   tpl('builtin-minimax', 'MiniMax', ['minimax-*'], 1000000, 524288, [], '', {}, ['text', 'image', 'video']),
@@ -43,9 +44,24 @@ export const matchTemplate = (templates, id) => {
   return list.find(t => !t.builtin && matches(t, id)) || list.find(t => t.builtin && matches(t, id)) || null;
 };
 
+/** 三态取值;旧版本存的布尔值:true → 支持,false/缺省 → 未设置(旧 false 只是默认值,不代表不支持) */
+export const capState = v => (v === 'unset' || v === 'yes' || v === 'no' ? v : v === true ? 'yes' : 'unset');
+
+/** 旧模板(布尔 + attachment)迁移为三态;内置模板的温度按当前内置定义,其余字段(用户改过的数值等)保留 */
+export const migrateTemplate = t => {
+  if (!t || typeof t !== 'object') return t;
+  const { attachment: _attachment, ...rest } = t;
+  const builtin = t.builtin ? BUILTIN_TEMPLATES.find(b => b.id === t.id) : null;
+  return {
+    ...rest,
+    reasoning: capState(t.reasoning),
+    temperature: typeof t.temperature === 'boolean' && builtin ? builtin.temperature : capState(t.temperature)
+  };
+};
+
 const pickValues = t => clone({
   limit: t.limit || { context: 0, output: 0 },
-  reasoning: !!t.reasoning, attachment: !!t.attachment, tool_call: !!t.tool_call, temperature: !!t.temperature,
+  reasoning: capState(t.reasoning), tool_call: !!t.tool_call, temperature: capState(t.temperature),
   modalities: t.modalities || { input: ['text'], output: ['text'] },
   efforts: t.efforts || [], effort: t.effort || ''
 });
@@ -64,7 +80,8 @@ export const templateDiff = model => {
   const out = [];
   if ((model.limit?.context || 0) !== (v.limit.context || 0)) out.push('limit.context');
   if ((model.limit?.output || 0) !== (v.limit.output || 0)) out.push('limit.output');
-  for (const k of ['reasoning', 'attachment', 'tool_call', 'temperature']) if (!!model[k] !== v[k]) out.push(k);
+  if (!!model.tool_call !== !!v.tool_call) out.push('tool_call');
+  for (const k of ['reasoning', 'temperature']) if (capState(model[k]) !== capState(v[k])) out.push(k);
   if (!sameSet(model.modalities?.input, v.modalities.input)) out.push('modalities.input');
   if (!sameSet(model.modalities?.output, v.modalities.output)) out.push('modalities.output');
   if (!sameSet(model.efforts, v.efforts)) out.push('efforts');
@@ -72,7 +89,7 @@ export const templateDiff = model => {
   return out;
 };
 
-export const resolveTemplates = stored => Array.isArray(stored) ? stored : clone(BUILTIN_TEMPLATES);
+export const resolveTemplates = stored => Array.isArray(stored) ? stored.map(migrateTemplate) : clone(BUILTIN_TEMPLATES);
 
 export const resetBuiltins = list => [
   ...clone(BUILTIN_TEMPLATES),

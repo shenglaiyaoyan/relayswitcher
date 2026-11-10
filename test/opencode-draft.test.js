@@ -35,3 +35,23 @@ test('Provider 草稿手动拉取、模型编辑与新增档位保持纯数据�
   assert.equal(d.addEffort(withEffort, 'xhigh'), withEffort);
   assert.equal(d.addEffort(withEffort, '   '), withEffort);
 });
+
+test('新模型推理与温度默认「未设置」，没有附件字段', async () => {
+  const d = await import('../src/pages/opencode/draft.mjs');
+  const m = d.newModel('x');
+  assert.equal(m.reasoning, 'unset');
+  assert.equal(m.temperature, 'unset');
+  assert.equal('attachment' in m, false);
+});
+
+test('moveEffort：把档位移到目标位置，返回新数组，不改原数组；越界或原地不动返回原数组', async () => {
+  const d = await import('../src/pages/opencode/draft.mjs');
+  const list = ['low', 'high', 'max', 'medium', 'xhigh'];
+  assert.deepEqual(d.moveEffort(list, 2, 4), ['low', 'high', 'medium', 'xhigh', 'max']);
+  assert.deepEqual(d.moveEffort(list, 3, 1), ['low', 'medium', 'high', 'max', 'xhigh']);
+  assert.deepEqual(d.moveEffort(list, 0, 4), ['high', 'max', 'medium', 'xhigh', 'low']);
+  assert.deepEqual(list, ['low', 'high', 'max', 'medium', 'xhigh']);
+  assert.equal(d.moveEffort(list, 2, 2), list);
+  assert.equal(d.moveEffort(list, -1, 2), list);
+  assert.equal(d.moveEffort(list, 1, 9), list);
+});

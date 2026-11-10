@@ -12,16 +12,20 @@ test('内置模板覆盖 11 个系列且数据完整', async () => {
     assert.equal(x.builtin, true, x.name);
     assert.ok(x.patterns.length > 0, x.name);
     assert.ok(x.limit.context > 0 && x.limit.output > 0, x.name);
-    for (const k of ['reasoning', 'attachment', 'tool_call', 'temperature']) assert.equal(typeof x[k], 'boolean', x.name + k);
+    assert.equal(typeof x.tool_call, 'boolean', x.name);
+    for (const k of ['reasoning', 'temperature']) assert.ok(['unset', 'yes', 'no'].includes(x[k]), x.name + k);
+    assert.equal('attachment' in x, false, x.name);
     assert.ok(x.modalities.input.includes('text') && x.modalities.output.includes('text'), x.name);
     assert.ok(!x.effort || x.efforts.includes(x.effort), x.name);
   }
   const claude = t.BUILTIN_TEMPLATES[0];
   assert.deepEqual(claude.efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
-  assert.equal(claude.temperature, false);
+  assert.equal(claude.temperature, 'no');
+  assert.equal(claude.reasoning, 'yes');
   assert.deepEqual(claude.limit, { context: 1000000, output: 128000 });
   const gemini = t.BUILTIN_TEMPLATES.find(x => x.name === 'Gemini');
   assert.deepEqual(gemini.efforts, ['low', 'medium', 'high']);
+  assert.equal(gemini.temperature, 'unset', '没把握的不写，交给 OpenCode 默认');
   assert.equal(t.BUILTIN_TEMPLATES.find(x => x.name === 'GPT').limit.context, 872000);
 });
 
@@ -111,7 +115,7 @@ test('套用模板：复制参数、保留身份字段、记录来源、不共�
   const t = await load();
   const tpl = t.BUILTIN_TEMPLATES[0];
   const model = { id: 'claude-opus-5-5', name: 'Opus', options: { a: 1 }, rawExtra: { cost: 1 },
-    limit: { context: 0, output: 0 }, reasoning: false, attachment: false, tool_call: false, temperature: true,
+    limit: { context: 0, output: 0 }, reasoning: 'unset', tool_call: false, temperature: 'yes',
     modalities: { input: ['text'], output: ['text'] }, efforts: ['ultra'], effort: 'ultra', baseEffort: 'ultra' };
   const out = t.applyTemplate(model, tpl, 1000);
   assert.equal(out.id, 'claude-opus-5-5');
@@ -119,7 +123,8 @@ test('套用模板：复制参数、保留身份字段、记录来源、不共�
   assert.deepEqual(out.options, { a: 1 });
   assert.deepEqual(out.rawExtra, { cost: 1 });
   assert.deepEqual(out.limit, tpl.limit);
-  assert.equal(out.temperature, false);
+  assert.equal(out.temperature, 'no');
+  assert.equal(out.reasoning, 'yes');
   assert.deepEqual(out.efforts, tpl.efforts);
   assert.equal(out.effort, tpl.effort);
   assert.deepEqual(out.modalities, tpl.modalities);
@@ -137,10 +142,36 @@ test('已修改判定只标与套用时模板值不同的字段', async () => {
   const t = await load();
   const applied = t.applyTemplate({ id: 'claude-x', name: 'x' }, t.BUILTIN_TEMPLATES[0], 1);
   assert.deepEqual(t.templateDiff(applied), []);
-  const edited = { ...applied, limit: { ...applied.limit, output: 64000 }, temperature: true,
+  const edited = { ...applied, limit: { ...applied.limit, output: 64000 }, temperature: 'yes',
     modalities: { ...applied.modalities, input: ['pdf', 'image', 'text'] } };
   assert.deepEqual(t.templateDiff(edited).sort(), ['limit.output', 'temperature']);
   assert.deepEqual(t.templateDiff({ id: 'none' }), []);
+  // 旧版本存下的套用快照是布尔值：推理 true 对应「支持」，不算修改
+  const legacy = { ...applied, template: { ...applied.template, values: { ...applied.template.values, reasoning: true, attachment: true } } };
+  assert.deepEqual(t.templateDiff(legacy), []);
+});
+
+test('旧模板迁移成三态：推理 true → 支持、false → 未设置；温度内置按当前定义、自定义 false → 未设置；去掉附件', async () => {
+  const t = await load();
+  const stored = [
+    { ...t.BUILTIN_TEMPLATES[0], reasoning: true, attachment: true, temperature: false, limit: { context: 5, output: 6 } },
+    { ...t.BUILTIN_TEMPLATES[2], reasoning: true, attachment: true, temperature: true },
+    { id: 'c1', name: '自定义', builtin: false, patterns: ['x-*'], reasoning: false, attachment: false, tool_call: true, temperature: false,
+      modalities: { input: ['text'], output: ['text'] }, efforts: ['low'], effort: 'low', limit: { context: 1, output: 1 } },
+    { id: 'c2', name: '自定义2', builtin: false, patterns: ['y-*'], reasoning: true, temperature: true, tool_call: true,
+      modalities: { input: ['text'], output: ['text'] }, efforts: [], effort: '', limit: { context: 1, output: 1 } }
+  ];
+  const [claude, gemini, c1, c2] = t.resolveTemplates(stored);
+  assert.equal(claude.reasoning, 'yes'); assert.equal(claude.temperature, 'no');
+  assert.deepEqual(claude.limit, { context: 5, output: 6 }, '用户改过的数值保留');
+  assert.equal(gemini.temperature, 'unset');
+  assert.equal(c1.reasoning, 'unset'); assert.equal(c1.temperature, 'unset');
+  assert.equal(c2.reasoning, 'yes'); assert.equal(c2.temperature, 'yes');
+  for (const x of [claude, gemini, c1, c2]) assert.equal('attachment' in x, false);
+  assert.equal(t.capState('no'), 'no');
+  assert.equal(t.capState(true), 'yes');
+  assert.equal(t.capState(false), 'unset');
+  assert.equal(t.capState(undefined), 'unset');
 });
 
 test('store 持久化模板列表：未保存为 null，保存后重开仍在，且不写入 opencodeProviders', () => {
@@ -172,11 +203,17 @@ test('模板列表：null 回退内置，恢复内置保留自定义，可由模
   assert.deepEqual(reset.find(x => x.id === t.BUILTIN_TEMPLATES[0].id).limit, { context: 1000000, output: 128000 });
   assert.ok(reset.some(x => x.id === 'c1'));
   const fromModel = t.templateFromModel({ id: 'acme-1', name: 'Acme', limit: { context: 5, output: 6 },
-    reasoning: true, attachment: false, tool_call: true, temperature: true,
+    reasoning: 'yes', tool_call: true, temperature: 'no',
     modalities: { input: ['text'], output: ['text'] }, efforts: ['low'], effort: 'low' }, 'tid');
   assert.equal(fromModel.id, 'tid');
   assert.equal(fromModel.builtin, false);
   assert.deepEqual(fromModel.patterns, ['acme-1']);
   assert.equal(fromModel.name, 'Acme');
   assert.deepEqual(fromModel.efforts, ['low']);
+  assert.equal(fromModel.reasoning, 'yes');
+  assert.equal(fromModel.temperature, 'no');
+  const blank = t.blankTemplate('b1');
+  assert.equal(blank.reasoning, 'unset');
+  assert.equal(blank.temperature, 'unset');
+  assert.equal('attachment' in blank, false);
 });

@@ -2,7 +2,7 @@ import { prettifyModelName } from './prettify-model-name.mjs';
 
 export const newModel = (id = '') => ({
   id, name: prettifyModelName(id) || id, limit: { context: 0, output: 0 },
-  reasoning: false, attachment: false, tool_call: true, temperature: false,
+  reasoning: 'unset', tool_call: true, temperature: 'unset',
   modalities: { input: ['text'], output: ['text'] },
   efforts: [], effort: '', options: {}
 });
@@ -15,6 +15,16 @@ export const updateModel = (provider, index, patch) => ({
   ...provider,
   models: provider.models.map((model, i) => i === index ? { ...model, ...patch } : model)
 });
+
+/** 把 from 位置的档位移到 to 位置(移动后的下标);原地不动或越界返回原数组 */
+export const moveEffort = (efforts, from, to) => {
+  const list = efforts || [];
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return efforts;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+};
 
 export const addEffort = (model, raw) => {
   const value = raw.trim();

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.19.0 (2026-11-10) — OpenCode 模型能力与档位顺序
+
+- 思考档位可以拖动排序：按住档位左侧的把手拖到新位置（把手聚焦后 ← → 键也能移动），OpenCode 里按这个顺序显示；模板库同样支持
+- 修复档位顺序被打乱：以前写入时按导入时的旧顺序、新档位接末尾，读回又把默认档挪到第一，导致 DeepSeek 等模型的 max 跑到中间
+- 「推理」并入「推理与思考档位」，改为三选一：未设置（不写入，和以前一样）/ 支持（把档位一并声明给 OpenCode）/ 不支持（档位不写入，OpenCode 不再发送思考档位）
+- 「温度参数」改为三选一并真正写入配置；去掉「附件」开关（OpenCode 新版没有这个字段，能否传附件看输入模态）
+- 编辑器改为每次从 OpenCode 配置文件读取，外部改过的配置不会再被 RS 的旧副本盖回去
+- 修复 API Key 留空保存会删掉配置里原有 Key 的问题，现在留空即保持不变
+- 实测：真实配置 9 个 Provider 读出后原样保存 0 处改动；OpenCode 2.2.6 能加载三种状态写出的配置
+
 ## v1.18.0 (2026-11-09) — 兼容模式
 
 - 修复 Codex 桌面版报 `function_call_output requires call_id on HTTP requests; continuation via previous_response_id is only supported on Responses WebSocket v2`：桌面版 0.167 的 Page 功能会在每轮对话前插入两条缺 `call_id` 的工具结果，Sub2API 系中转在请求里没有工具调用时整单拒绝，新对话第一条消息必报错

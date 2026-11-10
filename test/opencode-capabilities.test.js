@@ -127,6 +127,24 @@ test('mergeRsMeta：配置文件为准，只叠加 RS 自己的元数据', () =>
   assert.equal(mergeRsMeta(fromFile, null), fromFile);
 });
 
+test('listProvidersFromConfig：列表以配置文件为准，新出现的算导入，store 里多出来的标记清理', () => {
+  const { listProvidersFromConfig } = require('../electron/lib/opencode.js');
+  const cfg = { providers: { a: providerWith({ m1: { name: 'M1 新', variants: variants(['low', 'max']) } }) },
+    provider: { legacy: { npm: '@ai-sdk/anthropic', options: { baseURL: 'https://l.example.com/v1' }, models: {} } } };
+  const stored = [
+    { id: 'a', relayId: 'r1', models: [{ id: 'm1', name: 'M1 旧', efforts: ['max', 'low'], template: { id: 't', name: 'T' } }] },
+    { id: 'deleted-elsewhere', models: [] }
+  ];
+  const r = listProvidersFromConfig(cfg, stored);
+  assert.deepEqual(r.providers.map(p => p.id), ['a', 'legacy']);
+  assert.equal(r.providers[0].models[0].name, 'M1 新');
+  assert.deepEqual(r.providers[0].models[0].efforts, ['low', 'max']);
+  assert.equal(r.providers[0].relayId, 'r1');
+  assert.equal(r.providers[0].models[0].template.id, 't');
+  assert.deepEqual(r.imported, ['legacy']);
+  assert.deepEqual(r.stale, ['deleted-elsewhere']);
+});
+
 test('resolveSaveKey：输入框 > 关联中转站 > 配置里已有的 Key', () => {
   const cfg = { providers: { a: { settings: { apiKey: 'sk-file' } } }, provider: { old: { options: { apiKey: 'sk-legacy' } } } };
   assert.equal(resolveSaveKey({ id: 'a', typed: 'sk-typed', relayKey: 'sk-relay', cfg }), 'sk-typed');

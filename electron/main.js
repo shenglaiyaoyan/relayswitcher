@@ -500,29 +500,24 @@ function registerIpc() {
   const ocHome = () => require('os').homedir();
   ipcMain.handle('rs:oc:list', (_e) => {
     try {
-      // 自动全量接管(v1.12.6):配置文件里有而 store 没有的 provider 读入 store。
-      // 纯读取,此步不写 opencode.json;读取失败(损坏/缺文件)回退纯 store 列表
-      let imported = 0;
-      try {
-        const cfg = oc.readOpenCodeConfig(ocHome());
-        const known = new Set(store.listOpenCodeProviders().map(p => p.id));
-        const blocks = [...Object.entries(cfg.providers || {}), ...Object.entries(cfg.provider || {})]; // 新旧双形态
-        for (const [id, block] of blocks) {
-          if (!id || known.has(id) || !block || typeof block !== 'object') continue;
-          store.saveOpenCodeProvider(oc.providerBlockToRS(id, block, cfg));
-          imported++;
-        }
-      } catch { /* 配置文件不可读 → 维持现状 */ }
-      return { providers: store.listOpenCodeProviders(), imported };
+      // 以配置文件为准(v1.19):每次从 opencode 配置生成列表,只叠加 RS 元数据(关联中转站、模板来源)。
+      // 外部改过的配置不会被 RS 旧副本盖回去。纯读取,此步不写 opencode 配置;读不了时退回 store 列表
+      let cfg;
+      try { cfg = oc.readOpenCodeConfig(ocHome()); } catch { return { providers: store.listOpenCodeProviders(), imported: 0 }; }
+      const r = oc.listProvidersFromConfig(cfg, store.listOpenCodeProviders());
+      for (const id of r.imported) store.saveOpenCodeProvider(r.providers.find(p => p.id === id));
+      for (const id of r.stale) store.deleteOpenCodeProvider(id);
+      return { providers: r.providers, imported: r.imported.length };
     } catch (e) { return { providers: [], imported: 0, error: e.message }; }
   });
   ipcMain.handle('rs:oc:save', (_e, p) => {
     try {
       oc.backupOpenCode(ocHome()); // 写前备份(真实 home)
       const cfg = oc.readOpenCodeConfig(ocHome());
-      // apiKey:用户填了用填的;选了中转站但 key 留空 → 从站库自动带入(relay.apiKey 解密后)。
+      // apiKey:用户填了用填的;留空 → 关联中转站的 Key → 配置里已有的 Key(留空 = 保持不变)。
       // 真 schema(v1.12.6)key 存 provider.settings,不再写 auth.json
-      const effKey = p.apiKey || (p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null);
+      const relayKey = p.relayId ? (() => { try { return store.getRelay(p.relayId).apiKey || null; } catch { return null; } })() : null;
+      const effKey = oc.resolveSaveKey({ id: p.id, typed: p.apiKey, relayKey, cfg });
       const merged = oc.mergeProviderBlock(cfg, {
         id: p.id,
         package: oc.PROVIDER_PACKAGES[p.protocol] || p.pkg || oc.PROVIDER_PACKAGES.chat,

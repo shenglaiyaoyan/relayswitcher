@@ -377,6 +377,21 @@ function mergeRsMeta(fromFile, stored) {
   return { ...fromFile, ...(stored.relayId ? { relayId: stored.relayId } : {}), models };
 }
 
+/** Provider 列表以配置文件为准(新旧两种形态,新形态同 id 优先),叠加 store 里的 RS 元数据。
+    imported = 配置里有、store 里没有的;stale = store 里有、配置里已经没有的(外部删掉了)。 */
+function listProvidersFromConfig(cfg, storedList) {
+  const stored = new Map((storedList || []).filter(p => p && p.id).map(p => [p.id, p]));
+  const blocks = { ...((cfg && cfg.provider) || {}), ...((cfg && cfg.providers) || {}) };
+  const ids = [...new Set([...Object.keys((cfg && cfg.providers) || {}), ...Object.keys((cfg && cfg.provider) || {})])]
+    .filter(id => id && blocks[id] && typeof blocks[id] === 'object');
+  const providers = ids.map(id => mergeRsMeta(providerBlockToRS(id, blocks[id], cfg), stored.get(id) || null));
+  return {
+    providers,
+    imported: ids.filter(id => !stored.has(id)),
+    stale: [...stored.keys()].filter(id => !ids.includes(id))
+  };
+}
+
 /** 保存时用哪个 Key:输入框 > 关联中转站 > 配置文件里已有的 Key。输入框留空 = 保持不变。 */
 function resolveSaveKey({ id, typed, relayKey, cfg }) {
   const t = typeof typed === 'string' ? typed.trim() : '';
@@ -440,5 +455,5 @@ module.exports = {
   readAuthFile, writeAuthFile,
   mergeProviderBlock, removeProviderBlock,
   providerBlockToRS, modelsToBlocks, fileVariantsShape, normalizeBaseUrl, resolveFetchTarget,
-  mergeRsMeta, resolveSaveKey, backupOpenCode, stripJsonComments
+  mergeRsMeta, listProvidersFromConfig, resolveSaveKey, backupOpenCode, stripJsonComments
 };

@@ -81,7 +81,11 @@ export const templateDiff = model => {
   if ((model.limit?.context || 0) !== (v.limit.context || 0)) out.push('limit.context');
   if ((model.limit?.output || 0) !== (v.limit.output || 0)) out.push('limit.output');
   if (!!model.tool_call !== !!v.tool_call) out.push('tool_call');
-  for (const k of ['reasoning', 'temperature']) if (capState(model[k]) !== capState(v[k])) out.push(k);
+  // 旧版 RS 存的快照是布尔值，而它从不把推理/温度写进配置，两者无从对应：旧快照不比较这两项
+  for (const k of ['reasoning', 'temperature']) {
+    if (typeof v[k] === 'boolean') continue;
+    if (capState(model[k]) !== capState(v[k])) out.push(k);
+  }
   if (!sameSet(model.modalities?.input, v.modalities.input)) out.push('modalities.input');
   if (!sameSet(model.modalities?.output, v.modalities.output)) out.push('modalities.output');
   if (!sameSet(model.efforts, v.efforts)) out.push('efforts');

@@ -149,6 +149,14 @@ test('已修改判定只标与套用时模板值不同的字段', async () => {
   // 旧版本存下的套用快照是布尔值：推理 true 对应「支持」，不算修改
   const legacy = { ...applied, template: { ...applied.template, values: { ...applied.template.values, reasoning: true, attachment: true } } };
   assert.deepEqual(t.templateDiff(legacy), []);
+  // 旧版 RS 从不把推理/温度写进配置，旧快照里的布尔值和配置无关：不参与比较，免得没动过的模型满屏「已修改」
+  const gem = t.applyTemplate({ id: 'gemini-x', name: 'g' }, t.BUILTIN_TEMPLATES[2], 1);
+  for (const values of [{ temperature: true, reasoning: true }, { temperature: false, reasoning: false }]) {
+    const legacySnap = { ...gem, reasoning: 'unset', temperature: 'unset', template: { ...gem.template, values: { ...gem.template.values, ...values } } };
+    assert.deepEqual(t.templateDiff(legacySnap), []);
+  }
+  // 新版本套用的快照是三态，照常比较
+  assert.deepEqual(t.templateDiff({ ...gem, reasoning: 'no' }), ['reasoning']);
 });
 
 test('旧模板迁移成三态：推理 true → 支持、false → 未设置；温度内置按当前定义、自定义 false → 未设置；去掉附件', async () => {

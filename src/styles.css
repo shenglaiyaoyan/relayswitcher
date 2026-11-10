@@ -526,6 +526,7 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oce-caps i::before { content: ''; width: 5px; height: 5px; border-radius: 50%; border: 1px solid currentColor; }
 .oce-caps i.on { color: var(--accent-strong); opacity: 1; }
 .oce-caps i.on::before { background: currentColor; }
+.oce-caps i.off { text-decoration: line-through; }
 .oce-empty { display: grid; gap: 6px; justify-items: center; padding: 60px 20px; color: var(--txt-3); font-size: 12px; }
 .oce-empty b { color: var(--txt-2); font-weight: 500; font-size: 13px; }
 
@@ -583,12 +584,30 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oce-chip { height: 26px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--txt-3); font-size: 11px; font-family: 'JetBrains Mono', Consolas, monospace; cursor: pointer; }
 .oce-chip:hover { color: var(--txt-1); }
 .oce-chip.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-strong); }
-.oce-efforts { display: flex; flex-wrap: wrap; gap: 6px; }
+.oce-efforts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.oce-efforts.disabled { opacity: .38; pointer-events: none; }
 .oce-effort { display: inline-flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-.oce-effort > button:first-child { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 6px 0 10px; border: 0; background: none; color: var(--txt-2); font-size: 11.5px; cursor: pointer; }
-.oce-effort > button:first-child i { padding: 0 4px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-style: normal; font-size: 9.5px; font-family: 'Inter','Microsoft YaHei',sans-serif; }
+.oce-effort > .mono { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 6px 0 3px; border: 0; background: none; color: var(--txt-2); font-size: 11.5px; cursor: pointer; }
+.oce-effort > .mono i { padding: 0 4px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-style: normal; font-size: 9.5px; font-family: 'Inter','Microsoft YaHei',sans-serif; }
 .oce-effort.on { border-color: var(--accent); background: var(--accent-soft); }
-.oce-effort.on > button:first-child { color: var(--accent-strong); }
+.oce-effort.on > .mono { color: var(--accent-strong); }
+.oce-effort.dragging { border-style: dashed; border-color: var(--line-bright); background: transparent; opacity: .5; }
+.oce-grip { display: inline-flex; align-items: center; justify-content: center; align-self: stretch; width: 18px; margin-left: 2px; border-radius: 4px; color: var(--txt-3); cursor: grab; }
+.oce-grip:hover, .oce-grip:focus-visible { color: var(--accent-strong); background: var(--hover); outline: none; }
+.oce-grip:active { cursor: grabbing; }
+.oce-effort.drop-before { box-shadow: -4px 0 0 -1px var(--gold-hover), -6px 0 8px -4px rgba(232, 213, 183, .7); }
+.oce-effort.drop-after { box-shadow: 4px 0 0 -1px var(--gold-hover), 6px 0 8px -4px rgba(232, 213, 183, .7); }
+.oce-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.oce-seg-btn { height: 26px; padding: 0 11px; border: 0; border-left: 1px solid var(--line); background: var(--input-bg); color: var(--txt-3); font-family: inherit; font-size: 11.5px; cursor: pointer; }
+.oce-seg-btn:first-child { border-left: 0; }
+.oce-seg-btn:hover:not(:disabled) { color: var(--txt-1); }
+.oce-seg-btn.on { background: var(--accent-soft); color: var(--accent-strong); }
+.oce-cap-rows { display: grid; gap: 9px; }
+.oce-cap-row { display: grid; grid-template-columns: 64px auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--txt-1); font-size: 12px; }
+.oce-cap-row > span { display: inline-flex; align-items: center; }
+.oce-cap-row > small { min-width: 0; color: var(--txt-3); font-size: 10.5px; }
+.oce-reasoning-row { margin-bottom: 12px; }
+.oce-modality-hint { margin: -2px 0 8px 74px; color: var(--txt-3); font-size: 11px; }
 .oce-effort .oce-effort-x { display: inline-flex; align-items: center; justify-content: center; height: 100%; padding: 0 8px 0 4px; border: 0; border-radius: 0; background: transparent; color: var(--txt-3); cursor: pointer; }
 .oce-effort .oce-effort-x:hover { color: var(--bad); background: rgba(248, 113, 113, 0.1); }
 .oce-effort-add { display: flex; gap: 8px; margin-top: 10px; }
@@ -795,6 +814,11 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oc-lib-caps { display: inline-flex; gap: 3px; }
 .oc-lib-caps i { padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--txt-3); font-style: normal; font-size: 9px; opacity: .55; }
 .oc-lib-caps i.on { border-color: rgba(167,139,113,.45); color: var(--gold-light); opacity: 1; }
+.oc-lib-caps i.off { text-decoration: line-through; }
+.oc-lib-caps-edit { padding: 10px 16px 4px; }
+.oc-lib-modality-hint { margin: -4px 16px 8px 92px; color: var(--txt-3); font-size: 10.5px; }
+.oc-lib-efforts { display: grid; gap: 10px; padding: 10px 16px 0; }
+.oc-lib-efforts .oce-reasoning-row { margin-bottom: 0; }
 .oc-lib-editor-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .oc-lib-editor-head small { color: var(--gold); font-size: 10px; }
 .oc-lib-editor-head h3 { margin: 2px 0 0; font-size: 16px; font-weight: 600; }

@@ -1,9 +1,15 @@
 import React from 'react';
 import { Icon, Select } from '../../components/ui.jsx';
-import { fmtTokens } from './templates.mjs';
+import { capState, fmtTokens } from './templates.mjs';
 
 export const AUTO = '__auto__';
-const CAPS = [['reasoning', '推', '推理'], ['attachment', '附', '附件'], ['tool_call', '工', '工具'], ['temperature', 'T', 'Temp']];
+const STATE_TEXT = { yes: '支持', no: '不支持', unset: '未设置' };
+// 亮 = 支持/开，暗 = 未设置，删除线 = 不支持/关
+const capsOf = m => [
+  ['推', '推理', capState(m.reasoning)],
+  ['工', '工具调用', m.tool_call !== false ? 'yes' : 'no'],
+  ['T', '温度参数', capState(m.temperature)]
+];
 
 export default function ModelTable({ rows, total, query, setQuery, batch, onToggleBatch, checked, setChecked,
   selected, onSelect, onAddManual, onTidyNames, defaultModelId, templates, batchTemplate, setBatchTemplate, onApplyBatch, busy }) {
@@ -50,8 +56,8 @@ export default function ModelTable({ rows, total, query, setQuery, batch, onTogg
             <span className="mono num">{fmtTokens(m.limit?.context)}</span>
             <span className="mono num">{fmtTokens(m.limit?.output)}</span>
             <span className="mono oce-col-effort">{m.effort || '—'}</span>
-            <span className="oce-caps">{CAPS.map(([k, short, label]) =>
-              <i key={k} className={m[k] ? 'on' : ''} title={`${label}：${m[k] ? '开' : '关'}`}>{short}</i>)}</span>
+            <span className="oce-caps">{capsOf(m).map(([short, label, s]) =>
+              <i key={short} className={s === 'yes' ? 'on' : s === 'no' ? 'off' : ''} title={`${label}：${STATE_TEXT[s]}`}>{short}</i>)}</span>
           </div>
         ))}
         {!total && <div className="oce-empty"><b>还没有模型</b><span>点右上角「拉取模型」，或「手动添加」。</span></div>}

@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Icon, Toggle, Spinner, Confirm } from '../../components/ui.jsx';
-import { blankTemplate, fmtTokens, matchTemplate, resetBuiltins, resolveTemplates } from './templates.mjs';
+import { blankTemplate, capState, fmtTokens, matchTemplate, resetBuiltins, resolveTemplates } from './templates.mjs';
+import { EffortList, TriSeg } from './CapControls.jsx';
 
-const CAPS = [['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']];
+// 列表里的能力标签：亮 = 支持/开，暗 = 未设置，删除线 = 不支持/关
+const capsOf = t => [
+  ['推理', capState(t.reasoning)],
+  ['工具', t.tool_call !== false ? 'yes' : 'no'],
+  ['Temp', capState(t.temperature)]
+];
 const MODALITIES = ['text', 'image', 'audio', 'video', 'pdf'];
 const parsePatterns = text => text.split(',').map(s => s.trim()).filter(Boolean);
 const num = text => { const n = Number(String(text).replace(/[^\d]/g, '')); return Number.isFinite(n) ? n : 0; };
@@ -82,7 +88,7 @@ export default function TemplateLibrary({ toast }) {
           {list.map(t => <button type="button" key={t.id} className={'oc-lib-item' + (current?.id === t.id ? ' on' : '')} onClick={() => setSelectedId(t.id)}>
             <span className="oc-lib-item-top"><b>{t.name || '(未命名)'}</b><span className="badge">{t.builtin ? '内置' : '自定义'}</span></span>
             <span className="oc-lib-item-sub"><span className="mono">{(t.patterns || []).join(', ') || '无匹配规则'}</span>
-              <span className="oc-lib-caps">{CAPS.map(([k, label]) => <i key={k} className={t[k] ? 'on' : ''}>{label}</i>)}</span>
+              <span className="oc-lib-caps">{capsOf(t).map(([label, s]) => <i key={label} className={s === 'yes' ? 'on' : s === 'no' ? 'off' : ''}>{label}</i>)}</span>
               <span className="mono">{fmtTokens(t.limit?.context)} / {fmtTokens(t.limit?.output)} · {t.efforts?.length ? `${t.efforts.length} 档` : '思考开关'}</span></span>
           </button>)}
         </div>
@@ -105,24 +111,31 @@ export default function TemplateLibrary({ toast }) {
                 onChange={e => update({ limit: { ...current.limit, output: num(e.target.value) } })} /></label>
           </div></section>
           <section><h4>能力</h4>
-            <div className="oc-cap-grid">{CAPS.map(([key, label]) =>
-              <div key={key} className="oc-cap-cell" onClick={() => update({ [key]: !current[key] })}><span>{label}</span><Toggle on={!!current[key]} onChange={() => {}} /></div>)}</div>
+            <div className="oce-cap-rows oc-lib-caps-edit">
+              <div className="oce-cap-row"><span>工具调用</span>
+                <Toggle on={current.tool_call !== false} onChange={v => update({ tool_call: v })} /><small>写入 tools</small></div>
+              <div className="oce-cap-row"><span>温度参数</span>
+                <TriSeg value={capState(current.temperature)} onChange={v => update({ temperature: v })} label="温度参数" /><small>未设置 = 不写入</small></div>
+            </div>
             {[['input', '输入'], ['output', '输出']].map(([dir, label]) => (
-              <div className="oc-modality" key={dir}><span>{label}模态</span><div className="oc-chip-list">
-                {MODALITIES.map(mod => {
-                  const cur = current.modalities?.[dir] || [];
-                  const on = cur.includes(mod);
-                  return <button type="button" key={mod} className={'chip' + (on ? ' on' : '')}
-                    onClick={() => update({ modalities: { ...current.modalities, [dir]: on ? cur.filter(x => x !== mod) : [...cur, mod] } })}>{mod}</button>;
-                })}</div></div>))}
+              <React.Fragment key={dir}>
+                <div className="oc-modality"><span>{label}模态</span><div className="oc-chip-list">
+                  {MODALITIES.map(mod => {
+                    const cur = current.modalities?.[dir] || [];
+                    const on = cur.includes(mod);
+                    return <button type="button" key={mod} className={'chip' + (on ? ' on' : '')}
+                      onClick={() => update({ modalities: { ...current.modalities, [dir]: on ? cur.filter(x => x !== mod) : [...cur, mod] } })}>{mod}</button>;
+                  })}</div></div>
+                {dir === 'input' && <p className="oc-lib-modality-hint">勾选 image / pdf 即可传附件</p>}
+              </React.Fragment>))}
           </section>
-          <section><h4>思考档位 <span className="oc-field-hint">点击设为默认，× 删除；无档位 = 仅思考开关</span></h4>
-            <div className="oc-efforts">{(current.efforts || []).map(effort => (
-              <span key={effort} className={'oc-effort-card' + (current.effort === effort ? ' on' : '')}>
-                <button type="button" className="oc-effort-select mono" onClick={() => update({ effort: current.effort === effort ? '' : effort })}>{effort}</button>
-                <button type="button" className="oc-effort-x" title="删除该档位" onClick={() => update({
-                  efforts: current.efforts.filter(e => e !== effort), ...(current.effort === effort ? { effort: '' } : {}) })}><Icon name="x" size={11} /></button>
-              </span>))}
+          <section><h4>推理与思考档位 <span className="oc-field-hint">拖动排序 · 点击设为默认 · × 删除；无档位 = 仅思考开关</span></h4>
+            <div className="oc-lib-efforts">
+              <div className="oce-cap-row oce-reasoning-row"><span>推理</span>
+                <TriSeg value={capState(current.reasoning)} onChange={v => update({ reasoning: v })} label="推理" />
+                <small>选「支持」会把档位一并声明给 OpenCode</small></div>
+              <EffortList efforts={current.efforts || []} effort={current.effort || ''} onChange={update}
+                disabled={capState(current.reasoning) === 'no'} emptyText="无档位（仅思考开关）" />
               <span className="oc-effort-new"><input type="text" className="mono" value={newEffort} placeholder="新增档位"
                 onChange={e => setNewEffort(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addEffortValue(); }} />
                 <button type="button" className="btn btn-sm" onClick={addEffortValue}>添加</button></span>

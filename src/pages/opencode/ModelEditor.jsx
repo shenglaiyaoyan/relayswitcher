@@ -2,9 +2,9 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import { Icon, Toggle } from '../../components/ui.jsx';
 import { addEffort, updateModel } from './draft.mjs';
 import { DraftTextInput, DraftNumberInput } from './fields.jsx';
-import { applyTemplate, fmtTokens, matchTemplate, templateDiff } from './templates.mjs';
+import { applyTemplate, capState, fmtTokens, matchTemplate, templateDiff } from './templates.mjs';
+import { EffortList, TriSeg } from './CapControls.jsx';
 
-const CAPS = [['reasoning', '推理'], ['attachment', '附件'], ['tool_call', '工具'], ['temperature', 'Temp']];
 const MODALITIES = ['text', 'image', 'audio', 'video', 'pdf'];
 const Modified = ({ on }) => on ? <span className="oce-modified" title="与套用时的模板值不同">已修改</span> : null;
 const fmtTime = ts => {
@@ -49,6 +49,8 @@ export default memo(function ModelEditor({ model, modelIndex, onChange, onDelete
   const [newEffort, setNewEffort] = useState('');
   const changed = new Set(templateDiff(model));
   const set = (key, value) => onChange({ [key]: value });
+  const reasoning = capState(model.reasoning);
+  const Mod = ({ k }) => changed.has(k) ? <i className="oce-dot-mod" title="已修改" /> : null;
   const latest = useRef({ model, newEffort, onChange });
   latest.current = { model, modelIndex, newEffort, onChange };
   const commit = () => {
@@ -101,41 +103,40 @@ export default memo(function ModelEditor({ model, modelIndex, onChange, onDelete
         </section>
 
         <section className="oce-sec"><h4>能力</h4>
-          <div className="oce-caps-grid">{CAPS.map(([key, label]) => (
-            <div key={key} className="oce-cap" onClick={() => set(key, !model[key])}>
-              <span>{label}{changed.has(key) && <i className="oce-dot-mod" title="已修改" />}</span>
-              <Toggle on={!!model[key]} onChange={() => {}} /></div>))}
+          <div className="oce-cap-rows">
+            <div className="oce-cap-row"><span>工具调用<Mod k="tool_call" /></span>
+              <Toggle on={model.tool_call !== false} onChange={v => set('tool_call', v)} /><small>写入 tools</small></div>
+            <div className="oce-cap-row"><span>温度参数<Mod k="temperature" /></span>
+              <TriSeg value={capState(model.temperature)} onChange={v => set('temperature', v)} label="温度参数" /><small>未设置 = 不写入</small></div>
           </div>
         </section>
 
         <section className="oce-sec"><h4>模态</h4>
           {[['input', '输入'], ['output', '输出']].map(([dir, label]) => (
-            <div className="oce-modality" key={dir}><span>{label} <Modified on={changed.has('modalities.' + dir)} /></span><div className="oce-chips">
-              {MODALITIES.map(mod => {
-                const current = model.modalities?.[dir] || [];
-                const selected = current.includes(mod);
-                return <button type="button" key={mod} className={'oce-chip' + (selected ? ' on' : '')}
-                  onClick={() => set('modalities', { ...(model.modalities || {}),
-                    [dir]: selected ? current.filter(x => x !== mod) : [...current, mod] })}>{mod}</button>;
-              })}
-            </div></div>))}
+            <React.Fragment key={dir}>
+              <div className="oce-modality"><span>{label} <Modified on={changed.has('modalities.' + dir)} /></span><div className="oce-chips">
+                {MODALITIES.map(mod => {
+                  const current = model.modalities?.[dir] || [];
+                  const selected = current.includes(mod);
+                  return <button type="button" key={mod} className={'oce-chip' + (selected ? ' on' : '')}
+                    onClick={() => set('modalities', { ...(model.modalities || {}),
+                      [dir]: selected ? current.filter(x => x !== mod) : [...current, mod] })}>{mod}</button>;
+                })}
+              </div></div>
+              {dir === 'input' && <p className="oce-modality-hint">勾选 image / pdf 即可传附件</p>}
+            </React.Fragment>))}
         </section>
 
-        <section className="oce-sec"><h4>思考档位 <Modified on={changed.has('efforts') || changed.has('effort')} /><small>点击设为默认，× 删除</small></h4>
-          <div className="oce-efforts">{(model.efforts || []).map(effort => (
-            <span key={effort} className={'oce-effort' + (model.effort === effort ? ' on' : '')}>
-              <button type="button" className="mono" onClick={() => set('effort', model.effort === effort ? '' : effort)}>
-                {effort}{model.effort === effort && <i>默认</i>}</button>
-              <button type="button" className="oce-effort-x" title="删除该档位"
-                onClick={() => onChange({ efforts: model.efforts.filter(e => e !== effort),
-                  ...(model.effort === effort ? { effort: '' } : {}) })}><Icon name="x" size={10} /></button>
-            </span>))}
-            {!(model.efforts || []).length && <span className="oce-muted">无档位（仅思考开关）</span>}
-          </div>
+        <section className="oce-sec"><h4>推理与思考档位 <Modified on={changed.has('efforts') || changed.has('effort')} /><small>拖动排序 · 点击设为默认 · × 删除</small></h4>
+          <div className="oce-cap-row oce-reasoning-row"><span>推理<Mod k="reasoning" /></span>
+            <TriSeg value={reasoning} onChange={v => set('reasoning', v)} label="推理" />
+            <small>{reasoning === 'no' ? '不支持推理：档位保留在 RS，不写入配置' : '选「支持」会把档位一并声明给 OpenCode'}</small></div>
+          <EffortList efforts={model.efforts || []} effort={model.effort || ''} onChange={onChange} disabled={reasoning === 'no'}
+            emptyText="无档位（仅思考开关）" />
           <div className="oce-effort-add">
-            <input type="text" className="mono" value={newEffort} onChange={e => setNewEffort(e.target.value)}
+            <input type="text" className="mono" value={newEffort} onChange={e => setNewEffort(e.target.value)} disabled={reasoning === 'no'}
               onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setNewEffort(''); }} placeholder="添加档位，如 ultra" />
-            <button type="button" className="btn btn-sm" disabled={!newEffort.trim() || busy} onClick={commit}>添加</button>
+            <button type="button" className="btn btn-sm" disabled={!newEffort.trim() || busy || reasoning === 'no'} onClick={commit}>添加</button>
           </div>
         </section>
 

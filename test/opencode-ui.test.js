@@ -91,7 +91,8 @@ test('参数抽屉：模板菜单即点即套用、存为新模板、已修改�
   assert.match(model, /templateDiff\(model\)/);
   assert.match(model, /已修改/);
   for (const mod of ['text', 'image', 'audio', 'video', 'pdf']) assert.match(model, new RegExp(`'${mod}'`));
-  for (const cap of ['推理', '附件', '工具', 'Temp']) assert.match(model, new RegExp(cap));
+  for (const cap of ['工具调用', '温度参数', '推理与思考档位', '勾选 image / pdf 即可传附件']) assert.match(model, new RegExp(cap));
+  assert.doesNotMatch(model, /'attachment'/, '附件开关已去掉');
   assert.match(model, /添加档位/);
   const settings = read('pages/Settings.jsx');
   assert.match(settings, /<TemplateLibrary/);
@@ -99,9 +100,42 @@ test('参数抽屉：模板菜单即点即套用、存为新模板、已修改�
   assert.match(lib, /恢复内置模板/);
   assert.match(lib, /ocTemplatesSave/);
 });
+test('推理/温度三选一与可拖动档位：抽屉和模板库共用组件，推理不支持时档位禁用', () => {
+  const ctl = read('pages/opencode/CapControls.jsx');
+  assert.match(ctl, /export function TriSeg/);
+  assert.match(ctl, /export function EffortList/);
+  for (const s of ['未设置', '支持', '不支持']) assert.match(ctl, new RegExp(s));
+  assert.match(ctl, /draggable=\{!disabled\}/);
+  assert.match(ctl, /onDragStart=/);
+  assert.match(ctl, /className="oce-grip"/);
+  assert.match(ctl, /ArrowLeft/);
+  assert.match(ctl, /moveEffort\(/);
+  // 落点提示画在档位边框外侧，不能插入占位元素（会把档位挤开，松手时目标变了浏览器就取消放下）
+  assert.match(ctl, /drop-before/);
+  assert.match(ctl, /drop-after/);
+  assert.doesNotMatch(ctl, /oce-drop-bar/);
+  const model = read('pages/opencode/ModelEditor.jsx');
+  assert.match(model, /<EffortList[^>]*disabled=\{reasoning === 'no'\}/);
+  assert.match(model, /<TriSeg value=\{reasoning\}/);
+  assert.match(model, /<TriSeg value=\{capState\(model\.temperature\)\}/);
+  const lib = read('pages/opencode/TemplateLibrary.jsx');
+  assert.match(lib, /<EffortList/);
+  assert.match(lib, /<TriSeg/);
+  assert.doesNotMatch(lib, /'attachment'/);
+  const table = read('pages/opencode/ModelTable.jsx');
+  assert.doesNotMatch(table, /'附'/);
+  assert.match(table, /'off'/);
+  const css = read('styles.css');
+  assert.match(css, /\.oce-caps i\.off\s*\{[^}]*line-through/);
+  assert.match(css, /\.oce-efforts\.disabled\s*\{/);
+  assert.match(css, /\.oce-effort\.dragging\s*\{/);
+  assert.match(css, /\.oce-effort\.drop-before\s*\{[^}]*box-shadow/);
+  assert.match(css, /\.oce-effort\.drop-after\s*\{[^}]*box-shadow/);
+});
+
 test('编辑页每个按钮都有自定义背景和边框，不能露出系统默认白色按钮', () => {
   const css = read('styles.css');
-  const files = ['ModelEditor.jsx', 'ModelTable.jsx', 'FetchPopover.jsx', 'ProviderEditor.jsx'].map(f => read('pages/opencode/' + f));
+  const files = ['ModelEditor.jsx', 'ModelTable.jsx', 'FetchPopover.jsx', 'ProviderEditor.jsx', 'CapControls.jsx'].map(f => read('pages/opencode/' + f));
   const classes = new Set();
   for (const src of files) {
     for (const m of src.matchAll(/<button[^>]*?className=\{?["'`]([^"'`]+)/g)) classes.add(m[1].trim().split(/\s+/)[0]);
@@ -111,9 +145,9 @@ test('编辑页每个按钮都有自定义背景和边框，不能露出系统�
     const rules = [...css.matchAll(new RegExp('[^}]*\\.' + c.replace(/[-]/g, '\\-') + '\\b[^{]*\\{([^}]*)\\}', 'g'))].map(m => m[1]);
     return rules.some(r => /background/.test(r)) && rules.some(r => /border\s*:/.test(r));
   };
-  // .mono 仅用于档位名按钮，由 .oce-effort > button:first-child 负责样式
+  // .mono 仅用于档位名按钮，由 .oce-effort > .mono 负责样式
   for (const c of classes) if (c !== 'mono') assert.ok(covered(c), `按钮类 .${c} 缺少 background 或 border 样式`);
-  assert.match(css, /\.oce-effort > button:first-child\s*\{[^}]*border:\s*0[^}]*background:\s*none/);
+  assert.match(css, /\.oce-effort > \.mono\s*\{[^}]*border:\s*0[^}]*background:\s*none/);
 });
 
 test('未保存编辑离开有确认，Provider 统计数字使用正常字号', () => {

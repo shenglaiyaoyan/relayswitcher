@@ -26,7 +26,9 @@ test('内置模板覆盖 11 个系列且数据完整', async () => {
   const gemini = t.BUILTIN_TEMPLATES.find(x => x.name === 'Gemini');
   assert.deepEqual(gemini.efforts, ['low', 'medium', 'high']);
   assert.equal(gemini.temperature, 'unset', '没把握的不写，交给 OpenCode 默认');
-  assert.equal(t.BUILTIN_TEMPLATES.find(x => x.name === 'GPT').limit.context, 872000);
+  // 用户口径（2026-11-11）：GPT 上下文 500000，GLM 输出 128000
+  assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GPT').limit, { context: 500000, output: 128000 });
+  assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GLM').limit, { context: 1000000, output: 128000 });
 });
 
 test('按模型名匹配：通配、前缀路径、大小写，自定义优先，未命中返回 null', async () => {

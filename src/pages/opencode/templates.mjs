@@ -6,13 +6,13 @@ const tpl = (id, name, patterns, context, output, efforts, effort, caps, input) 
   modalities: { input, output: ['text'] }, efforts, effort
 });
 
-// models.dev 2026-10 核对；Gemini 输出按用户口径 128000。全部可在设置页修改。
+// models.dev 2026-10 核对；按用户口径：Gemini 输出 128000，GPT 上下文 500000、GLM 输出 128000（2026-11-11）。全部可在设置页修改。
 export const BUILTIN_TEMPLATES = [
   tpl('builtin-claude', 'Claude', ['claude-*'], 1000000, 128000, ALL, 'high', { temperature: 'no' }, ['text', 'image', 'pdf']),
-  tpl('builtin-gpt', 'GPT', ['gpt-*'], 872000, 128000, ALL, 'high', { temperature: 'no' }, ['text', 'image', 'pdf']),
+  tpl('builtin-gpt', 'GPT', ['gpt-*'], 500000, 128000, ALL, 'high', { temperature: 'no' }, ['text', 'image', 'pdf']),
   tpl('builtin-gemini', 'Gemini', ['gemini-*'], 1000000, 128000, ['low', 'medium', 'high'], 'high', {}, ['text', 'image', 'video', 'audio', 'pdf']),
   tpl('builtin-deepseek', 'DeepSeek', ['deepseek-*'], 1048576, 393216, ['low', 'high', 'max'], 'high', {}, ['text']),
-  tpl('builtin-glm', 'GLM', ['glm-*'], 1000000, 131072, ['low', 'high', 'max'], 'high', {}, ['text']),
+  tpl('builtin-glm', 'GLM', ['glm-*'], 1000000, 128000, ['low', 'high', 'max'], 'high', {}, ['text']),
   tpl('builtin-kimi', 'Kimi', ['kimi-*'], 1048576, 1048576, ['low', 'high', 'max'], 'high', { temperature: 'no' }, ['text', 'image', 'video']),
   tpl('builtin-qwen', 'Qwen', ['qwen*'], 1000000, 131072, ['low', 'medium', 'xhigh'], 'medium', {}, ['text', 'image', 'video', 'pdf']),
   tpl('builtin-grok', 'Grok', ['grok-*'], 500000, 500000, ['low', 'medium', 'high', 'xhigh'], 'high', {}, ['text', 'image', 'pdf']),

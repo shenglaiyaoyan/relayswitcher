@@ -29,6 +29,12 @@ test('内置模板覆盖 11 个系列且数据完整', async () => {
   // 用户口径（2026-11-11）：GPT 上下文 500000，GLM 输出 128000
   assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GPT').limit, { context: 500000, output: 128000 });
   assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GLM').limit, { context: 1000000, output: 128000 });
+  // DeepSeek V4.1 Flash 1017（2026-10-17）：1M 上下文、384K 输出、思考 low/high/max 默认 high，原生识图
+  const ds = t.BUILTIN_TEMPLATES.find(x => x.name === 'DeepSeek');
+  assert.deepEqual(ds.limit, { context: 1048576, output: 393216 });
+  assert.deepEqual(ds.efforts, ['low', 'high', 'max']);
+  assert.equal(ds.effort, 'high');
+  assert.deepEqual(ds.modalities, { input: ['text', 'image'], output: ['text'] });
 });
 
 test('按模型名匹配：通配、前缀路径、大小写，自定义优先，未命中返回 null', async () => {

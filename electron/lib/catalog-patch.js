@@ -18,6 +18,9 @@
  *   - 5.6-sol / 5.6-luna 恢复显示(2026-09-24 用户指令:6-sol 实战口碑不及 5.6-sol,
  *     官方目录亦未隐藏 5.6 系)——不再因 6 系在场而隐藏
  *   - gpt-5.6-terra 维持退役(用户指令;官方目录虽仍列出)
+ *   - 2026-11-18 同步 Codex 0.170.0(GPT-6.2 Sol/Astra 发布):6.1-sol 默认上下文跟官方 272K→500K,
+ *     6.1-sol/6-sol 描述跟官方新文案;6.2 两款只补声明 Ultra Fast 档(官方 Speed 文档:两款都支持,
+ *     按套餐门控),且只校准已在目录里的条目(onlyIfPresent)—— 旧 exe 提取的目录没有 6.2,不凭空补入
  *
  * 生效范围:official 模式补缺+校准;relay 模式只校准中转站已提供的条目(不替中转站做加法)。
  * 内嵌快照追上后(slug 原生存在):新增自然退化为参数校准;下个版本移除本表即完全回归快照。
@@ -26,7 +29,19 @@
  */
 const { mergeCustomModels } = require('./catalog-merge');
 
+// 6.2 两款以自身原生条目为底,只改速度档;onlyIfPresent:目录里没有时不补入
+const ultrafast62 = slug => ({
+  templateSlug: slug, slug, onlyIfPresent: true,
+  serviceTiers: [
+    { id: 'priority', name: 'Fast', description: '2x speed, increased usage' },
+    { id: 'ultrafast', name: 'Ultra Fast', description: 'Up to 4.5x speed' }
+  ],
+  additionalSpeedTiers: ['fast', 'ultrafast']
+});
+
 const PATCH_MODELS = [
+  ultrafast62('gpt-6.2-sol'),
+  ultrafast62('gpt-6.2-astra'),
   {
     // 同 slug 改写 astra:仅补声明 Ultra Fast 档 — 速度档选择器由目录元数据驱动,
     // 提取快照只声明了 Fast 一档,选择器就被限在两档(用户实证正常客户端三档)。
@@ -40,8 +55,8 @@ const PATCH_MODELS = [
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6.1-sol', displayName: 'GPT-6.1-Sol',
-    description: 'Latest workhorse model for coding and everyday work.',
-    contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'low',
+    description: 'Previous generation model for coding and everyday work.',
+    contextWindow: 500000, maxContextWindow: 872000, defaultEffort: 'low',
     reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     serviceTiers: [
       { id: 'priority', name: 'Fast', description: '2x speed' },
@@ -51,7 +66,7 @@ const PATCH_MODELS = [
   },
   {
     templateSlug: 'gpt-6-astra', slug: 'gpt-6-sol', displayName: 'GPT-6-Sol',
-    description: 'Workhorse model for coding and everyday work.',
+    description: 'Legacy model for coding and everyday work.',
     contextWindow: 272000, maxContextWindow: 872000, defaultEffort: 'medium',
     reasoningLevels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']
   },
@@ -74,7 +89,9 @@ const RETIRED_SLUGS = ['gpt-5.6-terra'];
 function applyCatalogPatch(catalog, opts = {}) {
   const addMissing = opts.addMissing !== false;
   const present = new Set(catalog.models.map(m => m.slug));
-  const customs = PATCH_MODELS.filter(p => addMissing || present.has(p.slug));
+  // 目录里已有原生条目 → 以它自己为底校准(保留官方的速度档、排序号、提示词);缺席才用模板补入
+  const customs = PATCH_MODELS.filter(p => (addMissing && !p.onlyIfPresent) || present.has(p.slug))
+    .map(p => (present.has(p.slug) ? { ...p, templateSlug: p.slug } : p));
   const out = customs.length ? mergeCustomModels(catalog, customs) : catalog;
 
   const nowPresent = new Set(out.models.map(m => m.slug));

@@ -17,6 +17,24 @@ test('catalog 条目结构合规(models 非空、slug 必有且唯一)', () => {
   assert.equal(new Set(slugs).size, slugs.length, 'slug 不得重复');
 });
 
+test('内置目录同步 Codex 0.170.0 官方目录：14 个模型，GPT-6.2 Sol / Astra 在最前且为原生参数', () => {
+  const d = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
+  assert.equal(d.models.length, 14);
+  assert.deepEqual(d.models.slice(0, 2).map(m => m.slug), ['gpt-6.2-sol', 'gpt-6.2-astra']);
+  const bySlug = Object.fromEntries(d.models.map(m => [m.slug, m]));
+  const six = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
+  for (const [slug, ctx] of [['gpt-6.2-sol', 500000], ['gpt-6.2-astra', 272000], ['gpt-6.1-sol', 500000]]) {
+    const m = bySlug[slug];
+    assert.equal(m.context_window, ctx, slug);
+    assert.equal(m.max_context_window, 872000, slug);
+    assert.equal(m.default_reasoning_level, 'low', slug);
+    assert.deepEqual(m.supported_reasoning_levels.map(r => r.effort), six, slug);
+  }
+  assert.equal(bySlug['gpt-6.2-sol'].display_name, 'GPT-6.2-Sol');
+  assert.equal(bySlug['gpt-6.2-astra'].display_name, 'GPT-6.2-Astra');
+  assert.equal(bySlug['gpt-6.2-sol'].minimal_client_version, '0.166.0');
+});
+
 test('catalog 含切换默认模板 gpt-6-astra 且关键元数据完整', () => {
   const d = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
   const astra = d.models.find(m => m.slug === 'gpt-6-astra');

@@ -20,7 +20,7 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
   const [editCm, setEditCm] = useState(null); // null=关闭 {}=新建 {...}=编辑
 
   const loadCatInfo = async () => {
-    try { setCatInfo(await window.rs.getCatalogInfo()); } catch { /* ignore */ }
+    try { const info = await window.rs.getCatalogInfo(); setCatInfo(info); return info; } catch { return null; }
   };
   useEffect(() => { loadCatInfo(); }, []);
   useEffect(() => {
@@ -60,8 +60,10 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
       const r = await window.rs.extractCatalog();
       if (r.ok) {
         setExtractReport(r);
-        toast(`提取成功:${r.report.modelCount} 个模型`, 'ok');
-        await loadCatInfo(); setForm(f => ({ ...f, catalogMode: 'extracted' }));
+        const info = await loadCatInfo(); setForm(f => ({ ...f, catalogMode: 'extracted' }));
+        toast(info && info.builtinNewer
+          ? `提取成功:${r.report.modelCount} 个模型 · 内置快照更新,切换时自动用内置快照`
+          : `提取成功:${r.report.modelCount} 个模型`, 'ok');
       } else toast('提取失败: ' + r.error, 'bad');
     } catch (e) { toast('提取异常: ' + e.message, 'bad'); }
     finally { setExtracting(false); }
@@ -234,7 +236,7 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
                 本机提取 {catInfo.extracted && !catInfo.extracted.error ? `· ${catInfo.extracted.modelCount} 模型` : '· 未提取'}
               </span>
             </div>
-            <button className="btn btn-sm btn-gold" disabled={extracting} onClick={doExtract} title="从本机 codex.exe 二进制提取最新目录,官方出新模型后点这里即可同步">
+            <button className="btn btn-sm btn-gold" disabled={extracting} onClick={doExtract} title="从本机 codex.exe 提取它自带的目录;本机 Codex 比 RS 内置快照旧时,切换时自动用内置快照">
               {extracting ? <><Spinner size={11} /> 提取中…</> : <><Icon name="download" size={12} /> 从本机 Codex 提取</>}
             </button>
           </div>
@@ -255,6 +257,12 @@ export default function Settings({ state, refresh, toast, mode = 'global' }) {
               <div className="pv-line">
                 <span className="badge missing">-{catInfo.catalogDiff.removed.length} 缺失</span>
                 <span>仅内置快照有: <b className="m-missing">{catInfo.catalogDiff.removed.join('、')}</b></span>
+              </div>
+            )}
+            {catInfo.builtinNewer && (
+              <div className="pv-line">
+                <span className="badge gold">用内置快照</span>
+                <span>内置快照比本机 Codex 新,切换时自动用内置快照;本机 Codex 升级后会自动重新提取</span>
               </div>
             )}
           </div>

@@ -6,7 +6,7 @@ const { createStore } = require('./lib/store');
 const codex = require('./lib/codex');
 const { extractTokenError } = require('./lib/oauth-errors');
 const { findRivalProcesses } = require('./lib/rival-guard');
-const { diffCatalogSlugs } = require('./lib/catalog-diff');
+const { diffCatalogSlugs, pickOfficialSource } = require('./lib/catalog-diff');
 const { extractToFile, locateCodexBinary } = require('./lib/catalog-extract');
 const { mergeCustomModels } = require('./lib/catalog-merge');
 const { buildRelayCatalog } = require('./lib/relay-catalog');
@@ -111,25 +111,33 @@ async function testRelay(id) {
 }
 
 /* ---------------- 一键切换 ---------------- */
-/** 官方目录源解析:内置快照 或 最新提取产物 */
+/** 最新的本机提取产物 { p, mt };没有返回 null */
+function latestExtractedCatalog() {
+  const dir = path.join(app.getPath('userData'), 'catalogs');
+  let best = null;
+  try {
+    for (const f of fs.readdirSync(dir)) {
+      if (/^extracted-[\w-]+\.json$/.test(f)) {
+        const p = path.join(dir, f);
+        const mt = fs.statSync(p).mtimeMs;
+        if (!best || mt > best.mt) best = { p, mt };
+      }
+    }
+  } catch { /* 目录不存在 */ }
+  return best;
+}
+
+/** 官方目录源解析:内置快照 或 最新提取产物(内置快照更新时仍用内置,见 pickOfficialSource) */
 function resolveOfficialCatalog() {
   const s = store.getSettings();
-  let srcPath = path.join(resourcesDir(), 'model-catalog.json');
-  if (s.catalogMode === 'extracted') {
-    const dir = path.join(app.getPath('userData'), 'catalogs');
-    let best = null;
-    try {
-      for (const f of fs.readdirSync(dir)) {
-        if (/^extracted-[\w-]+\.json$/.test(f)) {
-          const p = path.join(dir, f);
-          const mt = fs.statSync(p).mtimeMs;
-          if (!best || mt > best.mt) best = { p, mt };
-        }
-      }
-    } catch { /* 目录不存在,回落内置 */ }
-    if (best) srcPath = best.p; // 无提取产物时静默回落内置快照
-  }
-  return JSON.parse(fs.readFileSync(srcPath, 'utf8'));
+  const builtinPath = path.join(resourcesDir(), 'model-catalog.json');
+  const best = s.catalogMode === 'extracted' ? latestExtractedCatalog() : null;
+  if (!best) return JSON.parse(fs.readFileSync(builtinPath, 'utf8')); // 无提取产物时静默回落内置快照
+  const extracted = JSON.parse(fs.readFileSync(best.p, 'utf8'));
+  let builtin;
+  try { builtin = JSON.parse(fs.readFileSync(builtinPath, 'utf8')); } catch { return extracted; }
+  const { source } = pickOfficialSource(s.catalogMode, builtin.models.map(m => m.slug), extracted.models.map(m => m.slug));
+  return source === 'extracted' ? extracted : builtin;
 }
 
 /**
@@ -423,29 +431,26 @@ function registerIpc() {
     const s = store.getSettings();
     const info = { mode: s.catalogMode, customModels: store.listCustomModels(), builtinCount: 0, extracted: null };
     try { info.builtinCount = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8')).models.length; } catch { /* */ }
-    const dir = path.join(app.getPath('userData'), 'catalogs');
-    let best = null;
-    try {
-      for (const f of fs.readdirSync(dir)) {
-        if (/^extracted-[\w-]+\.json$/.test(f)) {
-          const p = path.join(dir, f);
-          const mt = fs.statSync(p).mtimeMs;
-          if (!best || mt > best.mt) best = { p, mt };
-        }
-      }
-    } catch { /* */ }
+    const best = latestExtractedCatalog();
+    // 实际生效的目录源:选了本机提取但内置快照更新时,切换仍用内置快照
+    let effective = best && s.catalogMode === 'extracted' ? 'extracted' : 'builtin';
     if (best) {
       try {
         const c = JSON.parse(fs.readFileSync(best.p, 'utf8'));
-        info.extracted = { file: path.basename(best.p), modelCount: c.models.length, time: new Date(best.mtime).toISOString() };
+        info.extracted = { file: path.basename(best.p), modelCount: c.models.length, time: new Date(best.mt).toISOString() };
         try {
           const builtinSlugs = JSON.parse(fs.readFileSync(path.join(resourcesDir(), 'model-catalog.json'), 'utf8')).models.map(m => m.slug);
-          info.catalogDiff = diffCatalogSlugs(builtinSlugs, c.models.map(m => m.slug));
+          const extractedSlugs = c.models.map(m => m.slug);
+          info.catalogDiff = diffCatalogSlugs(builtinSlugs, extractedSlugs);
+          const pick = pickOfficialSource(s.catalogMode, builtinSlugs, extractedSlugs);
+          info.builtinNewer = pick.builtinNewer;
+          effective = pick.source;
         } catch { /* 对比失败不展示 */ }
       } catch { info.extracted = { file: path.basename(best.p), error: '解析失败' }; }
     }
+    info.effectiveSource = effective;
     try {
-      const src = best && s.catalogMode === 'extracted' ? best.p : path.join(resourcesDir(), 'model-catalog.json');
+      const src = effective === 'extracted' ? best.p : path.join(resourcesDir(), 'model-catalog.json');
       const c = JSON.parse(fs.readFileSync(src, 'utf8'));
       info.modelSlugs = c.models.map(m => m.slug);
     } catch { info.modelSlugs = []; }

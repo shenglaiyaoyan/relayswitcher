@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Icon, Toggle, Spinner, Confirm } from '../../components/ui.jsx';
-import { blankTemplate, capState, fmtTokens, matchTemplate, resetBuiltins, resolveTemplates } from './templates.mjs';
+import { blankTemplate, capState, fmtTokens, matchTemplate, resetBuiltins, resolveTemplates, TEMPLATE_GROUPS, templateGroup } from './templates.mjs';
 import { EffortList, TriSeg } from './CapControls.jsx';
 
 // 列表里的能力标签：亮 = 支持/开，暗 = 未设置，删除线 = 不支持/关
@@ -22,6 +22,8 @@ export default function TemplateLibrary({ toast }) {
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [patternText, setPatternText] = useState('');
+  const [query, setQuery] = useState('');
+  const [group, setGroup] = useState('all');
 
   useEffect(() => {
     (async () => {
@@ -52,7 +54,7 @@ export default function TemplateLibrary({ toast }) {
 
   const addTemplate = () => {
     const t = blankTemplate('custom-' + Date.now().toString(36));
-    setList(l => [t, ...l]); setSelectedId(t.id);
+    setList(l => [t, ...l]); setSelectedId(t.id); setGroup('all'); setQuery('');
   };
   const removeTemplate = () => {
     const rest = list.filter(t => t.id !== current.id);
@@ -72,11 +74,29 @@ export default function TemplateLibrary({ toast }) {
     } finally { setSaving(false); }
   };
 
+  const q = query.trim().toLowerCase();
+  const counts = list.reduce((acc, t) => { const g = templateGroup(t); acc[g] = (acc[g] || 0) + 1; return acc; }, {});
+  const pills = [['all', '全部', list.length], ...(counts['自定义'] ? [['自定义', '自定义', counts['自定义']]] : []),
+    ...TEMPLATE_GROUPS.filter(g => counts[g]).map(g => [g, g, counts[g]])];
+  const filtered = list.filter(t => {
+    if (group !== 'all' && templateGroup(t) !== group) return false;
+    if (!q) return true;
+    const hay = `${t.name || ''} ${templateGroup(t)} ${(t.patterns || []).join(' ')}`.toLowerCase();
+    return hay.includes(q);
+  });
+  const sections = [];
+  for (const t of filtered) {
+    const g = templateGroup(t);
+    const last = sections[sections.length - 1];
+    if (!last || last.group !== g) sections.push({ group: g, items: [t] });
+    else last.items.push(t);
+  }
+
   return (
     <div className="oc-template-lib">
       <div className="oc-lib-head">
         <div><h2>模型模板</h2>
-          <p>拉取模型时按名称自动匹配模板，一次性填入参数；套用后每项仍可修改，之后修改模板也不会改动已有模型。</p></div>
+          <p>拉取模型时按名称自动匹配子系列模板，一次性填入参数；套用后每项仍可修改，之后修改模板也不会改动已有模型。</p></div>
         <div className="oc-lib-tools">
           <button type="button" className="btn btn-sm" onClick={() => setConfirmReset(true)}>恢复内置模板</button>
           <button type="button" className="btn btn-sm btn-gold" onClick={addTemplate}><Icon name="plus" size={11} /> 新建模板</button>
@@ -84,21 +104,41 @@ export default function TemplateLibrary({ toast }) {
       </div>
       <div className="oc-lib-body">
         <div className="oc-lib-list">
-          <div className="oc-lib-list-head"><b>模板列表</b><span>{list.length} 个模板</span></div>
-          {list.map(t => <button type="button" key={t.id} className={'oc-lib-item' + (current?.id === t.id ? ' on' : '')} onClick={() => setSelectedId(t.id)}>
-            <span className="oc-lib-item-top"><b>{t.name || '(未命名)'}</b><span className="badge">{t.builtin ? '内置' : '自定义'}</span></span>
-            <span className="oc-lib-item-sub"><span className="mono">{(t.patterns || []).join(', ') || '无匹配规则'}</span>
-              <span className="oc-lib-caps">{capsOf(t).map(([label, s]) => <i key={label} className={s === 'yes' ? 'on' : s === 'no' ? 'off' : ''}>{label}</i>)}</span>
-              <span className="mono">{fmtTokens(t.limit?.context)} / {fmtTokens(t.limit?.output)} · {t.efforts?.length ? `${t.efforts.length} 档` : '思考开关'}</span></span>
-          </button>)}
+          <div className="oc-lib-list-head"><b>模板列表</b><span>{filtered.length === list.length ? `${list.length} 个模板` : `${filtered.length} / ${list.length} 个模板`}</span></div>
+          <div className="oc-lib-filter">
+            <label className="oc-lib-search"><Icon name="search" size={12} />
+              <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索模板名或规则，如 flash / hydrogen…" />
+              {query && <button type="button" className="oc-lib-search-clear" title="清空搜索" onClick={() => setQuery('')}><Icon name="x" size={10} /></button>}</label>
+            <div className="oc-lib-pills">
+              {pills.map(([key, label, cnt]) => (
+                <button type="button" key={key} className={'oc-lib-pill' + (group === key ? ' on' : '')} onClick={() => setGroup(key)}>
+                  {label} <small>{cnt}</small></button>
+              ))}
+            </div>
+          </div>
+          <div className="oc-lib-scroll">
+            {sections.map(sec => (
+              <React.Fragment key={sec.group}>
+                <div className="oc-lib-group-hd">{sec.group.toUpperCase()} <span>{sec.items.length} 个模板</span></div>
+                {sec.items.map(t => <button type="button" key={t.id} className={'oc-lib-item' + (current?.id === t.id ? ' on' : '')} onClick={() => setSelectedId(t.id)}>
+                  <span className="oc-lib-item-top"><b>{t.name || '(未命名)'}</b>
+                    <span className="oc-lib-item-badges">{t.fallback && <span className="oc-fallback-badge">兜底</span>}<span className="badge">{t.builtin ? '内置' : '自定义'}</span></span></span>
+                  <span className="oc-lib-item-sub"><span className="mono oc-lib-patterns">{(t.patterns || []).join(', ') || '无匹配规则'}</span>
+                    <span className="oc-lib-caps">{capsOf(t).map(([label, s]) => <i key={label} className={s === 'yes' ? 'on' : s === 'no' ? 'off' : ''}>{label}</i>)}</span>
+                    <span className="mono">{fmtTokens(t.limit?.context)} / {fmtTokens(t.limit?.output)} · {t.efforts?.length ? `${t.efforts.length} 档` : (capState(t.reasoning) === 'no' ? '无推理' : '思考开关')}{t.modalities?.input?.includes('image') ? ' · image' : ''}</span></span>
+                </button>)}
+              </React.Fragment>
+            ))}
+            {!sections.length && <div className="oc-lib-empty">没有符合筛选条件的模板</div>}
+          </div>
         </div>
         {current ? <div className="oc-lib-editor">
-          <div className="oc-lib-editor-head"><div><small>正在编辑</small><h3>{current.name || '(未命名)'}</h3></div>
+          <div className="oc-lib-editor-head"><div><small>正在编辑 · {templateGroup(current)}</small><h3>{current.name || '(未命名)'}</h3></div>
             {current.builtin ? <span className="badge">内置模板</span>
               : <button type="button" className="oc-del-model" onClick={removeTemplate}><Icon name="trash" size={12} /> 删除模板</button>}</div>
           <section><h4>匹配</h4><div className="oc-param-grid">
             <label className="oc-field span-4">模板名<input type="text" value={current.name} onChange={e => update({ name: e.target.value })} /></label>
-            <label className="oc-field span-8">匹配规则 <span className="oc-field-hint">逗号分隔，* 为通配，如 claude-*</span>
+            <label className="oc-field span-8">匹配规则 <span className="oc-field-hint">逗号分隔，* 为通配，. 与 - 版本号互通</span>
               <input type="text" className="mono" value={patternText}
                 onChange={e => { setPatternText(e.target.value); update({ patterns: parsePatterns(e.target.value) }); }} /></label>
           </div><p className="oc-lib-hits">命中 {hits} 个已保存模型</p></section>

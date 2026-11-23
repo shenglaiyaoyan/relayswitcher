@@ -67,7 +67,10 @@ export default function ModelTable({ rows, total, query, setQuery, batch, onTogg
         <b>已选 {checked.size} 个{hidden ? `（${hidden} 个未显示）` : ''}</b>
         <span className="oce-spacer" />
         <div className="oce-batch-select"><Select value={batchTemplate} onChange={setBatchTemplate} options={[
-          { value: AUTO, label: '按名称自动匹配' }, ...templates.map(x => ({ value: x.id, label: x.name }))]} /></div>
+          { value: AUTO, label: '按名称自动匹配' }, ...templates.map(x => ({
+            value: x.id,
+            label: x.builtin && x.group && !x.name.toLowerCase().startsWith(x.group.toLowerCase()) ? `${x.group} · ${x.name}` : x.name
+          }))]} /></div>
         <button type="button" className="btn btn-sm btn-gold" disabled={busy} onClick={onApplyBatch}>套用</button>
         <button type="button" className="oce-text-btn" onClick={() => setChecked(new Set())}>取消</button>
       </div>}

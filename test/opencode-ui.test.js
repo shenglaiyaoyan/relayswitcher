@@ -133,9 +133,25 @@ test('推理/温度三选一与可拖动档位：抽屉和模板库共用组件�
   assert.match(css, /\.oce-effort\.drop-after\s*\{[^}]*box-shadow/);
 });
 
+test('子系列模板分组与搜索：模板库支持厂家胶囊筛选、独立滚动与右栏吸顶，抽屉菜单支持搜索与同厂置顶', () => {
+  const lib = read('pages/opencode/TemplateLibrary.jsx');
+  assert.match(lib, /oc-lib-search/);
+  assert.match(lib, /oc-lib-pill/);
+  assert.match(lib, /oc-lib-group-hd/);
+  assert.match(lib, /oc-fallback-badge/);
+  assert.match(lib, /TEMPLATE_GROUPS/);
+  const model = read('pages/opencode/ModelEditor.jsx');
+  assert.match(model, /oce-menu-search/);
+  assert.match(model, /同厂家/);
+  assert.match(model, /templateGroup/);
+  const css = read('styles.css');
+  assert.match(css, /\.oc-lib-scroll\s*\{[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.oc-lib-editor\s*\{[^}]*position:\s*sticky/);
+});
+
 test('编辑页每个按钮都有自定义背景和边框，不能露出系统默认白色按钮', () => {
   const css = read('styles.css');
-  const files = ['ModelEditor.jsx', 'ModelTable.jsx', 'FetchPopover.jsx', 'ProviderEditor.jsx', 'CapControls.jsx'].map(f => read('pages/opencode/' + f));
+  const files = ['ModelEditor.jsx', 'ModelTable.jsx', 'FetchPopover.jsx', 'ProviderEditor.jsx', 'CapControls.jsx', 'TemplateLibrary.jsx'].map(f => read('pages/opencode/' + f));
   const classes = new Set();
   for (const src of files) {
     for (const m of src.matchAll(/<button[^>]*?className=\{?["'`]([^"'`]+)/g)) classes.add(m[1].trim().split(/\s+/)[0]);

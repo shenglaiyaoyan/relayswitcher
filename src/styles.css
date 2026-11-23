@@ -203,7 +203,7 @@ body {
 .opt-row { display: flex; gap: 20px; align-items: center; margin-top: 18px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
 .opt-row .field-inline { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--txt-2); }
 .chip {
-  font-size: 11px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
+  font-size: 11px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
   color: var(--txt-2); cursor: pointer; transition: all .15s; user-select: none;
 }
 .chip:hover, .chip.on { color: var(--gold-hover); border-color: rgba(167, 139, 113, .6); background: rgba(167, 139, 113, .1); }
@@ -555,11 +555,16 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oce-menu { position: relative; }
 .oce-menu-btn { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--txt-2); font-size: 11.5px; cursor: pointer; white-space: nowrap; }
 .oce-menu-btn:hover:not(:disabled) { border-color: var(--accent-line); color: var(--accent-strong); }
-.oce-menu-pop { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: 280px; max-height: 360px; padding: 6px; overflow-y: auto; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-pop); }
+.oce-menu-pop { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: 380px; padding: 6px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-pop); }
+.oce-menu-search { display: flex; align-items: center; gap: 7px; height: 30px; margin: 2px 2px 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--txt-3); }
+.oce-menu-search input { flex: 1; height: 100%; padding: 0; border: 0; background: transparent; color: var(--txt-1); font-size: 11.5px; outline: none; }
+.oce-menu-scroll { max-height: 320px; overflow-y: auto; }
+.oce-menu-grp { padding: 6px 8px 3px; color: var(--gold-light); font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .oce-menu-label { padding: 6px 8px; color: var(--txt-3); font-size: 10.5px; }
 .oce-menu-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: var(--txt-1); font-size: 12px; text-align: left; cursor: pointer; }
-.oce-menu-item span { display: inline-flex; align-items: center; gap: 5px; }
-.oce-menu-item small { color: var(--txt-3); font-size: 10.5px; }
+.oce-menu-item.rec { border: 1px solid rgba(167, 139, 113, .28); background: rgba(167, 139, 113, .08); margin-bottom: 3px; }
+.oce-menu-item span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.oce-menu-item small { color: var(--txt-3); font-size: 10px; white-space: nowrap; flex-shrink: 0; }
 .oce-menu-item:hover { background: var(--hover); }
 .oce-rec { padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-style: normal; font-size: 10px; }
 .oce-menu-sep { height: 1px; margin: 5px 4px; background: var(--line-soft); }
@@ -802,14 +807,34 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 .oc-lib-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .oc-lib-head p { margin: 5px 0 0; color: var(--txt-3); font-size: 11.5px; }
 .oc-lib-tools { display: flex; gap: 8px; flex-shrink: 0; }
-.oc-lib-body { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 14px; align-items: start; }
+.oc-lib-body { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 14px; align-items: start; }
 .oc-lib-list, .oc-lib-editor { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.015); overflow: hidden; }
-.oc-lib-list-head { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.oc-lib-list { display: flex; flex-direction: column; max-height: calc(100vh - 210px); min-height: 440px; }
+.oc-lib-editor { position: sticky; top: 12px; }
+.oc-lib-list-head { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 12px; flex-shrink: 0; }
 .oc-lib-list-head span { color: var(--txt-3); font-size: 10.5px; }
+.oc-lib-filter { display: grid; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.01); flex-shrink: 0; }
+.oc-lib-search { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--txt-3); }
+.oc-lib-search input { flex: 1; height: 100%; padding: 0; border: 0; background: transparent; color: var(--txt-1); font-size: 11.5px; outline: none; }
+.oc-lib-search-clear { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--txt-3); cursor: pointer; }
+.oc-lib-search-clear:hover { background: var(--hover); color: var(--txt-1); }
+.oc-lib-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.oc-lib-pill { display: inline-flex; align-items: center; gap: 4px; height: 23px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--txt-2); font-family: inherit; font-size: 10.5px; cursor: pointer; }
+.oc-lib-pill small { color: var(--txt-3); font-family: 'JetBrains Mono', Consolas, monospace; font-size: 9.5px; }
+.oc-lib-pill:hover { border-color: var(--accent-line); color: var(--txt-1); }
+.oc-lib-pill.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-strong); }
+.oc-lib-pill.on small { color: var(--accent-strong); }
+.oc-lib-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+.oc-lib-group-hd { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; border-bottom: 1px solid var(--line-soft); background: rgba(167,139,113,.045); color: var(--gold-light); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; }
+.oc-lib-group-hd span { color: var(--txt-3); font-weight: 400; font-size: 10px; letter-spacing: 0; }
+.oc-lib-empty { padding: 24px 14px; color: var(--txt-3); font-size: 12px; text-align: center; }
 .oc-lib-item { display: grid; gap: 6px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--txt-1); text-align: left; }
 .oc-lib-item:hover { background: rgba(167,139,113,.04); }
 .oc-lib-item.on { background: rgba(167,139,113,.08); box-shadow: inset 2px 0 var(--gold); }
-.oc-lib-item-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
+.oc-lib-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; }
+.oc-lib-item-badges { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.oc-fallback-badge { padding: 0 5px; border: 1px dashed var(--line-bright); border-radius: 4px; color: var(--txt-3); font-size: 9.5px; }
+.oc-lib-patterns { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
 .oc-lib-item-sub { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 8px; color: var(--txt-3); font-size: 10px; }
 .oc-lib-caps { display: inline-flex; gap: 3px; }
 .oc-lib-caps i { padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--txt-3); font-style: normal; font-size: 9px; opacity: .55; }

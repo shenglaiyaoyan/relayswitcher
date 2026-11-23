@@ -2,7 +2,7 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import { Icon, Toggle } from '../../components/ui.jsx';
 import { addEffort, updateModel } from './draft.mjs';
 import { DraftTextInput, DraftNumberInput } from './fields.jsx';
-import { applyTemplate, capState, fmtTokens, matchTemplate, templateDiff } from './templates.mjs';
+import { applyTemplate, capState, fmtTokens, matchTemplate, templateDiff, templateGroup } from './templates.mjs';
 import { EffortList, TriSeg } from './CapControls.jsx';
 
 const MODALITIES = ['text', 'image', 'audio', 'video', 'pdf'];
@@ -12,30 +12,65 @@ const fmtTime = ts => {
   const p = n => String(n).padStart(2, '0');
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
-export const templateSummary = t => `${fmtTokens(t.limit?.context)} / ${fmtTokens(t.limit?.output)} · ${t.efforts?.length ? t.efforts.length + ' 档' : '思考开关'}`;
+export const templateSummary = t => {
+  const eff = t.efforts?.length ? t.efforts.length + ' 档' : (capState(t.reasoning) === 'no' ? '无推理' : '思考开关');
+  const img = t.modalities?.input?.includes('image') ? ' · image' : '';
+  return `${fmtTokens(t.limit?.context)} / ${fmtTokens(t.limit?.output)} · ${eff}${img}`;
+};
 
 function TemplateMenu({ model, templates, onApply, onSaveAsTemplate, busy }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useRef(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setQuery(''); return; }
     const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
   const matched = matchTemplate(templates, model.id);
   const current = model.template?.name || (matched ? matched.name : '无');
-  const ordered = matched ? [matched, ...templates.filter(t => t.id !== matched.id)] : templates;
+  const q = query.trim().toLowerCase();
+  const filterFn = t => !q || `${t.name || ''} ${templateGroup(t)} ${(t.patterns || []).join(' ')}`.toLowerCase().includes(q);
+  const matchedGroup = matched ? templateGroup(matched) : null;
+  const siblings = !q && matchedGroup ? templates.filter(t => t.id !== matched.id && templateGroup(t) === matchedGroup) : [];
+  const rest = templates.filter(t => (!q ? (t.id !== matched?.id && templateGroup(t) !== matchedGroup) : true)).filter(filterFn);
+  const restSections = [];
+  for (const t of rest) {
+    const g = templateGroup(t);
+    const last = restSections[restSections.length - 1];
+    if (!last || last.group !== g) restSections.push({ group: g, items: [t] });
+    else last.items.push(t);
+  }
+  const renderItem = (t, isRec = false) => (
+    <button type="button" role="menuitem" key={t.id} className={'oce-menu-item' + (isRec ? ' rec' : '')}
+      onClick={() => { setOpen(false); onApply(t); }}>
+      <span>{t.name}{isRec && <i className="oce-rec">推荐</i>}</span>
+      <small className="mono">{templateSummary(t)}</small></button>
+  );
   return (
     <div className="oce-menu" ref={ref}>
       <button type="button" className="oce-menu-btn" disabled={busy} onClick={() => setOpen(o => !o)} aria-expanded={open}>
         模板 · {current} <Icon name="chevron" size={11} /></button>
       {open && <div className="oce-menu-pop" role="menu">
-        <div className="oce-menu-label">套用模板（覆盖参数，之后仍可改）</div>
-        {ordered.map(t => <button type="button" role="menuitem" key={t.id} className="oce-menu-item"
-          onClick={() => { setOpen(false); onApply(t); }}>
-          <span>{t.name}{matched?.id === t.id && <i className="oce-rec">推荐</i>}</span>
-          <small className="mono">{templateSummary(t)}</small></button>)}
+        <label className="oce-menu-search"><Icon name="search" size={12} />
+          <input type="text" value={query} autoFocus onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } }} placeholder="搜索子系列模板…" /></label>
+        <div className="oce-menu-scroll">
+          {!q && matched && renderItem(matched, true)}
+          {!!siblings.length && <>
+            <div className="oce-menu-grp">同厂家 · {matchedGroup}</div>
+            {siblings.map(t => renderItem(t, false))}
+            <div className="oce-menu-sep" />
+          </>}
+          {restSections.map(sec => (
+            <React.Fragment key={sec.group}>
+              <div className="oce-menu-grp">{sec.group}</div>
+              {sec.items.map(t => renderItem(t, matched?.id === t.id))}
+            </React.Fragment>
+          ))}
+          {!restSections.length && (!matched || q) && <div className="oce-menu-label">没有匹配的模板</div>}
+        </div>
         <div className="oce-menu-sep" />
         <button type="button" role="menuitem" className="oce-menu-item" onClick={() => { setOpen(false); onSaveAsTemplate?.(model); }}>
           <span><Icon name="plus" size={11} /> 存为新模板</span><small>用当前参数新建自定义模板</small></button>

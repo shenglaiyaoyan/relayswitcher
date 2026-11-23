@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../src/styles.css" />
+<style>
+  html, body { height: auto; overflow: visible; background: #0a0a0a; }
+  body { padding: 28px 34px 40px; width: 1480px; font-family: 'Inter', 'Microsoft YaHei', sans-serif; color: var(--txt-1); }
+  .mk-title { font-family: Georgia, 'Playfair Display', serif; font-style: italic; font-size: 24px; color: var(--gold-hover); font-weight: 600; }
+  .mk-sub { color: var(--txt-2); font-size: 13px; margin: 6px 0 18px; line-height: 1.65; }
+  .mk-num { width: 20px; height: 20px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a; font: 700 11.5px/20px 'Inter', sans-serif; text-align: center; font-style: normal; display: inline-block; flex-shrink: 0; }
+  .mk-notes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px; padding: 12px 16px; margin-bottom: 20px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-size: 12px; color: var(--txt-2); line-height: 1.55; }
+  .mk-note { display: flex; align-items: flex-start; gap: 8px; }
+  .mk-note b { color: var(--txt-1); }
+
+  /* 模板库双栏定稿（方案 A） */
+  .oc-lib-body-demo { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .oc-lib-list-demo { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.015); overflow: hidden; display: flex; flex-direction: column; max-height: 640px; }
+  .oc-lib-filter { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; background: rgba(255,255,255,.01); }
+  .oc-lib-search { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--txt-3); font-size: 11.5px; }
+  .oc-lib-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .oc-lib-pill { height: 23px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--txt-2); font-size: 10.5px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .oc-lib-pill small { color: var(--txt-3); font-family: 'JetBrains Mono', Consolas, monospace; font-size: 9.5px; }
+  .oc-lib-pill.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-strong); }
+  .oc-lib-pill.on small { color: var(--accent-strong); }
+  .oc-lib-scroll { overflow-y: auto; flex: 1; }
+  .oc-lib-group-hd { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; background: rgba(167,139,113,.045); border-bottom: 1px solid var(--line-soft); color: var(--gold-light); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; }
+  .oc-lib-group-hd span { color: var(--txt-3); font-weight: 400; font-size: 10px; letter-spacing: 0; }
+  .tag-fallback { padding: 0 5px; border: 1px dashed var(--line-bright); border-radius: 4px; color: var(--txt-3); font-size: 9.5px; }
+
+  .sec-tag { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--gold-hover); font-size: 12px; font-weight: 500; }
+
+  .bottom-row { margin-top: 24px; display: grid; grid-template-columns: 440px 1fr; gap: 24px; align-items: start; }
+  .oce-menu-pop-demo { width: 410px; padding: 8px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px rgba(0,0,0,.5); }
+  .oce-menu-grp { padding: 6px 8px 3px; color: var(--gold-light); font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+  .oce-menu-item-demo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 6px; font-size: 12px; color: var(--txt-1); white-space: nowrap; }
+  .oce-menu-item-demo.rec { background: rgba(167,139,113,.1); border: 1px solid rgba(167,139,113,.3); margin-bottom: 4px; }
+  .oce-menu-item-demo small { color: var(--txt-3); font-family: 'JetBrains Mono', Consolas, monospace; font-size: 10px; }
+</style>
+</head>
+<body>
+  <div class="mk-title">定稿（方案 A）· OpenCode 子系列模型模板与分组筛选</div>
+  <div class="mk-sub">11 个厂家细分为 36 个内置子系列模板（每厂末尾保留兜底），覆盖模态、思考档位与上下文/最大输出差异。</div>
+
+  <div class="mk-notes">
+    <div class="mk-note"><i class="mk-num">1</i><div><b>厂家筛选胶囊 + 搜索框</b>：点胶囊可单看某厂（如 Gemini 5 条），点「全部」按厂家分组头连续浏览；搜索同时匹配名称与规则。</div></div>
+    <div class="mk-note"><i class="mk-num">2</i><div><b>左栏限高滚动 + 右侧编辑区吸顶</b>：左栏内部滚动，选底部模板时右侧编辑面板保持在视口内。</div></div>
+    <div class="mk-note"><i class="mk-num">3</i><div><b>两段式匹配 + 版本号互通</b>：先按模型名开头匹配，未中再匹配中转前缀（如 <span class="mono">person-deepseek-v4-1-flash-261017</span>）；<span class="mono">.</span> 与 <span class="mono">-</span> 互通。</div></div>
+    <div class="mk-note"><i class="mk-num">4</i><div><b>抽屉模板菜单置顶推荐与同厂</b>：带快速搜索，命中的推荐模板排第一，同厂其它子系列紧随其后。</div></div>
+  </div>
+
+  <div class="sec-tag"><i class="mk-num">1</i> 设置 → OpenCode 专属设置 → 模型模板（左栏筛选与分组 + 右栏吸顶编辑）</div>
+  <div class="oc-lib-body-demo">
+    <div class="oc-lib-list-demo">
+      <div class="oc-lib-list-head"><b>模板列表</b><span>36 个模板</span></div>
+      <div class="oc-lib-filter">
+        <div class="oc-lib-search"><span>⌕</span><span>搜索模板名或规则，如 flash / hydrogen…</span></div>
+        <div class="oc-lib-pills">
+          <span class="oc-lib-pill on">全部 <small>36</small></span>
+          <span class="oc-lib-pill">Claude <small>3</small></span>
+          <span class="oc-lib-pill">GPT <small>4</small></span>
+          <span class="oc-lib-pill">Gemini <small>5</small></span>
+          <span class="oc-lib-pill">DeepSeek <small>3</small></span>
+          <span class="oc-lib-pill">GLM <small>5</small></span>
+          <span class="oc-lib-pill">Kimi <small>2</small></span>
+          <span class="oc-lib-pill">Qwen <small>4</small></span>
+          <span class="oc-lib-pill">Grok <small>2</small></span>
+          <span class="oc-lib-pill">MiniMax <small>3</small></span>
+          <span class="oc-lib-pill">Mistral <small>3</small></span>
+          <span class="oc-lib-pill">MiMo <small>2</small></span>
+        </div>
+      </div>
+      <div class="oc-lib-scroll">
+        <div class="oc-lib-group-hd">GEMINI <span>5 个模板</span></div>
+        <div class="oc-lib-item on">
+          <span class="oc-lib-item-top"><b>Gemini 4 Hydrogen</b><span class="badge">内置</span></span>
+          <span class="oc-lib-item-sub"><span class="mono">gemini-4-hydrogen*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1M / 264K · 4 档</span></span>
+        </div>
+        <div class="oc-lib-item">
+          <span class="oc-lib-item-top"><b>Gemini 4 Neon</b><span class="badge">内置</span></span>
+          <span class="oc-lib-item-sub"><span class="mono">gemini-4-neon*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1M / 128K · 4 档</span></span>
+        </div>
+        <div class="oc-lib-item">
+          <span class="oc-lib-item-top"><b>Gemini 4 Argon / Carbon</b><span class="badge">内置</span></span>
+          <span class="oc-lib-item-sub"><span class="mono">gemini-4-argon*, gemini-4-carbon*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1M / 128K · 3 档</span></span>
+        </div>
+        <div class="oc-lib-item">
+          <span class="oc-lib-item-top"><b>Gemini 3.5 / 3.6 Flash &amp; Lite</b><span class="badge">内置</span></span>
+          <span class="oc-lib-item-sub"><span class="mono">gemini-3.5-flash*, gemini-3.6-flash*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1M / 128K · 4 档</span></span>
+        </div>
+        <div class="oc-lib-item">
+          <span class="oc-lib-item-top"><b>Gemini 3.7 / 3.8 &amp; 通用</b><span><span class="tag-fallback">兜底</span> <span class="badge">内置</span></span></span>
+          <span class="oc-lib-item-sub"><span class="mono">gemini-*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1M / 128K · 3 档</span></span>
+        </div>
+        <div class="oc-lib-group-hd">DEEPSEEK <span>3 个模板</span></div>
+        <div class="oc-lib-item">
+          <span class="oc-lib-item-top"><b>DeepSeek V4.1 / Flash</b><span class="badge">内置</span></span>
+          <span class="oc-lib-item-sub"><span class="mono">deepseek-v4.1*, deepseek-flash*</span>
+            <span class="oc-lib-caps"><i class="on">推理</i><i class="on">工具</i><i>Temp</i></span>
+            <span class="mono">1.05M / 393K · 3 档 · image</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="oc-lib-editor">
+      <div class="oc-lib-editor-head"><div><small>正在编辑 · GEMINI</small><h3>Gemini 4 Hydrogen</h3></div><span class="badge">内置模板</span></div>
+      <section><h4>匹配</h4><div class="oc-param-grid">
+        <label class="oc-field span-4">模板名<input type="text" value="Gemini 4 Hydrogen" readonly /></label>
+        <label class="oc-field span-8">匹配规则 <span class="oc-field-hint">逗号分隔，* 为通配，. 与 - 版本号互通</span>
+          <input type="text" class="mono" value="gemini-4-hydrogen*" readonly /></label>
+      </div><p class="oc-lib-hits">命中 1 个已保存模型（Antigravity/gemini-4-hydrogen）</p></section>
+      <section><h4>限制</h4><div class="oc-param-grid">
+        <label class="oc-field span-6">上下文 <span class="oc-field-hint">tokens</span><input type="text" class="mono" value="1000000" readonly /></label>
+        <label class="oc-field span-6">最大输出 <span class="oc-field-hint">tokens</span><input type="text" class="mono" value="264000" readonly /></label>
+      </div></section>
+      <section><h4>推理与思考档位 <span class="oc-field-hint">拖动排序 · 点击设为默认 · × 删除</span></h4>
+        <div class="oc-lib-efforts" style="padding-bottom:14px;">
+          <div class="oce-efforts">
+            <span class="oce-effort"><button type="button" class="mono" style="padding-left:10px;">low</button></span>
+            <span class="oce-effort"><button type="button" class="mono" style="padding-left:10px;">medium</button></span>
+            <span class="oce-effort"><button type="button" class="mono" style="padding-left:10px;">high</button></span>
+            <span class="oce-effort on"><button type="button" class="mono" style="padding-left:10px;">xhigh<i>默认</i></button></span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <div>
+      <div class="sec-tag"><i class="mk-num">4</i> 模型抽屉右上角「模板 · xxx」弹出菜单</div>
+      <div class="oce-menu-pop-demo">
+        <div class="oc-lib-search" style="margin-bottom:6px;"><span>⌕</span><span>搜索模板…</span></div>
+        <div class="oce-menu-item-demo rec">
+          <span>DeepSeek V4.1 / Flash <i class="oce-rec">推荐</i></span>
+          <small>1.05M / 393K · 3 档 · image</small>
+        </div>
+        <div class="oce-menu-grp">同厂家 · DEEPSEEK</div>
+        <div class="oce-menu-item-demo"><span>DeepSeek V4（纯文本）</span><small>1.05M / 393K · 3 档 · text</small></div>
+        <div class="oce-menu-item-demo"><span>DeepSeek V3 / R1（兜底）</span><small>164K / 66K · 思考开关</small></div>
+        <div class="oce-menu-sep"></div>
+        <div class="oce-menu-grp">其它厂家</div>
+        <div class="oce-menu-item-demo"><span>Gemini 4 Hydrogen</span><small>1M / 264K · 4 档</small></div>
+        <div class="oce-menu-item-demo"><span>GLM 5.3 Flash</span><small>1M / 128K · 3 档 · image</small></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -52,7 +52,7 @@ export default function ModelTable({ rows, total, query, setQuery, batch, onTogg
               onClick={e => e.stopPropagation()} onChange={() => toggle(i)} />}
             <span className="mono oce-cell-id-text" title={m.id}>{m.id || '(未命名)'}{defaultModelId && m.id === defaultModelId && <i className="oce-default">默认</i>}</span>
             <span className="oce-ellipsis" title={m.name}>{m.name || '—'}</span>
-            <span><span className={'oce-tag' + (t ? '' : ' none')}>{t ? t.name : '未匹配'}</span></span>
+            <span><span className={'oce-tag' + (t ? '' : ' none')} title={t ? t.name : '未匹配'}>{t ? t.name : '未匹配'}</span></span>
             <span className="mono num">{fmtTokens(m.limit?.context)}</span>
             <span className="mono num">{fmtTokens(m.limit?.output)}</span>
             <span className="mono oce-col-effort">{m.effort || '—'}</span>

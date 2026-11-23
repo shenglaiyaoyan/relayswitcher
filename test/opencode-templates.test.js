@@ -4,12 +4,17 @@ const assert = require('node:assert/strict');
 
 const load = () => import('../src/pages/opencode/templates.mjs');
 
-test('内置模板覆盖 11 个系列且数据完整', async () => {
+test('内置模板覆盖 11 个厂家共 36 个子系列且数据完整，每厂末尾恰有一个兜底', async () => {
   const t = await load();
-  const names = t.BUILTIN_TEMPLATES.map(x => x.name);
-  assert.deepEqual(names, ['Claude', 'GPT', 'Gemini', 'DeepSeek', 'GLM', 'Kimi', 'Qwen', 'Grok', 'MiniMax', 'Mistral', 'MiMo']);
+  assert.deepEqual(t.TEMPLATE_GROUPS, ['Claude', 'GPT', 'Gemini', 'DeepSeek', 'GLM', 'Kimi', 'Qwen', 'Grok', 'MiniMax', 'Mistral', 'MiMo']);
+  assert.equal(t.BUILTIN_TEMPLATES.length, 36);
+  const ids = new Set();
   for (const x of t.BUILTIN_TEMPLATES) {
     assert.equal(x.builtin, true, x.name);
+    assert.equal(ids.has(x.id), false, 'duplicate id ' + x.id);
+    ids.add(x.id);
+    assert.ok(t.TEMPLATE_GROUPS.includes(x.group), x.name + ' group');
+    assert.equal(t.templateGroup(x), x.group);
     assert.ok(x.patterns.length > 0, x.name);
     assert.ok(x.limit.context > 0 && x.limit.output > 0, x.name);
     assert.equal(typeof x.tool_call, 'boolean', x.name);
@@ -18,36 +23,95 @@ test('内置模板覆盖 11 个系列且数据完整', async () => {
     assert.ok(x.modalities.input.includes('text') && x.modalities.output.includes('text'), x.name);
     assert.ok(!x.effort || x.efforts.includes(x.effort), x.name);
   }
-  const claude = t.BUILTIN_TEMPLATES[0];
-  assert.deepEqual(claude.efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
-  assert.equal(claude.temperature, 'no');
-  assert.equal(claude.reasoning, 'yes');
-  assert.deepEqual(claude.limit, { context: 1000000, output: 128000 });
-  const gemini = t.BUILTIN_TEMPLATES.find(x => x.name === 'Gemini');
-  assert.deepEqual(gemini.efforts, ['low', 'medium', 'high']);
-  assert.equal(gemini.temperature, 'unset', '没把握的不写，交给 OpenCode 默认');
-  // 用户口径（2026-11-11）：GPT 上下文 500000，GLM 输出 128000
-  assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GPT').limit, { context: 500000, output: 128000 });
-  assert.deepEqual(t.BUILTIN_TEMPLATES.find(x => x.name === 'GLM').limit, { context: 1000000, output: 128000 });
-  // DeepSeek V4.1 Flash 1017（2026-10-17）：1M 上下文、384K 输出、思考 low/high/max 默认 high，原生识图
-  const ds = t.BUILTIN_TEMPLATES.find(x => x.name === 'DeepSeek');
-  assert.deepEqual(ds.limit, { context: 1048576, output: 393216 });
-  assert.deepEqual(ds.efforts, ['low', 'high', 'max']);
-  assert.equal(ds.effort, 'high');
-  assert.deepEqual(ds.modalities, { input: ['text', 'image'], output: ['text'] });
+  for (const g of t.TEMPLATE_GROUPS) {
+    const items = t.BUILTIN_TEMPLATES.filter(x => x.group === g);
+    assert.ok(items.length >= 2, g);
+    assert.equal(items.filter(x => x.fallback).length, 1, g + ' fallback count');
+    assert.equal(items[items.length - 1].fallback, true, g + ' last is fallback');
+  }
+  // 原 11 个 builtin-* ID 全部保留，已有模型的 template.id 引用不断
+  for (const legacyId of ['builtin-claude', 'builtin-gpt', 'builtin-gemini', 'builtin-deepseek', 'builtin-glm',
+    'builtin-kimi', 'builtin-qwen', 'builtin-grok', 'builtin-minimax', 'builtin-mistral', 'builtin-mimo']) {
+    assert.ok(ids.has(legacyId), legacyId);
+  }
+  const byId = Object.fromEntries(t.BUILTIN_TEMPLATES.map(x => [x.id, x]));
+  // Claude 子系列：5 系 5 档禁 Temp，4.6 4 档，4.5 兜底 200K/64K/3 档
+  assert.deepEqual(byId['builtin-claude'].efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
+  assert.equal(byId['builtin-claude'].temperature, 'no');
+  assert.deepEqual(byId['builtin-claude-4-6'].efforts, ['low', 'medium', 'high', 'max']);
+  assert.deepEqual(byId['builtin-claude-fallback'].limit, { context: 200000, output: 64000 });
+  // GPT 子系列：6.2/6.1-Sol/6-Astra 5 档，6.1-Terra/6-Sol/5.6 含 none 6 档，5.4-Mini 400K 无 pdf
+  assert.deepEqual(byId['builtin-gpt'].limit, { context: 500000, output: 128000 });
+  assert.deepEqual(byId['builtin-gpt-6-six'].efforts, ['none', 'low', 'medium', 'high', 'xhigh', 'max']);
+  assert.deepEqual(byId['builtin-gpt-5-4-mini'].modalities.input, ['text', 'image']);
+  // Gemini 4 四款与 3.x Flash 档位/输出细分
+  assert.deepEqual(byId['builtin-gemini-4-hydrogen'].limit, { context: 1000000, output: 264000 });
+  assert.deepEqual(byId['builtin-gemini-4-hydrogen'].efforts, ['low', 'medium', 'high', 'xhigh']);
+  assert.equal(byId['builtin-gemini-4-hydrogen'].effort, 'xhigh');
+  assert.deepEqual(byId['builtin-gemini-4-neon'].limit, { context: 1000000, output: 128000 });
+  assert.deepEqual(byId['builtin-gemini-4-neon'].efforts, ['low', 'medium', 'high', 'xhigh']);
+  assert.deepEqual(byId['builtin-gemini-4-argon'].efforts, ['low', 'medium', 'high']);
+  assert.deepEqual(byId['builtin-gemini-3-5-flash'].efforts, ['minimal', 'low', 'medium', 'high']);
+  assert.equal(byId['builtin-gemini'].temperature, 'unset', '没把握的不写，交给 OpenCode 默认');
+  // DeepSeek：V4.1 识图，V4 Pro/早期纯文本，V3/R1 164K/64K 思考开关
+  assert.deepEqual(byId['builtin-deepseek'].modalities.input, ['text', 'image']);
+  assert.deepEqual(byId['builtin-deepseek-v4'].modalities.input, ['text']);
+  assert.deepEqual(byId['builtin-deepseek-fallback'].limit, { context: 163840, output: 65536 });
+  assert.deepEqual(byId['builtin-deepseek-fallback'].efforts, []);
+  // GLM：5.3 Flash 多模态 vs 5.3 纯文本
+  assert.deepEqual(byId['builtin-glm-5-3-flash'].modalities.input, ['text', 'image', 'video', 'pdf']);
+  assert.deepEqual(byId['builtin-glm'].modalities.input, ['text']);
+  assert.deepEqual(byId['builtin-glm'].limit, { context: 1000000, output: 128000 });
+  // Codestral / Devstral 不支持推理
+  assert.equal(byId['builtin-mistral-code'].reasoning, 'no');
+  assert.deepEqual(byId['builtin-mistral-code'].efforts, []);
 });
 
-test('按模型名匹配：通配、前缀路径、大小写，自定义优先，未命中返回 null', async () => {
+test('按模型名匹配：子系列分流、版本号 . 与 - 互通、中转前缀两段匹配、自定义优先', async () => {
   const t = await load();
   const list = t.BUILTIN_TEMPLATES;
-  assert.equal(t.matchTemplate(list, 'claude-opus-5-5').name, 'Claude');
-  assert.equal(t.matchTemplate(list, 'anthropic/Claude-Sonnet-5-5').name, 'Claude');
-  assert.equal(t.matchTemplate(list, 'gpt-6.1-sol').name, 'GPT');
-  assert.equal(t.matchTemplate(list, 'qwen3.8-max').name, 'Qwen');
-  assert.equal(t.matchTemplate(list, 'MiniMax-M3').name, 'MiniMax');
+  assert.equal(t.matchTemplate(list, 'claude-opus-5-5').id, 'builtin-claude');
+  assert.equal(t.matchTemplate(list, 'anthropic/Claude-Sonnet-4.6').id, 'builtin-claude-4-6');
+  assert.equal(t.matchTemplate(list, 'claude-sonnet-4-5-20250929').id, 'builtin-claude-fallback');
+  assert.equal(t.matchTemplate(list, 'claude-3-5-sonnet-20241022').id, 'builtin-claude-fallback');
+  assert.equal(t.matchTemplate(list, 'gpt-6.2-sol').id, 'builtin-gpt');
+  assert.equal(t.matchTemplate(list, 'gpt-6.1-terra').id, 'builtin-gpt-6-six');
+  assert.equal(t.matchTemplate(list, 'gpt-5.4-mini').id, 'builtin-gpt-5-4-mini');
+  assert.equal(t.matchTemplate(list, 'gpt-5.5').id, 'builtin-gpt-fallback');
+  assert.equal(t.matchTemplate(list, 'gemini-4-hydrogen').id, 'builtin-gemini-4-hydrogen');
+  assert.equal(t.matchTemplate(list, 'gemini-4-neon').id, 'builtin-gemini-4-neon');
+  assert.equal(t.matchTemplate(list, 'gemini-4-carbon').id, 'builtin-gemini-4-argon');
+  assert.equal(t.matchTemplate(list, 'gemini-3.5-flash-lite').id, 'builtin-gemini-3-5-flash');
+  assert.equal(t.matchTemplate(list, 'gemini-3.8-flash').id, 'builtin-gemini');
+  // DeepSeek 子系列 + 中转前缀 + 蒸馏模型不误判
+  assert.equal(t.matchTemplate(list, 'deepseek-v4.1-flash-sg').id, 'builtin-deepseek');
+  assert.equal(t.matchTemplate(list, 'person-deepseek-v4-1-flash-261017').id, 'builtin-deepseek');
+  assert.equal(t.matchTemplate(list, 'deepseek-v4-pro').id, 'builtin-deepseek-v4');
+  assert.equal(t.matchTemplate(list, 'deepseek-v4-flash-0731').id, 'builtin-deepseek-v4');
+  assert.equal(t.matchTemplate(list, 'deepseek-r1-distill-qwen-32b').id, 'builtin-deepseek-fallback');
+  // GLM / Kimi / Qwen / MiniMax / Mistral / MiMo
+  assert.equal(t.matchTemplate(list, 'GLM-5.3-Flash').id, 'builtin-glm-5-3-flash');
+  assert.equal(t.matchTemplate(list, 'zai-glm-5-3-flash').id, 'builtin-glm-5-3-flash');
+  assert.equal(t.matchTemplate(list, 'zai-glm-5-3').id, 'builtin-glm');
+  assert.equal(t.matchTemplate(list, 'GLM-5.3').id, 'builtin-glm');
+  assert.equal(t.matchTemplate(list, 'glm-4.6v').id, 'builtin-glm-vision');
+  assert.equal(t.matchTemplate(list, 'glm-4.7-preview').id, 'builtin-glm-fallback');
+  assert.equal(t.matchTemplate(list, 'person-kimi-k3-1-pro-highspeed-261111').id, 'builtin-kimi');
+  assert.equal(t.matchTemplate(list, 'kimi-k2.7-code').id, 'builtin-kimi-fallback');
+  assert.equal(t.matchTemplate(list, 'qwen4-max').id, 'builtin-qwen-4-max');
+  assert.equal(t.matchTemplate(list, 'qwen3.8-omni-flash').id, 'builtin-qwen-3-8-omni');
+  assert.equal(t.matchTemplate(list, 'qwen3.8-max').id, 'builtin-qwen');
+  assert.equal(t.matchTemplate(list, 'MiniMax-M3.1-Flash').id, 'builtin-minimax-m3-1');
+  assert.equal(t.matchTemplate(list, 'MiniMax-M3').id, 'builtin-minimax');
+  assert.equal(t.matchTemplate(list, 'MiniMax-M2.7').id, 'builtin-minimax-fallback');
+  assert.equal(t.matchTemplate(list, 'codestral-2508').id, 'builtin-mistral-code');
+  assert.equal(t.matchTemplate(list, 'mimo-v2.5-pro').id, 'builtin-mimo-pro');
+  assert.equal(t.matchTemplate(list, 'mimo-v2.6-pro').id, 'builtin-mimo');
+  // 泛化前缀词不误中兜底模板
   assert.equal(t.matchTemplate(list, 'my-gpt-x'), null);
+  assert.equal(t.matchTemplate(list, 'acme-internal-x'), null);
   assert.equal(t.matchTemplate(list, ''), null);
-  const custom = { ...list[1], id: 'c1', name: '内网 GPT', builtin: false, patterns: ['gpt-6*'] };
+  const custom = { ...list[0], id: 'c1', name: '内网 GPT', builtin: false, patterns: ['gpt-6*'] };
   assert.equal(t.matchTemplate([...list, custom], 'gpt-6.1-sol').name, '内网 GPT');
 });
 
@@ -137,7 +201,7 @@ test('套用模板：复制参数、保留身份字段、记录来源、不共�
   assert.equal(out.effort, tpl.effort);
   assert.deepEqual(out.modalities, tpl.modalities);
   assert.equal(out.template.id, tpl.id);
-  assert.equal(out.template.name, 'Claude');
+  assert.equal(out.template.name, tpl.name);
   assert.equal(out.template.appliedAt, 1000);
   out.efforts.push('x'); out.limit.context = 1; out.modalities.input.push('audio');
   assert.equal(tpl.efforts.includes('x'), false);
@@ -167,23 +231,36 @@ test('已修改判定只标与套用时模板值不同的字段', async () => {
   assert.deepEqual(t.templateDiff({ ...gem, reasoning: 'no' }), ['reasoning']);
 });
 
-test('旧模板迁移成三态：推理 true → 支持、false → 未设置；温度内置按当前定义、自定义 false → 未设置；去掉附件', async () => {
+test('旧模板迁移与子系列补齐：旧布尔转三态、补入新增子系列、收窄未改过的旧通配并保留用户修改', async () => {
   const t = await load();
+  const oldClaude = { ...t.BUILTIN_TEMPLATES.find(x => x.id === 'builtin-claude'), name: 'Claude', patterns: ['claude-*'],
+    reasoning: true, attachment: true, temperature: false, limit: { context: 5, output: 6 } };
+  const oldGemini = { ...t.BUILTIN_TEMPLATES.find(x => x.id === 'builtin-gemini'), name: 'Gemini', patterns: ['gemini-*'],
+    reasoning: true, attachment: true, temperature: true };
+  const oldGlmCustomPattern = { ...t.BUILTIN_TEMPLATES.find(x => x.id === 'builtin-glm'), name: '我的 GLM', patterns: ['glm-custom-*'],
+    reasoning: true, temperature: true };
   const stored = [
-    { ...t.BUILTIN_TEMPLATES[0], reasoning: true, attachment: true, temperature: false, limit: { context: 5, output: 6 } },
-    { ...t.BUILTIN_TEMPLATES[2], reasoning: true, attachment: true, temperature: true },
+    oldClaude, oldGemini, oldGlmCustomPattern,
     { id: 'c1', name: '自定义', builtin: false, patterns: ['x-*'], reasoning: false, attachment: false, tool_call: true, temperature: false,
       modalities: { input: ['text'], output: ['text'] }, efforts: ['low'], effort: 'low', limit: { context: 1, output: 1 } },
     { id: 'c2', name: '自定义2', builtin: false, patterns: ['y-*'], reasoning: true, temperature: true, tool_call: true,
       modalities: { input: ['text'], output: ['text'] }, efforts: [], effort: '', limit: { context: 1, output: 1 } }
   ];
-  const [claude, gemini, c1, c2] = t.resolveTemplates(stored);
-  assert.equal(claude.reasoning, 'yes'); assert.equal(claude.temperature, 'no');
-  assert.deepEqual(claude.limit, { context: 5, output: 6 }, '用户改过的数值保留');
-  assert.equal(gemini.temperature, 'unset');
-  assert.equal(c1.reasoning, 'unset'); assert.equal(c1.temperature, 'unset');
-  assert.equal(c2.reasoning, 'yes'); assert.equal(c2.temperature, 'yes');
-  for (const x of [claude, gemini, c1, c2]) assert.equal('attachment' in x, false);
+  const resolved = t.resolveTemplates(stored);
+  assert.equal(resolved.length, 38, '2 个自定义 + 36 个内置全部补齐');
+  assert.deepEqual(resolved.slice(0, 2).map(x => x.id), ['c1', 'c2'], '自定义模板排在最前');
+  const byId = Object.fromEntries(resolved.map(x => [x.id, x]));
+  assert.equal(byId['builtin-claude'].reasoning, 'yes');
+  assert.equal(byId['builtin-claude'].temperature, 'no');
+  assert.deepEqual(byId['builtin-claude'].limit, { context: 5, output: 6 }, '用户改过的数值保留');
+  assert.equal(byId['builtin-claude'].patterns.includes('claude-*'), false, '未改过的旧通配自动收窄，避免吞掉 4.6 / 4.5');
+  assert.equal(t.matchTemplate(resolved, 'claude-sonnet-4-6').id, 'builtin-claude-4-6');
+  assert.deepEqual(byId['builtin-glm'].patterns, ['glm-custom-*'], '用户改过的匹配规则保留不覆盖');
+  assert.equal(byId['builtin-gemini'].temperature, 'unset');
+  assert.equal(byId.c1.reasoning, 'unset'); assert.equal(byId.c1.temperature, 'unset');
+  assert.equal(byId.c2.reasoning, 'yes'); assert.equal(byId.c2.temperature, 'yes');
+  assert.equal(t.templateGroup(byId.c1), '自定义');
+  for (const x of [byId['builtin-claude'], byId['builtin-gemini'], byId.c1, byId.c2]) assert.equal('attachment' in x, false);
   assert.equal(t.capState('no'), 'no');
   assert.equal(t.capState(true), 'yes');
   assert.equal(t.capState(false), 'unset');
@@ -211,11 +288,11 @@ test('store 持久化模板列表：未保存为 null，保存后重开仍在，
 
 test('模板列表：null 回退内置，恢复内置保留自定义，可由模型生成新模板', async () => {
   const t = await load();
-  assert.equal(t.resolveTemplates(null).length, 11);
+  assert.equal(t.resolveTemplates(null).length, 36);
   const custom = { ...t.BUILTIN_TEMPLATES[0], id: 'c1', name: '自定义', builtin: false };
   const changed = t.resolveTemplates([{ ...t.BUILTIN_TEMPLATES[0], limit: { context: 1, output: 1 } }, custom]);
   const reset = t.resetBuiltins(changed);
-  assert.equal(reset.length, 12);
+  assert.equal(reset.length, 37);
   assert.deepEqual(reset.find(x => x.id === t.BUILTIN_TEMPLATES[0].id).limit, { context: 1000000, output: 128000 });
   assert.ok(reset.some(x => x.id === 'c1'));
   const fromModel = t.templateFromModel({ id: 'acme-1', name: 'Acme', limit: { context: 5, output: 6 },

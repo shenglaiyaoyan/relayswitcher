@@ -28,8 +28,8 @@
 
 | 组 (`group`) | ID | 模板名 (`name`) | 匹配规则 (`patterns`) | 上下文 / 输出 | 思考档位（默认） | 输入模态 / 特殊项 |
 |---|---|---|---|---|---|---|
-| **Claude** | `builtin-claude` | Claude 5 / 5.5 / 4.7+ | `claude-*-5*`, `claude-fable*`, `claude-opus-4.8*`, `claude-opus-4.7*` | 1000000 / 128000 | `low,medium,high,xhigh,max` (`high`) | `text,image,pdf` · Temp `no` |
-| | `builtin-claude-4-6` | Claude 4.6 | `claude-*-4.6*` | 1000000 / 128000 | `low,medium,high,max` (`high`) | `text,image,pdf` |
+| **Claude** | `builtin-claude` | Claude 5 / 5.5 / 4.7+ | `claude-opus-5*`, `claude-sonnet-5*`, `claude-haiku-5*`, `claude-fable*`, `claude-5*`, `claude-opus-4.8*`, `claude-opus-4.7*` | 1000000 / 128000 | `low,medium,high,xhigh,max` (`high`) | `text,image,pdf` · Temp `no` |
+| | `builtin-claude-4-6` | Claude 4.6 | `claude-opus-4.6*`, `claude-sonnet-4.6*`, `claude-haiku-4.6*`, `claude-4.6*` | 1000000 / 128000 | `low,medium,high,max` (`high`) | `text,image,pdf` |
 | | `builtin-claude-fallback` | Claude 4.5 及旧版 | `claude-*`（兜底） | 200000 / 64000 | `low,medium,high` (`high`) | `text,image,pdf` |
 | **GPT** | `builtin-gpt` | GPT 6.2 / 6.1 Sol / 6 Astra | `gpt-6.2-*`, `gpt-6.1-sol*`, `gpt-6-astra*` | 500000 / 128000 | `low,medium,high,xhigh,max` (`high`) | `text,image,pdf` · Temp `no` |
 | | `builtin-gpt-6-six` | GPT 6.1 Terra / 6 Sol·Luna / 5.6 | `gpt-6.1-terra*`, `gpt-6-sol*`, `gpt-6-luna*`, `gpt-5.6*`, `gpt-daybreak*` | 500000 / 128000 | `none,low,medium,high,xhigh,max` (`high`) | `text,image,pdf` |
@@ -46,7 +46,7 @@
 | **GLM** | `builtin-glm-5-3-flash` | GLM 5.3 Flash | `glm-5.3-flash*` | 1000000 / 128000 | `low,high,max` (`high`) | `text,image,video,pdf` |
 | | `builtin-glm` | GLM 5.3 | `glm-5.3`, `glm-5.3-*` | 1000000 / 128000 | `low,high,max` (`high`) | `text` |
 | | `builtin-glm-5-2` | GLM 5.2 | `glm-5.2*` | 1000000 / 128000 | `high,max` (`high`) | `text` |
-| | `builtin-glm-vision` | GLM 5V / 4.6V / 4.5V | `glm-*v*` | 200000 / 128000 | `[]`（思考开关） | `text,image,video` |
+| | `builtin-glm-vision` | GLM 5V / 4.6V / 4.5V | `glm-5v*`, `glm-4.6v*`, `glm-4.5v*`, `glm-4v*` | 200000 / 128000 | `[]`（思考开关） | `text,image,video` |
 | | `builtin-glm-fallback` | GLM 5 / 4.x | `glm-*`（兜底） | 200000 / 128000 | `[]`（思考开关） | `text` |
 | **Kimi** | `builtin-kimi` | Kimi K3 / K3.1 | `kimi-k3*`, `kimi-3*` | 1048576 / 1048576 | `low,high,max` (`high`) | `text,image,video` · Temp `no` |
 | | `builtin-kimi-fallback` | Kimi K2.6 / K2.7 | `kimi-*`（兜底） | 262144 / 262144 | `[]`（思考开关） | `text,image,video` · Temp `no` |

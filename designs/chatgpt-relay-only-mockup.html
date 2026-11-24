@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../dist/assets/index-Q5VaCC4q.css" />
+<style>
+  html, body { height: auto; overflow: visible; }
+  body { padding: 30px 34px 36px; width: 1560px; }
+  .wrap { display: flex; gap: 34px; align-items: flex-start; }
+  .page { width: 1060px; flex-shrink: 0; }
+  .mk-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 24px; color: var(--gold-hover); margin-bottom: 4px; }
+  .mk-sub { color: var(--txt-3); font-size: 12.5px; margin-bottom: 18px; }
+  .mk-new { position: relative; outline: 1.5px dashed rgba(232, 213, 183, .75); outline-offset: 5px; border-radius: 6px; }
+  .mk-badge { position: absolute; top: -10px; left: -26px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a;
+    font: 700 11.5px/20px 'Inter', sans-serif; text-align: center; box-shadow: 0 0 0 3px #0a0a0a; z-index: 3; }
+  .cg-srow.mk-new { outline-offset: 0; margin-top: 6px; margin-bottom: 6px; }
+  .cg-acct-hint { margin: 6px 0 0; color: var(--txt-3); font-size: 11.5px; line-height: 1.5; }
+  .cg-acct-hint b { color: var(--gold-hover); font-weight: 500; }
+  .notes { width: 400px; padding-top: 58px; }
+  .note { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; margin-bottom: 18px; font-size: 13px; line-height: 1.65; color: var(--txt-2); }
+  .note i { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-hover); color: #0a0a0a; font: 700 12px/22px 'Inter', sans-serif; text-align: center; font-style: normal; }
+  .note b { display: block; color: var(--txt-1); font-size: 14px; margin-bottom: 2px; }
+  .note strong { color: var(--txt-1); font-weight: 500; }
+  .note code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--gold-hover); }
+  .note.plain i { background: transparent; border: 1px solid var(--accent-line); color: var(--accent-strong); }
+  .sep { border-top: 1px solid var(--line-soft); margin: 6px 0 18px; }
+  .demo-menu { margin-top: 6px; padding: 5px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-pop); }
+  .demo-opt { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 7px; font-size: 12px; color: var(--txt-2); }
+  .demo-opt.on { background: var(--accent-soft); color: var(--accent-strong); }
+  .demo-opt small { color: var(--txt-3); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="mk-title">ChatGPT 页 · 仅中转站（无账号）模式</div>
+<div class="mk-sub">虚线框和编号是新增或变化的内容。图中状态：已选择「不绑定账号（仅中转站）」并完成切换。</div>
+<div class="wrap">
+<div class="page">
+<div class="cg">
+  <header class="cg-head">
+    <div><h1>ChatGPT</h1><p>绑定登录态与流量出口，配置将在备份后写入 Codex。</p></div>
+  </header>
+  <div class="cg-grid">
+    <div class="cg-col">
+      <section class="cg-card cg-switch">
+        <div class="cg-card-head"><div><h2>切换</h2><p>选择账号与出口，校验通过后生效</p></div><span class="cg-pill ok">已完成</span></div>
+        <div class="cg-form">
+          <span class="cg-flabel">账号</span>
+          <div class="mk-new"><span class="mk-badge">1</span>
+            <div class="rs-select"><button type="button" class="rs-select-btn"><span class="rs-select-label">不绑定账号 · 仅中转站</span></button></div>
+            <div class="demo-menu">
+              <div class="demo-opt on"><span>不绑定账号 · 仅中转站</span><small>不写 auth.json · 桌面版无 Fast</small></div>
+              <div class="demo-opt"><span>a***7@outlook.com · Free</span><small>解锁桌面版 Fast / Ultra Fast</small></div>
+              <div class="demo-opt"><span>b***2@gmail.com · Plus</span><small></small></div>
+            </div>
+            <p class="cg-acct-hint">仅写入中转站配置（不修改 <code>auth.json</code>）。CLI 可用 <code>/fast</code>；<b>Codex 桌面版不显示 Fast / Ultra Fast 开关</b>。</p>
+          </div>
+          <span class="cg-flabel">中转站</span>
+          <div><div class="rs-select"><button type="button" class="rs-select-btn"><span class="rs-select-label">DIHUANG2API · 320 ms<span class="rs-select-desc">https://api.dihuang.example/v1</span></span></button></div></div>
+          <span class="cg-flabel">模型目录</span>
+          <div class="cg-seg"><button type="button" class="cg-seg-btn on">官方目录 · 13 模型</button><button type="button" class="cg-seg-btn">中转目录 · 18 模型</button></div>
+          <span class="cg-flabel">上下文窗口</span>
+          <div class="cg-ctx"><div class="cg-seg"><button type="button" class="cg-seg-btn">272K</button><button type="button" class="cg-seg-btn on">372K</button><button type="button" class="cg-seg-btn">872K</button></div>
+            <label class="cg-ctx-custom"><input type="text" class="mono" placeholder="自定义" /><span>tokens</span></label></div>
+          <span class="cg-flabel">兼容模式</span>
+          <div class="cg-compat">
+            <div class="switch-toggle"></div><b>修复桌面版 call_id 报错</b>
+            <small>经本机代理把桌面版的页面记录改成普通消息再转给中转站。开启后 RelaySwitcher 需保持运行。</small>
+          </div>
+        </div>
+        <button class="cg-go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg> 立即切换</button>
+        <p class="cg-go-hint">自动备份当前配置，完成后可回滚</p>
+        <div class="cg-flow">
+          <div class="cg-flow-head"><h3>切换流程</h3><span>完成 · 重启 Codex 客户端后生效</span></div>
+          <ol class="cg-steps">
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>备份当前配置</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>登录态(跳过)</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>流量指向中转站</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>部署模型目录</li>
+            <li class="cg-step done"><i><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg></i>校验</li>
+          </ol>
+        </div>
+      </section>
+    </div>
+    <section class="cg-card cg-status">
+      <div class="cg-card-head"><h2>当前状态</h2><span class="cg-pill ok"><i></i>已绑定 · 仅中转</span></div>
+      <div class="cg-sgroup"><h3>登录态</h3>
+        <div class="cg-srow mk-new"><span class="mk-badge">2</span><span class="cg-slabel">模式</span>
+          <div class="cg-svalue"><span class="cg-dot ok"></span><span>仅中转站（无账号）</span><span class="cg-tag">无 OAuth</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">说明</span><div class="cg-svalue"><span class="cg-muted">CLI 可用 /fast · 桌面版无 Fast 按钮</span></div></div>
+      </div>
+      <div class="cg-sgroup"><h3>流量出口</h3>
+        <div class="cg-srow"><span class="cg-slabel">中转站</span><div class="cg-svalue"><div class="cg-stack"><span>DIHUANG2API</span><span class="mono cg-muted cg-ellipsis">https://api.dihuang.example/v1</span></div></div></div>
+        <div class="cg-srow"><span class="cg-slabel">兼容模式</span><div class="cg-svalue"><span class="cg-muted">关闭 · 直连中转</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">延迟</span><div class="cg-svalue"><span class="cg-dot ok"></span><span class="mono">320 ms</span><span class="cg-meter"><i style="width:68%"></i></span></div></div>
+      </div>
+      <div class="cg-sgroup"><h3>Codex</h3>
+        <div class="cg-srow"><span class="cg-slabel">模型</span><div class="cg-svalue"><span class="mono">gpt-6.2-sol</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">目录</span><div class="cg-svalue"><span>已部署</span><span class="cg-tag">目录已接管</span></div></div>
+        <div class="cg-srow"><span class="cg-slabel">窗口</span><div class="cg-svalue"><span class="mono">372K</span></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+
+<div class="notes">
+  <div class="note"><i>1</i><div><b>账号下拉新增「不绑定账号 · 仅中转站」</b>不增加新表单行。即使账号库里 0 个账号，下拉框也可以选此项直接点击「立即切换」（只需已添加中转站）。选中后下方给出 1 行简短提示，提醒桌面版不显示 Fast 开关。</div></div>
+  <div class="note"><i>2</i><div><b>当前状态自动识别仅中转模式</b>读取 <code>config.toml</code> 里当前 provider 的 <code>requires_openai_auth = false</code> 时，右上角显示「已绑定 · 仅中转」，登录态区显示「仅中转站（无账号）」，不再误报红点「未登录」或过期 token 警告。</div></div>
+  <div class="sep"></div>
+  <div class="note plain"><i>·</i><div><b>零侵入写入</b>写 <code>requires_openai_auth = false</code> + <code>experimental_bearer_token = 中转Key</code>，<strong>不改也不删现有 <code>auth.json</code></strong>；已实测即使磁盘上有旧 OAuth <code>auth.json</code>，Codex 也会完全忽略它、直发中转 Bearer Key。</div></div>
+  <div class="note plain"><i>·</i><div><b>切换回账号模式</b>在下拉里重新选任意 ChatGPT 账号再切换，立刻恢复 <code>requires_openai_auth = true</code> 与 OAuth 登录态，桌面版 Fast / Ultra Fast 随之恢复。</div></div>
+</div>
+</div>
+</body>
+</html>

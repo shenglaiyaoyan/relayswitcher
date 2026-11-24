@@ -111,6 +111,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
         setAccountId(isDemoRelayOnly ? NO_ACCOUNT : 'a1');
         setRelayId('r1'); setCtx(372000);
         setCompat(!h.includes('compatpending') && !isDemoRelayOnly);
+        setDone(null); setLog([]); setSwitching(false); setShowLog(false);
         if (isDemoRelayOnly) {
           setDone('ok');
           setLog([{ name: '目录生成', ok: true }, { name: '备份当前配置', ok: true },

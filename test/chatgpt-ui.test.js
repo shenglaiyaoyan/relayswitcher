@@ -79,6 +79,9 @@ test('ChatGPT 页仅中转站（无账号）模式：下拉支持不绑定账号
   assert.doesNotMatch(page, /disabled=\{switching \|\| !accounts\.length \|\| !relays\.length\}/);
   const main = fs.readFileSync(path.join(__dirname, '../electron/main.js'), 'utf8');
   assert.match(main, /accountId === '__none__'/);
+  const app = read('App.jsx');
+  assert.match(app, /requiresOpenaiAuth === false/);
+  assert.match(app, /已绑定 · 仅中转/);
   const css = read('styles.css');
   assert.match(css, /\.cg-acct-hint\s*\{/);
 });

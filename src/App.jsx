@@ -133,7 +133,9 @@ export default function App() {
   }
 
   const s = state.status;
-  const wired = !!(s.baseUrl && !/localhost|127\.0\.0\.1/.test(s.baseUrl) && s.hasTokens);
+  const relayOnly = !!(s.baseUrl && s.requiresOpenaiAuth === false);
+  const hasRelay = !!(s.baseUrl && (!/localhost|127\.0\.0\.1/.test(s.baseUrl) || s.compat?.active));
+  const wired = hasRelay && (relayOnly || !!s.hasTokens);
 
   return (
     <div className="app">
@@ -156,11 +158,11 @@ export default function App() {
           ))}
         </nav>
         <div className="side-bottom">
-          <div className="live-pill" onClick={() => goto('dash')} title={wired ? `${s.activeAccount?.label || ''} → ${s.baseUrl}` : '尚未绑定'}>
+          <div className="live-pill" onClick={() => goto('dash')} title={wired ? `${relayOnly ? '仅中转站' : (s.activeAccount?.label || '')} → ${s.relayBaseUrl || s.baseUrl}` : '尚未绑定'}>
             <span className={'dot ' + (wired ? 'ok' : s.baseUrl || s.authExists ? 'bad' : 'idle')} />
             <span className="pill-txt">
-              <span className="pill-main">{wired ? '已绑定中转站' : '未绑定'}</span>
-              <span className="pill-sub">{wired ? (s.activeAccount?.label || '账号') + ' → ' + (s.activeRelay?.name || s.baseUrl) : '去 ChatGPT 页完成切换'}</span>
+              <span className="pill-main">{wired ? (relayOnly ? '已绑定 · 仅中转' : '已绑定中转站') : '未绑定'}</span>
+              <span className="pill-sub">{wired ? (relayOnly ? '无账号' : (s.activeAccount?.label || '账号')) + ' → ' + (s.activeRelay?.name || s.relayBaseUrl || s.baseUrl) : '去 ChatGPT 页完成切换'}</span>
             </span>
           </div>
           {upd.status !== 'idle' && (

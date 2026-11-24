@@ -676,7 +676,7 @@ input.ok, textarea.ok { border-color: rgba(74, 222, 128, .45); }
 
 .cg-form { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: start; gap: 10px 14px; }
 .cg-flabel { color: var(--txt-2); font-size: 12.5px; line-height: 36px; }
-.cg-form .rs-select-btn { height: 36px; font-size: 12.5px; }
+.cg-form .rs-select-btn { min-height: 36px; height: auto; padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; }
 .cg-seg { display: flex; flex: 1; min-width: 0; height: 36px; border: 1px solid var(--line); border-radius: 9px; background: var(--input-bg); overflow: hidden; }
 .cg-seg-btn { flex: 1; min-width: 0; padding: 0 8px; border: 0; border-right: 1px solid var(--line-soft); background: transparent; color: var(--txt-3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .cg-seg-btn:last-child { border-right: 0; }

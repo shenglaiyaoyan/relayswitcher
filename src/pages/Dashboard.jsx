@@ -3,6 +3,7 @@ import { Icon, Select, Spinner, Modal, Confirm, Toggle, fmtK, planLabel } from '
 import { STAGES, stageStates } from './chatgpt/pipeline.mjs';
 
 const CTX_PRESETS = [272000, 372000, 872000];
+const NO_ACCOUNT = '__none__';
 const MAIN_STEPS = new Set(['备份当前配置', '流量指向中转站', '目录生成', '校验完成']);
 const STEP_ICON = {
   done: <Icon name="check" size={9} />,
@@ -74,9 +75,13 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
   }, []); // eslint-disable-line
 
   useEffect(() => {
-    if (!accountId && accounts.length) setAccountId((status.activeAccount || accounts[0]).id);
+    if (!accountId) {
+      if (status.baseUrl && status.requiresOpenaiAuth === false) setAccountId(NO_ACCOUNT);
+      else if (accounts.length) setAccountId((status.activeAccount || accounts[0]).id);
+      else setAccountId(NO_ACCOUNT);
+    }
     if (!relayId && relays.length) setRelayId((status.activeRelay || relays[0]).id);
-  }, [accounts, relays]); // eslint-disable-line
+  }, [accounts, relays, status.requiresOpenaiAuth, status.baseUrl]); // eslint-disable-line
 
   const loadBackups = async () => {
     if ((window.location.hash || '').includes('filled')) return;
@@ -97,8 +102,21 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
       if (h.includes('demo-warn')) setRivalWarn([{ name: 'CockpitTools', image: 'CockpitTools.exe', pids: ['4012'] }]);
       if (h.includes('demo-modal')) setCodexWarn({ pids: ['4012', '4013'] });
       if (h.includes('filled')) {
-        setDemoState(DEMO_STATE); setBackups(DEMO_BACKUPS); setAccountId('a1'); setRelayId('r1'); setCtx(372000);
-        setCompat(!h.includes('compatpending'));
+        const isDemoRelayOnly = h.includes('relayonly');
+        setDemoState(isDemoRelayOnly ? {
+          ...DEMO_STATE,
+          status: { ...DEMO_STATE.status, requiresOpenaiAuth: false, activeAccount: null, compat: { active: false } }
+        } : DEMO_STATE);
+        setBackups(DEMO_BACKUPS);
+        setAccountId(isDemoRelayOnly ? NO_ACCOUNT : 'a1');
+        setRelayId('r1'); setCtx(372000);
+        setCompat(!h.includes('compatpending') && !isDemoRelayOnly);
+        if (isDemoRelayOnly) {
+          setDone('ok');
+          setLog([{ name: '目录生成', ok: true }, { name: '备份当前配置', ok: true },
+            { name: '写入登录态（跳过）', ok: true, detail: '仅中转模式，未修改 auth.json' },
+            { name: '流量指向中转站', ok: true }, { name: '校验完成', ok: true }]);
+        }
         if (h.includes('progress')) setLog([{ name: '竞品工具检测', ok: true, detail: '未发现' }, { name: '目录生成', ok: true, detail: '官方目录' },
           { name: '备份当前配置', ok: true, detail: '快照 20261029-101010' }, { name: '写入登录态 auth.json', ok: true }, { name: '流量指向中转站', ok: false, detail: '示例失败' }]);
         if (h.includes('flowok')) { setDone('ok'); setLog([{ name: '目录生成', ok: false, detail: '回落官方目录' }, { name: '备份当前配置', ok: true },
@@ -186,9 +204,15 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
   const extraLog = log.filter(l => !MAIN_STEPS.has(l.name) && !(l.name || '').startsWith('写入登录态'));
   const ctxIsPreset = CTX_PRESETS.includes(Number(ctx));
   const stateLabel = switching ? '切换中' : done === 'ok' ? '已完成' : done === 'bad' ? '已中止' : '等待新配置';
-  const wired = !!(status.activeAccount && status.activeRelay);
+  const isRelayOnly = accountId === NO_ACCOUNT;
+  const statusRelayOnly = !!(status.baseUrl && status.requiresOpenaiAuth === false);
+  const wired = statusRelayOnly ? !!status.activeRelay : !!(status.activeAccount && status.activeRelay);
   const cx = status.compat || { active: false };
   const compatPending = wired && compat !== !!cx.active;
+  const accountOptions = [
+    { value: NO_ACCOUNT, label: '不绑定账号 · 仅中转站', desc: '不写 auth.json · 桌面版无 Fast' },
+    ...accounts.map(a => ({ value: a.id, label: a.label + (a.plan ? ' · ' + (planLabel(a.plan) || a.plan) : '') }))
+  ];
 
   return (
     <div className="cg">
@@ -218,10 +242,10 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
             <div className="cg-form">
               <span className="cg-flabel">账号</span>
               <div>
-                <Select value={accountId} onChange={setAccountId} disabled={switching || !accounts.length}
-                  options={accounts.map(a => ({ value: a.id, label: a.label + (a.plan ? ' · ' + (planLabel(a.plan) || a.plan) : '') }))}
-                  emptyText="还没有账号 — 去「账号」页导入" placeholder="选择账号…" />
-                {!accounts.length && <button className="cg-text-btn cg-inline-link" onClick={() => goto('accounts')}>去导入账号 →</button>}
+                <Select value={accountId} onChange={setAccountId} disabled={switching}
+                  options={accountOptions} placeholder="选择账号…" />
+                {isRelayOnly && <p className="cg-acct-hint">仅写入中转站配置（不修改 <code>auth.json</code>）。CLI 可用 <code>/fast</code>；<b>Codex 桌面版不显示 Fast / Ultra Fast 开关</b>。</p>}
+                {!accounts.length && <button type="button" className="cg-text-btn cg-inline-link" onClick={() => goto('accounts')}>去导入账号（解锁桌面版 Fast）→</button>}
               </div>
               <span className="cg-flabel">中转站</span>
               <div>
@@ -254,7 +278,7 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
                 <small>经本机代理把桌面版的页面记录改成普通消息再转给中转站。开启后 RelaySwitcher 需保持运行。</small>
               </div>
             </div>
-            <button className={'cg-go' + (switching ? ' switching' : '')} disabled={switching || !accounts.length || !relays.length} onClick={doSwitch}>
+            <button className={'cg-go' + (switching ? ' switching' : '')} disabled={switching || !relayId || !relays.length} onClick={doSwitch}>
               {switching ? <><Spinner size={14} /> 切换中…</> : <><Icon name="relay" size={15} /> 立即切换</>}
             </button>
             {compatPending
@@ -265,7 +289,8 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
               <div className="cg-flow-head"><h3>切换流程</h3>
                 <span>{switching ? '执行中…' : done === 'ok' ? '完成 · 重启 Codex 客户端后生效' : done === 'bad' ? '已中止 · 已自动回滚或可从备份恢复' : '空闲 · 等待执行'}</span></div>
               <ol className="cg-steps">
-                {STAGES.map((s, i) => <li key={s.key} className={'cg-step ' + states[i]}><i>{STEP_ICON[states[i]]}</i>{s.label}</li>)}
+                {STAGES.map((s, i) => <li key={s.key} className={'cg-step ' + states[i]}><i>{STEP_ICON[states[i]]}</i>
+                  {s.key === 'auth' && (isRelayOnly || log.some(l => l.name === '写入登录态（跳过）')) ? '登录态(跳过)' : s.label}</li>)}
               </ol>
               {log.length > 0 && <div className="cg-log">
                 <button className="cg-text-btn" onClick={() => setShowLog(v => !v)}>
@@ -294,21 +319,30 @@ export default function Dashboard({ state: liveState, refresh, toast, goto }) {
         </div>
 
         <section className="cg-card cg-status">
-          <div className="cg-card-head"><h2>当前状态</h2><span className={'cg-pill' + (wired ? ' ok' : '')}><i />{wired ? '已绑定' : '未绑定'}</span></div>
+          <div className="cg-card-head"><h2>当前状态</h2><span className={'cg-pill' + (wired ? ' ok' : '')}><i />{wired ? (statusRelayOnly ? '已绑定 · 仅中转' : '已绑定') : '未绑定'}</span></div>
           <div className="cg-sgroup"><h3>登录态</h3>
-            <StatusRow label="账号" onClick={() => goto('accounts')} title="管理账号">
-              <span className={'cg-dot' + (status.hasTokens ? ' ok' : ' bad')} />
-              <span className="mono cg-ellipsis">{status.activeAccount ? (status.activeAccount.email || status.activeAccount.label) : (status.authExists ? '未入库的账号' : '未登录')}</span>
-              {status.hasTokens && <span className="cg-tag">OAuth 正常</span>}
-            </StatusRow>
-            <StatusRow label="计划">{plan || '—'}</StatusRow>
-            <StatusRow label="令牌">
-              <div className="cg-stack">
-                <span className="mono">access token · {lifeStr(life.accessTokenMs)}</span>
-                {life.idTokenMs != null && <span className={idExpired ? 'cg-warn' : 'cg-muted'}
-                  title="id_token 寿命约 1 小时；切换时会自动预刷新">id_token {idExpired ? '已过期（切换时会自动刷新）' : lifeStr(life.idTokenMs)}</span>}
-              </div>
-            </StatusRow>
+            {statusRelayOnly ? <>
+              <StatusRow label="模式" onClick={() => goto('accounts')} title="管理账号">
+                <span className="cg-dot ok" />
+                <span>仅中转站（无账号）</span>
+                <span className="cg-tag">无 OAuth</span>
+              </StatusRow>
+              <StatusRow label="说明"><span className="cg-muted">CLI 可用 /fast · 桌面版无 Fast 按钮</span></StatusRow>
+            </> : <>
+              <StatusRow label="账号" onClick={() => goto('accounts')} title="管理账号">
+                <span className={'cg-dot' + (status.hasTokens ? ' ok' : ' bad')} />
+                <span className="mono cg-ellipsis">{status.activeAccount ? (status.activeAccount.email || status.activeAccount.label) : (status.authExists ? '未入库的账号' : '未登录')}</span>
+                {status.hasTokens && <span className="cg-tag">OAuth 正常</span>}
+              </StatusRow>
+              <StatusRow label="计划">{plan || '—'}</StatusRow>
+              <StatusRow label="令牌">
+                <div className="cg-stack">
+                  <span className="mono">access token · {lifeStr(life.accessTokenMs)}</span>
+                  {life.idTokenMs != null && <span className={idExpired ? 'cg-warn' : 'cg-muted'}
+                    title="id_token 寿命约 1 小时；切换时会自动预刷新">id_token {idExpired ? '已过期（切换时会自动刷新）' : lifeStr(life.idTokenMs)}</span>}
+                </div>
+              </StatusRow>
+            </>}
           </div>
           <div className="cg-sgroup"><h3>流量出口</h3>
             <StatusRow label="中转站" onClick={() => goto('relays')} title="管理中转站">

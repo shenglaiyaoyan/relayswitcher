@@ -188,7 +188,8 @@ async function probeRelay(relay) {
 
 async function doSwitch(opts, event) {
   const s = store.getSettings();
-  let account = store.getAccount(opts.accountId);
+  const relayOnly = !opts.accountId || opts.accountId === '__none__';
+  let account = relayOnly ? null : store.getAccount(opts.accountId);
   const relay = store.getRelay(opts.relayId);
   const sendStep = (name, ok, detail) => {
     if (win && !win.isDestroyed()) win.webContents.send('rs:switch-step', { name, ok, detail });
@@ -206,7 +207,7 @@ async function doSwitch(opts, event) {
 
   const [rivals, refreshed] = await Promise.all([
     detectRivalTools(),
-    account.tokens.refresh_token
+    account && account.tokens && account.tokens.refresh_token
       ? refreshAccount(opts.accountId).catch(() => null)
       : Promise.resolve(null),
     modelsTask || Promise.resolve()
@@ -764,6 +765,16 @@ async function smoke() {
   check('Authorization 原样转发', !!relaySeen && relaySeen.auth === 'Bearer sk-smoke');
   await smokeCompat.stop();
   fakeRelay.close();
+
+  // ---- 场景 G:仅中转站（无账号）切换 —— 写 requires_openai_auth = false 且不触碰 auth.json ----
+  const authBeforeRelayOnly = fs.readFileSync(P('auth.json'));
+  const rRelayOnly = codex.applySwitch(switchOpts({ account: null }));
+  const cfgRelayOnly = TOML.parse(strip(fs.readFileSync(P('config.toml'), 'utf8')));
+  const stRelayOnly = codex.getStatus(home);
+  check('仅中转（无账号）切换成功且 requires_openai_auth = false',
+    rRelayOnly.ok && cfgRelayOnly.model_providers['codex_local_access'].requires_openai_auth === false);
+  check('仅中转切换不改动原 auth.json 且状态正确识别',
+    fs.readFileSync(P('auth.json')).equals(authBeforeRelayOnly) && stRelayOnly.requiresOpenaiAuth === false);
 
   fs.rmSync(home, { recursive: true, force: true });
   console.log(`\nSMOKE RESULT: ${pass} passed, ${fail} failed`);

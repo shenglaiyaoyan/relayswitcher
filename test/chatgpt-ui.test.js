@@ -68,6 +68,21 @@ test('ChatGPT 页兼容模式：开关随切换提交、改动待生效提示、
   assert.match(css, /\.cg-go-hint\.pending\s*\{/);
 });
 
+test('ChatGPT 页仅中转站（无账号）模式：下拉支持不绑定账号、无账号也可切换、状态卡片与主进程接线到位', () => {
+  const page = read('pages/Dashboard.jsx');
+  assert.match(page, /NO_ACCOUNT\s*=\s*'__none__'/);
+  assert.match(page, /不绑定账号 · 仅中转站/);
+  assert.match(page, /已绑定 · 仅中转/);
+  assert.match(page, /requiresOpenaiAuth === false/);
+  assert.match(page, /仅中转站（无账号）/);
+  assert.match(page, /cg-acct-hint/);
+  assert.doesNotMatch(page, /disabled=\{switching \|\| !accounts\.length \|\| !relays\.length\}/);
+  const main = fs.readFileSync(path.join(__dirname, '../electron/main.js'), 'utf8');
+  assert.match(main, /accountId === '__none__'/);
+  const css = read('styles.css');
+  assert.match(css, /\.cg-acct-hint\s*\{/);
+});
+
 test('ChatGPT 页每个按钮都有自定义背景和边框', () => {
   const css = read('styles.css');
   const src = read('pages/Dashboard.jsx');

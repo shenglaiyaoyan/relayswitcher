@@ -43,7 +43,8 @@
 | **DeepSeek** | `builtin-deepseek` | DeepSeek V4.1 / Flash | `deepseek-v4.1`, `deepseek-v4.1-*`, `deepseek-v4.1:*`, `deepseek-flash*` | 1048576 / 393216 | `low,high,max` (`high`) | `text,image` |
 | | `builtin-deepseek-v4` | DeepSeek V4（纯文本） | `deepseek-v4*`, `deepseek-pro*` | 1048576 / 393216 | `low,high,max` (`high`) | `text` |
 | | `builtin-deepseek-fallback` | DeepSeek V3 / R1 | `deepseek-*`（兜底） | 163840 / 65536 | `[]`（思考开关） | `text` |
-| **GLM** | `builtin-glm-5-3-flash` | GLM 5.3 Flash | `glm-5.3-flash*` | 1000000 / 128000 | `low,high,max` (`high`) | `text,image,video,pdf` |
+| **GLM** | `builtin-glm-5-4` | GLM 5.4 | `glm-5.4*` | 1000000 / 128000 | `low,high,max` (`high`) | `text,image,pdf`（v1.20.1 新增） |
+| | `builtin-glm-5-3-flash` | GLM 5.3 Flash | `glm-5.3-flash*` | 1000000 / 128000 | `low,high,max` (`high`) | `text,image,video,pdf` |
 | | `builtin-glm` | GLM 5.3 | `glm-5.3`, `glm-5.3-*` | 1000000 / 128000 | `low,high,max` (`high`) | `text` |
 | | `builtin-glm-5-2` | GLM 5.2 | `glm-5.2*` | 1000000 / 128000 | `high,max` (`high`) | `text` |
 | | `builtin-glm-vision` | GLM 5V / 4.6V / 4.5V | `glm-5v*`, `glm-4.6v*`, `glm-4.5v*`, `glm-4v*` | 200000 / 128000 | `[]`（思考开关） | `text,image,video` |

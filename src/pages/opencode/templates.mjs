@@ -40,7 +40,8 @@ export const BUILTIN_TEMPLATES = [
   tpl('DeepSeek', 'builtin-deepseek-v4', 'DeepSeek V4（纯文本）', ['deepseek-v4*', 'deepseek-pro*'], 1048576, 393216, ['low', 'high', 'max'], 'high', {}, ['text']),
   tpl('DeepSeek', 'builtin-deepseek-fallback', 'DeepSeek V3 / R1', ['deepseek-*'], 163840, 65536, [], '', { fallback: true }, ['text']),
 
-  // GLM（5）
+  // GLM（6）
+  tpl('GLM', 'builtin-glm-5-4', 'GLM 5.4', ['glm-5.4*'], 1000000, 128000, ['low', 'high', 'max'], 'high', {}, ['text', 'image', 'pdf']),
   tpl('GLM', 'builtin-glm-5-3-flash', 'GLM 5.3 Flash', ['glm-5.3-flash*'], 1000000, 128000, ['low', 'high', 'max'], 'high', {}, ['text', 'image', 'video', 'pdf']),
   tpl('GLM', 'builtin-glm', 'GLM 5.3', ['glm-5.3', 'glm-5.3-*'], 1000000, 128000, ['low', 'high', 'max'], 'high', {}, ['text']),
   tpl('GLM', 'builtin-glm-5-2', 'GLM 5.2', ['glm-5.2*'], 1000000, 128000, ['high', 'max'], 'high', {}, ['text']),

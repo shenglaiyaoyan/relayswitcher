@@ -4,10 +4,10 @@ const assert = require('node:assert/strict');
 
 const load = () => import('../src/pages/opencode/templates.mjs');
 
-test('内置模板覆盖 11 个厂家共 36 个子系列且数据完整，每厂末尾恰有一个兜底', async () => {
+test('内置模板覆盖 11 个厂家共 37 个子系列且数据完整，每厂末尾恰有一个兜底', async () => {
   const t = await load();
   assert.deepEqual(t.TEMPLATE_GROUPS, ['Claude', 'GPT', 'Gemini', 'DeepSeek', 'GLM', 'Kimi', 'Qwen', 'Grok', 'MiniMax', 'Mistral', 'MiMo']);
-  assert.equal(t.BUILTIN_TEMPLATES.length, 36);
+  assert.equal(t.BUILTIN_TEMPLATES.length, 37);
   const ids = new Set();
   for (const x of t.BUILTIN_TEMPLATES) {
     assert.equal(x.builtin, true, x.name);
@@ -58,7 +58,11 @@ test('内置模板覆盖 11 个厂家共 36 个子系列且数据完整，每厂
   assert.deepEqual(byId['builtin-deepseek-v4'].modalities.input, ['text']);
   assert.deepEqual(byId['builtin-deepseek-fallback'].limit, { context: 163840, output: 65536 });
   assert.deepEqual(byId['builtin-deepseek-fallback'].efforts, []);
-  // GLM：5.3 Flash 多模态 vs 5.3 纯文本
+  // GLM：5.4 视觉识图+PDF（无 video）、5.3 Flash 多模态 vs 5.3 纯文本
+  assert.deepEqual(byId['builtin-glm-5-4'].limit, { context: 1000000, output: 128000 });
+  assert.deepEqual(byId['builtin-glm-5-4'].efforts, ['low', 'high', 'max']);
+  assert.equal(byId['builtin-glm-5-4'].effort, 'high');
+  assert.deepEqual(byId['builtin-glm-5-4'].modalities.input, ['text', 'image', 'pdf']);
   assert.deepEqual(byId['builtin-glm-5-3-flash'].modalities.input, ['text', 'image', 'video', 'pdf']);
   assert.deepEqual(byId['builtin-glm'].modalities.input, ['text']);
   assert.deepEqual(byId['builtin-glm'].limit, { context: 1000000, output: 128000 });
@@ -90,6 +94,10 @@ test('按模型名匹配：子系列分流、版本号 . 与 - 互通、中转�
   assert.equal(t.matchTemplate(list, 'deepseek-v4-flash-0731').id, 'builtin-deepseek-v4');
   assert.equal(t.matchTemplate(list, 'deepseek-r1-distill-qwen-32b').id, 'builtin-deepseek-fallback');
   // GLM / Kimi / Qwen / MiniMax / Mistral / MiMo
+  assert.equal(t.matchTemplate(list, 'GLM-5.4').id, 'builtin-glm-5-4');
+  assert.equal(t.matchTemplate(list, 'zai-coding-plan/glm-5.4').id, 'builtin-glm-5-4');
+  assert.equal(t.matchTemplate(list, 'coding-glm-5.4').id, 'builtin-glm-5-4');
+  assert.equal(t.matchTemplate(list, 'person-glm-5-4-261123').id, 'builtin-glm-5-4');
   assert.equal(t.matchTemplate(list, 'GLM-5.3-Flash').id, 'builtin-glm-5-3-flash');
   assert.equal(t.matchTemplate(list, 'zai-glm-5-3-flash').id, 'builtin-glm-5-3-flash');
   assert.equal(t.matchTemplate(list, 'zai-glm-5-3').id, 'builtin-glm');
@@ -247,8 +255,11 @@ test('旧模板迁移与子系列补齐：旧布尔转三态、补入新增子�
       modalities: { input: ['text'], output: ['text'] }, efforts: [], effort: '', limit: { context: 1, output: 1 } }
   ];
   const resolved = t.resolveTemplates(stored);
-  assert.equal(resolved.length, 38, '2 个自定义 + 36 个内置全部补齐');
+  assert.equal(resolved.length, 39, '2 个自定义 + 37 个内置全部补齐');
   assert.deepEqual(resolved.slice(0, 2).map(x => x.id), ['c1', 'c2'], '自定义模板排在最前');
+  // v1.20.0 已存 36 条内置模板时升级，也自动补入 builtin-glm-5-4
+  const v1200Stored = t.BUILTIN_TEMPLATES.filter(x => x.id !== 'builtin-glm-5-4');
+  assert.equal(t.matchTemplate(t.resolveTemplates(v1200Stored), 'GLM-5.4').id, 'builtin-glm-5-4');
   const byId = Object.fromEntries(resolved.map(x => [x.id, x]));
   assert.equal(byId['builtin-claude'].reasoning, 'yes');
   assert.equal(byId['builtin-claude'].temperature, 'no');
@@ -288,11 +299,11 @@ test('store 持久化模板列表：未保存为 null，保存后重开仍在，
 
 test('模板列表：null 回退内置，恢复内置保留自定义，可由模型生成新模板', async () => {
   const t = await load();
-  assert.equal(t.resolveTemplates(null).length, 36);
+  assert.equal(t.resolveTemplates(null).length, 37);
   const custom = { ...t.BUILTIN_TEMPLATES[0], id: 'c1', name: '自定义', builtin: false };
   const changed = t.resolveTemplates([{ ...t.BUILTIN_TEMPLATES[0], limit: { context: 1, output: 1 } }, custom]);
   const reset = t.resetBuiltins(changed);
-  assert.equal(reset.length, 37);
+  assert.equal(reset.length, 38);
   assert.deepEqual(reset.find(x => x.id === t.BUILTIN_TEMPLATES[0].id).limit, { context: 1000000, output: 128000 });
   assert.ok(reset.some(x => x.id === 'c1'));
   const fromModel = t.templateFromModel({ id: 'acme-1', name: 'Acme', limit: { context: 5, output: 6 },

@@ -163,7 +163,7 @@ function patchProviderBlock(text, providerId, fields, opts = {}) {
     'name = ' + tomlStr(fields.name || providerId),
     'base_url = ' + tomlStr(fields.baseUrl),
     'wire_api = "responses"',
-    'requires_openai_auth = true',
+    'requires_openai_auth = ' + (fields.requiresOpenaiAuth === false ? 'false' : 'true'),
     'experimental_bearer_token = ' + tomlStr(fields.apiKey),
     'supports_websockets = false'
   ];
@@ -411,6 +411,7 @@ function applySwitch(opts) {
   const configPath = path.join(home, 'config.toml');
   const authPath = path.join(home, 'auth.json');
   const providerBaseUrl = opts.baseUrlOverride || opts.relay.baseUrl;
+  const hasAccount = !!(opts.account && opts.account.tokens);
 
   try {
     fs.mkdirSync(home, { recursive: true });
@@ -418,23 +419,25 @@ function applySwitch(opts) {
 
     // 1. 读取现状(保留 EOL/BOM 元数据)
     const cfgIn = readConfigText(configPath);
-    const authIn = readText(authPath);
+    const authIn = hasAccount ? readText(authPath) : null;
 
     // 2. 备份(文件此刻仍是原样)
     backupId = backup(home, 'switch');
     step('备份当前配置', true, backupId ? '快照 ' + backupId : '无需备份(无现有文件)');
 
     // 2.5 账号变更检测:account_id 变化 = Codex 会话空间切换(历史/设置按账号隔离)
-    try {
-      const oldAuth = JSON.parse(authIn || '{}');
-      const oldAcc = oldAuth.tokens && oldAuth.tokens.account_id;
-      const newAcc = opts.account.tokens.account_id;
-      if (oldAcc && newAcc && String(oldAcc) !== String(newAcc)) {
-        step('账号变更', true,
-          `登录账号将切换(${String(oldAcc).slice(0, 8)}… → ${String(newAcc).slice(0, 8)}…)。` +
-          'Codex 的会话历史按账号隔离,重启客户端后会像"新初始化" — 这是预期行为,回滚即可复原原账号的全部数据');
-      }
-    } catch { /* 无旧 auth 或格式异常则跳过 */ }
+    if (hasAccount) {
+      try {
+        const oldAuth = JSON.parse(authIn || '{}');
+        const oldAcc = oldAuth.tokens && oldAuth.tokens.account_id;
+        const newAcc = opts.account.tokens.account_id;
+        if (oldAcc && newAcc && String(oldAcc) !== String(newAcc)) {
+          step('账号变更', true,
+            `登录账号将切换(${String(oldAcc).slice(0, 8)}… → ${String(newAcc).slice(0, 8)}…)。` +
+            'Codex 的会话历史按账号隔离,重启客户端后会像"新初始化" — 这是预期行为,回滚即可复原原账号的全部数据');
+        }
+      } catch { /* 无旧 auth 或格式异常则跳过 */ }
+    }
 
     // 2.6 失效路径体检:MCP server 指向不存在的可执行文件(Codex 自动更新后常见)
     //     这不是切换造成的,但切换后重启 Codex 会因 config_load 失败卡在初始化界面 — 提前亮出来
@@ -490,7 +493,8 @@ function applySwitch(opts) {
     }
 
     const r = patchProviderBlock(text, opts.providerId, {
-      name: opts.relay.name, baseUrl: providerBaseUrl, apiKey: opts.relay.apiKey
+      name: opts.relay.name, baseUrl: providerBaseUrl, apiKey: opts.relay.apiKey,
+      requiresOpenaiAuth: hasAccount
     }, {
       pruneLocalProviders: !!opts.pruneLocalProviders,
       // 清场默认开启:旧 codex 会话锁定出生时的 provider,残留远端老路由会让它
@@ -499,30 +503,35 @@ function applySwitch(opts) {
     });
     text = r.text;
 
-    const newAuth = buildAuthJson(authIn, opts.account.tokens);
+    const newAuth = hasAccount ? buildAuthJson(authIn, opts.account.tokens) : null;
 
     // 4. 写前校验:任何解析失败都不落盘
     TOML.parse(text);
-    JSON.parse(newAuth);
+    if (hasAccount) JSON.parse(newAuth);
     if (catalogContent) JSON.parse(catalogContent.toString('utf8'));
     step('写前校验', true, 'TOML/JSON 解析通过' + (r.removedStale.length ? '(清场删除区块: ' + r.removedStale.join(', ') + ')' : ''));
 
     // 5. 原子写入
     writeConfigText(configPath, text, cfgIn || { hasBom: false, eol: '\n' });
     wroteAnything = true;
-    writeFileSyncSafe(authPath, newAuth);
+    if (hasAccount) writeFileSyncSafe(authPath, newAuth);
     if (catalogContent) writeFileSyncSafe(path.join(home, opts.catalogFileName), catalogContent);
-    step('写入登录态 auth.json', true, 'account_id=' + (opts.account.tokens.account_id || '?') + ',未知字段已保留');
+    if (hasAccount) {
+      step('写入登录态 auth.json', true, 'account_id=' + (opts.account.tokens.account_id || '?') + ',未知字段已保留');
+    } else {
+      step('写入登录态（跳过）', true, '仅中转模式，未修改 auth.json（requires_openai_auth = false）');
+    }
     step('流量指向中转站', true, opts.baseUrlOverride
       ? `经本机兼容代理 ${opts.baseUrlOverride} → ${opts.relay.baseUrl}` : opts.relay.baseUrl);
 
     // 6. 写后复查:读回重解析;失败则自动恢复备份
     const cfgBack = readConfigText(configPath);
     TOML.parse(cfgBack.text);
-    JSON.parse(fs.readFileSync(authPath, 'utf8'));
+    if (hasAccount) JSON.parse(fs.readFileSync(authPath, 'utf8'));
     const cfgObj = TOML.parse(cfgBack.text);
     const prov = (cfgObj.model_providers || {})[opts.providerId];
-    if (cfgObj.model_provider !== opts.providerId || !prov || prov.base_url !== providerBaseUrl) {
+    if (cfgObj.model_provider !== opts.providerId || !prov || prov.base_url !== providerBaseUrl
+      || prov.requires_openai_auth !== hasAccount) {
       throw new Error('校验失败: provider 指向不正确');
     }
     step('校验完成', true, '写后复查通过,绑定生效');
@@ -560,7 +569,7 @@ function getStatus(home) {
   const status = {
     home,
     configExists: meta != null,
-    model: null, modelProvider: null, baseUrl: null,
+    model: null, modelProvider: null, baseUrl: null, requiresOpenaiAuth: null,
     serviceTier: null, contextWindow: null, catalog: null,
     accountId: null, tomlOk: true
   };
@@ -573,7 +582,10 @@ function getStatus(home) {
       status.contextWindow = cfg.model_context_window || null;
       status.catalog = cfg.model_catalog_json || null;
       const prov = (cfg.model_providers || {})[cfg.model_provider || ''];
-      if (prov) status.baseUrl = prov.base_url || null;
+      if (prov) {
+        status.baseUrl = prov.base_url || null;
+        status.requiresOpenaiAuth = prov.requires_openai_auth === true;
+      }
     } catch {
       status.tomlOk = false;
     }

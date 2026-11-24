@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.21.0 (2026-11-24) — ChatGPT 页新增「仅中转站（无账号）」切换模式
+
+- ChatGPT 页「账号」下拉首位新增 **`不绑定账号 · 仅中转站`**，账号库为空时也可直接选择中转站完成一键切换
+- 底层写入 `requires_openai_auth = false` 与 `experimental_bearer_token`，**不修改也不删除现有 `auth.json`**；实测即使磁盘上有旧 OAuth `auth.json`，Codex 也会忽略它并直发中转站 Bearer Key
+- 界面明确标注能力边界：Codex CLI 可正常使用 `/fast`，Codex 桌面版无 ChatGPT 账号时不显示 Fast / Ultra Fast 开关（重新选任意 ChatGPT 账号切换即可恢复）
+- 右侧「当前状态」卡片与左侧边栏状态条自动识别仅中转模式，显示 `已绑定 · 仅中转`，不再误报红点未登录或过期 token 警告
+
 ## v1.20.1 (2026-11-24) — OpenCode 内置模板新增 GLM 5.4
 
 - 在 `GLM` 分组首位新增 **`GLM 5.4`**（`builtin-glm-5-4`，匹配 `glm-5.4*`，支持 `.`/`-` 互通与中转站自定义前缀如 `coding-glm-5.4`、`person-glm-5-4-...`）
